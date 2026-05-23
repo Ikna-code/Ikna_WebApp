@@ -1,0 +1,1 @@
+export const IMAGE_BASE_URL = "https://jpvznrtznfvfhpecylxj.supabase.co/storage/v1/object/public/products/";

@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -18,8 +22,11 @@
         "name": "next"
       }
     ],
+    // "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     }
   },
   "include": [
@@ -29,6 +36,8 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-  ],
-  "exclude": ["node_modules"]
+, "utils/SearchBar.tsx", "utils/ProductFilterBar.jsx", "components/product/ProductGridPage.tsx", "components/product/OpenBanner.jsx", "utils/threeDBanner.jsx", "backend/actions/order.js", "app/fit-quiz/page.jsx"  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

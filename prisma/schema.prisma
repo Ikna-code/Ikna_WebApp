@@ -1,0 +1,217 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+// --- ENUMS ---
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+// --- MODELS ---
+
+model User {
+  id            String         @id // Matches Supabase Auth ID
+  email         String         @unique
+  role          Role           @default(USER)
+  firstName String? @map("first_name") // Maps JS firstName to DB first_name
+  lastName  String? @map("last_name")
+  phone     String?
+  
+  addresses     Address[]
+  cartItems     CartItem[]
+  wishlistItems WishlistItem[]
+  orders        Order[]
+
+  reviews   Review[]
+  
+
+  @@map("User")
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String   @map("userId")
+  name      String   
+  street    String
+  city      String
+  state     String
+  zip       String
+  country   String   @default("India")
+  isDefault Boolean  @default(false) @map("isDefault")
+  createdAt DateTime @default(now()) @map("createdAt")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders    Order[]  // Relation to orders placed using this address
+
+  @@map("addresses")
+}
+
+// --- PRODUCT TABLES (UNALTERED AS REQUESTED) ---
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  price       Decimal  @db.Decimal(10, 2)
+  description String
+  image       String   
+  category    String
+  stock       Int      @default(0)
+  createdAt   DateTime @default(now()) @db.Timestamp(0)
+  
+  tag         String?
+  rating      Float?   
+   
+  sizes       String[] @default([])
+
+  images        ProductImage[] 
+  cartItems     CartItem[]
+  wishlistItems WishlistItem[]
+  orderItems    OrderItem[]
+
+  reviews        Review[]
+
+  @@map("Product")
+}
+
+model ProductImage {
+  id         String   @id @default(cuid())
+  image_path String
+  is_primary Boolean? @default(false)
+  
+  product_id String
+  product    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@map("product_images")
+}
+
+// --- TRANSACTIONAL TABLES (FIXED LOOPS) ---
+
+model CartItem {
+  id           String  @id @default(cuid())
+  userId       String  @map("userId")
+  productId    String  @map("productId")
+  quantity     Int     @default(1)
+  selectedSize String? // Fixed: Stores the size the user wants
+
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId, selectedSize]) // Unique per product AND size
+  @@map("cart_items")
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("wishlist_items")
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  userId       String
+  addressId    String?     // Link to the address record
+  totalAmount  Decimal     @db.Decimal(10, 2)
+  status       OrderStatus @default(PENDING)
+  createdAt    DateTime    @default(now())
+  
+  // Important: Snapshots the shipping address as text so it never changes 
+  // even if the user deletes the Address from their profile later.
+  shippingAddress String?  
+
+  user        User        @relation(fields: [userId], references: [id])
+  address     Address?    @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  orderItems  OrderItem[]
+  payment     Payment?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id           String  @id @default(cuid())
+  orderId      String
+  productId    String
+  quantity     Int
+  price        Decimal @db.Decimal(10, 2) // Captures price at time of purchase
+  selectedSize String? // Captures size at time of purchase
+
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  orderId       String        @unique
+  amount        Decimal       @db.Decimal(10, 2)
+  status        PaymentStatus
+  provider      String        // e.g. "Stripe", "Razorpay"
+  transactionId String?       @unique // Nullable until payment is successful
+  createdAt     DateTime      @default(now())
+
+  order         Order         @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+// --- REVIEW MODELS ---
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int      @default(5) // 1 to 5 stars
+  title     String?  // e.g., "Finally, a bra that doesn't dig in!"
+  comment   String   @db.Text
+  isVerified Boolean @default(false)
+  helpful   Int      @default(0) // Count for "Helpful" button
+  fitExperience String? // e.g., "True to size", "Runs small"
+  createdAt DateTime @default(now())
+
+  // Relations
+  userId    String
+  productId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  images    ReviewImage[]
+
+  @@map("reviews")
+}
+
+model ReviewImage {
+  id        String @id @default(cuid())
+  url       String
+  reviewId  String
+  review    Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@map("review_images")
+}
