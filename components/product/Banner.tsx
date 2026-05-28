@@ -63,7 +63,7 @@ const Banner = () => {
   }, [emblaApi, onSelect]);
 
   return (
-    <section className="relative w-full h-[86vh] overflow-hidden bg-gray-100 group">
+    <section className="relative w-full h-[25vh] md:h-[85vh] lg:h-[85vh] overflow-hidden bg-gray-100 group">
       <div className="overflow-hidden h-full" ref={emblaRef}>
         <div className="flex h-full">
           {slides.map((slide) => (

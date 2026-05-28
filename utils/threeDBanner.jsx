@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef } from 'react';
-import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
+import { useRef, useState } from 'react';
+import { motion, useScroll, useTransform, useSpring, useMotionValueEvent } from 'framer-motion';
 import { IMAGE_BASE_URL } from '@/public/constants/constants';
 
 const PerspectiveGallery = ({ products, children }) => {
-  console.log("Products in PerspectiveGallery:", products);
   const containerRef = useRef(null);
+  const [isWhiteSectionActive, setIsWhiteSectionActive] = useState(false);
   
   // ADJUST THIS: Set this to the height of your sticky header
   const HEADER_HEIGHT = "80px"; 
@@ -14,6 +14,11 @@ const PerspectiveGallery = ({ products, children }) => {
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"]
+  });
+
+  useMotionValueEvent(scrollYProgress, "change", (latest) => {
+    // Hand off scrolling to the white section only after the 3D timeline fully finishes.
+    setIsWhiteSectionActive(latest >= 0.995);
   });
 
   const smoothProgress = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
@@ -45,7 +50,7 @@ const PerspectiveGallery = ({ products, children }) => {
         
         {/* Background Ambience */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#840d5c]/20 blur-[150px] rounded-full" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[90vw] max-w-[800px] max-h-[800px] bg-[#840d5c]/20 blur-[120px] md:blur-[150px] rounded-full" />
         </div>
 
         {/* Header - Fades out as the white section approaches */}
@@ -130,7 +135,11 @@ const PerspectiveGallery = ({ products, children }) => {
         {/* THE WHITE SECTION (Slides up) */}
         <motion.div 
           style={{ y: whiteSectionY }}
-          className="absolute inset-0 z-[100] bg-[#F9F3F5]   shadow-[0_-20px_50px_rgba(0,0,0,0.3)] overflow-y-auto"
+          className={`absolute inset-0 z-[100] bg-[#F9F3F5] shadow-[0_-20px_50px_rgba(0,0,0,0.3)] ${
+            isWhiteSectionActive
+              ? 'overflow-y-auto overscroll-y-contain pointer-events-auto touch-pan-y hide-scrollbar'
+              : 'overflow-hidden pointer-events-none touch-none'
+          }`}
         >
           <div className="max-w-8xl mx-auto py-12 px-4 text-[#321327]">
             {children}

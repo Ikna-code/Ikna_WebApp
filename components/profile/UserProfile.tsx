@@ -1,11 +1,10 @@
 'use client';
-import React, { useEffect, useState ,useRef} from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { 
-  Settings, Package, MapPin, LogOut, Heart, 
-  CreditCard, Loader2, ChevronRight, LayoutGrid 
+  Settings, Package, MapPin, Heart,
+  Loader2, ChevronRight, LayoutGrid
 } from 'lucide-react';
-import { createClient } from '@/backend/lib/supabaseClient';
 import AuthGuard from './AuthGuard';
 import { getUser } from '@/backend/actions/user';
 import OrdersPage from '@/app/account/orders/page';
@@ -64,48 +63,60 @@ const SettingsView = ({ dbUser , refetch}: { dbUser: any, refetch: () => void })
 );
 
 const UserProfile = () => {
-  const supabase = createClient();
   const [dbUser, setDbUser] = useState<any>(null);
   const [fetchingProfile, setFetchingProfile] = useState(true);
   
   // Hydration-safe Tab State
   const [activeStep, setActiveStep] = useState(1);
   const [mounted, setMounted] = useState(false);
-  const scrollRef = useRef(null);
-const [isDragging, setIsDragging] = useState(false);
-const [startX, setStartX] = useState(0);
-const [scrollLeft, setScrollLeft] = useState(0);
+  const scrollRef = useRef<HTMLElement | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
 
-// 1. PLACE A LOG HERE: To check if the component even mounts inside AuthGuard
-// SAFE LOGGER: This will now ONLY log in your browser console, never the server terminal
-  if (typeof window !== 'undefined') {
-    console.log("Browser Render -> Mounted State:", mounted);
-  }
-  
-  const handleMouseDown = (e) => {
-  setIsDragging(true);
-  setStartX(e.pageX - scrollRef.current.offsetLeft);
-  setScrollLeft(scrollRef.current.scrollLeft);
-};
+  const handleMouseDown = (e: React.MouseEvent<HTMLElement>) => {
+    const node = scrollRef.current;
+    if (!node) return;
+    setIsDragging(true);
+    setStartX(e.pageX - node.offsetLeft);
+    setScrollLeft(node.scrollLeft);
+  };
 
-const handleMouseLeave = () => setIsDragging(false);
-const handleMouseUp = () => setIsDragging(false);
+  const handleMouseLeave = () => setIsDragging(false);
+  const handleMouseUp = () => setIsDragging(false);
 
-const handleMouseMove = (e) => {
-  if (!isDragging) return;
-  e.preventDefault();
-  const x = e.pageX - scrollRef.current.offsetLeft;
-  const walk = (x - startX) * 2; // Multiply for faster scroll speed
-  scrollRef.current.scrollLeft = scrollLeft - walk;
-};
+  const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    if (!isDragging) return;
+    const node = scrollRef.current;
+    if (!node) return;
+    e.preventDefault();
+    const x = e.pageX - node.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    node.scrollLeft = scrollLeft - walk;
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLElement>) => {
+    const node = scrollRef.current;
+    if (!node) return;
+    setIsDragging(true);
+    setStartX(e.touches[0].pageX - node.offsetLeft);
+    setScrollLeft(node.scrollLeft);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLElement>) => {
+    if (!isDragging) return;
+    const node = scrollRef.current;
+    if (!node) return;
+    const x = e.touches[0].pageX - node.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    node.scrollLeft = scrollLeft - walk;
+  };
 
     async function fetchProfile() {
       try {
         const response = await getUser();
-        console.log("Profile response:", response);
         if (!response.ok) throw new Error('Failed to fetch');
         const data = await response;
-        console.log("Fetched user data:", data);
         setDbUser(data.user);
       } catch (error) {
         console.error("Error fetching profile:", error);
@@ -114,20 +125,10 @@ const handleMouseMove = (e) => {
       }
     }
   useEffect(() => {
-// Test 1: Bypasses standard log filters
-  console.info("🚨 HOOK TRIGGERED: useEffect is executing!");
-  
-  // Test 2: Forces the browser to halt and show a popup (Impossible to miss)
     setMounted(true);
 
     fetchProfile();
   }, []);
-
-  // Corrected missing/renamed method handler
-  const handleSignOutHandler = async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/'; 
-  };
 
   const menuItems = [
     { label: 'DASHBOARD', icon: <LayoutGrid size={18} />, id: 1, href: '/account' },
@@ -167,80 +168,65 @@ const handleMouseMove = (e) => {
 
   return (
     <AuthGuard>
-      <div className="min-h-screen bg-[#F9F3F5] py-6 px-4 md:px-6 lg:px-8 pb-36 md:pb-16 overflow-x-hidden">
+      <div className="min-h-screen bg-[#F9F3F5] py-4 sm:py-6 px-3 sm:px-4 md:px-6 lg:px-8 pb-24 md:pb-16 overflow-x-hidden">
         <div className="max-w-6xl mx-auto w-full">
           {fetchingProfile ? (
-            <div className="flex h-96 items-center justify-center">
+            <div className="flex h-64 sm:h-96 items-center justify-center">
               <Loader2 className="animate-spin text-[#840d5c]" />
             </div>
           ) : (
-            <div className="flex flex-col gap-0 ">
-              {/* PROFILE HEADER */}
-              {/* <div className="flex flex-col md:flex-row items-center md:items-end justify-between border-b border-[#840d5c]/10 pb-6 gap-6">
-                <div className="flex items-center gap-4 text-center md:text-left flex-wrap justify-center md:justify-start w-full md:w-auto">
-                  <div className="w-12 h-12 rounded-full bg-[#840d5c]/10 flex items-center justify-center text-[#840d5c] font-serif font-bold text-lg flex-shrink-0">
-                    {dbUser?.email?.charAt(0).toUpperCase() || 'U'}
-                  </div>
-                  <div>
-                    <h1 className="text-lg sm:text-xl md:text-2xl font-light tracking-[0.05em] text-[#832763] uppercase leading-tight">
-                      <span className="text-black">Welcome,</span> {dbUser?.email?.split('@')[0] || 'User'}
-                    </h1>
-                    <p className="text-[10px] tracking-[0.15em] text-[#321327]/60 mt-1 uppercase font-medium">
-                      Active Account • {dbUser?._count?.orders || 0} Total Orders
-                    </p>
-                  </div>
-                </div>
-                
-                <button 
-                  onClick={handleSignOutHandler}
-                  className="flex items-center justify-center gap-2 text-[9px] font-bold tracking-[0.2em] text-[#840d5c] hover:bg-[#840d5c] hover:text-white transition-all uppercase border border-[#840d5c] px-6 py-2.5 rounded-full w-full md:w-auto"
-                >
-                  <LogOut size={13} />
-                  Sign Out
-                </button>
-              </div> */}
+            <div className="flex flex-col gap-0">
+              {/* NAVIGATION BAR */}
+              <nav
+                ref={scrollRef}
+                onMouseDown={handleMouseDown}
+                onMouseLeave={handleMouseLeave}
+                onMouseUp={handleMouseUp}
+                onMouseMove={handleMouseMove}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleMouseUp}
+                className="flex flex-row bg-white/95 backdrop-blur-md p-2 md:p-3 border border-[#321327]/10 rounded-2xl md:rounded-full shadow-md items-center w-full gap-2 overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing select-none scroll-smooth"
+              >
+                {menuItems.map((item) => {
+                  const isActive = activeStep === item.id;
+                  const shortLabel = item.label.split(' ')[0];
+                  return (
+                    <button
+                      key={item.label}
+                      onClick={() => setActiveStep(item.id)}
+                      aria-label={item.label}
+                      className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-3 py-2.5 sm:p-3.5 rounded-xl md:rounded-full transition-all duration-300 shrink-0 min-w-16 sm:min-w-11 whitespace-nowrap ${
+                        isActive
+                          ? 'bg-gradient-to-br from-[#840d5c] to-[#321327] text-[#F9F3F5] shadow-lg'
+                          : 'text-[#840d5c] hover:bg-white/80'
+                      }`}
+                      title={item.label}
+                    >
+                      <span className={`flex items-center justify-center ${isActive ? 'text-[#F9F3F5]' : 'text-[#840d5c]'}`}>
+                        {item.icon}
+                      </span>
 
-              {/* NAVIGATION BAR - EXPANDED TO FULL WIDTH */}
-<nav ref={scrollRef}
-  onMouseDown={handleMouseDown}
-  onMouseLeave={handleMouseLeave}
-  onMouseUp={handleMouseUp}
-  onMouseMove={handleMouseMove}
-  className="flex flex-row bg-white/95 backdrop-blur-md p-2 md:p-3 border border-[#321327]/10 rounded-2xl md:rounded-full shadow-md items-center justify-between w-full gap-1 md:gap-4 overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing select-none scroll-smooth">
-  {menuItems.map((item) => {
-    const isActive = activeStep === item.id;
-    return (
-      <button
-        key={item.label}
-        onClick={() => setActiveStep(item.id)}
-        className={`flex items-center justify-center p-2.5 sm:p-3.5 rounded-xl md:rounded-full transition-all duration-300 flex-1 md:flex-none min-w-[44px] whitespace-nowrap ${
-          isActive 
-            ? 'bg-gradient-to-br from-[#840d5c] to-[#321327] text-[#F9F3F5] shadow-lg' 
-            : 'text-[#840d5c] hover:bg-white/80'
-        }`}
-        title={item.label}
-      >
-        <span className={`flex items-center justify-center ${isActive ? 'text-[#F9F3F5]' : 'text-[#840d5c]'}`}>
-          {item.icon}
-        </span>
-        
-        {/* Label: Shown on medium screens and up, or hidden on very small mobile */}
-        <span className="hidden md:inline text-[10px] font-bold tracking-wider uppercase ml-2">
-          {item.label}
-        </span>
+                      <span className="text-[9px] font-bold tracking-wide uppercase sm:hidden">
+                        {shortLabel}
+                      </span>
 
-        {item.count !== undefined && (
-          <span className="hidden md:inline text-[10px] opacity-70 font-mono ml-1">
-            ({item.count})
-          </span>
-        )}
-      </button>
-    );
-  })}
-</nav>
+                      <span className="hidden sm:inline text-[10px] font-bold tracking-wider uppercase">
+                        {item.label}
+                      </span>
+
+                      {item.count !== undefined && (
+                        <span className="hidden sm:inline text-[10px] opacity-70 font-mono">
+                          ({item.count})
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
 
               {/* WORKSPACE CONTENT */}
-              <main className="mt-4 w-full">
+              <main className="mt-3 sm:mt-4 w-full">
                 {renderWorkspaceContent()}
               </main>
             </div>

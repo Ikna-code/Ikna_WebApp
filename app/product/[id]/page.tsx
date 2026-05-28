@@ -183,7 +183,7 @@ const SingleProductPage = () => {
   /* ---------------- UI ---------------- */
 
   return (
-    <div className="bg-[#F9F3F5] min-h-screen flex flex-col relative overflow-x-hidden">
+    <div className="bg-[#F9F3F5] min-h-screen flex flex-col relative sticky">
 
       <Header />
 
