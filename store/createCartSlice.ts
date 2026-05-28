@@ -13,10 +13,10 @@ export interface CartSlice {
   isLoading: boolean;
   error: string | null;
   fetchCart: (userId: string) => Promise<void>;
-  addItemToCart: (userId: string, productId: string, selectedSize: string, quantity?: number) => Promise<void>;
+  addItemToCart: (userId: string, productId: string, selectedSize: string, quantity?: number, category?: string) => Promise<void>;
   updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
   removeItem: (cartItemId: string) => Promise<void>;
-  checkout: (userId: string) => Promise<any>;
+  checkout: (userId: string, couponCode?: string | null) => Promise<any>;
   finalizePayment: (orderId: string, txId: string, provider: string) => Promise<any>;
 }
 
@@ -36,10 +36,10 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
     }
   },
 
-  addItemToCart: async (userId, productId, selectedSize, quantity = 1) => {
+  addItemToCart: async (userId, productId, selectedSize, quantity = 1, category) => {
     set({ isLoading: true, error: null });
     try {
-      const res = await addToCart(userId, productId, selectedSize, quantity);
+      const res = await addToCart(userId, productId, selectedSize, quantity, category);
       
       if (res?.success && res.cartItem) {
         const currentItems = get().cartItems;
@@ -101,10 +101,10 @@ removeItem: async (cartItemId: string) => {
     console.error("Cart Slice Error:", err);
   }
 },
-  checkout: async (userId) => {
+  checkout: async (userId, couponCode = null) => {
     set({ isLoading: true });
     try {
-      const orderRes = await createOrder(userId);
+      const orderRes = await createOrder(userId, couponCode);
       if (orderRes?.success) {
         set({ cartItems: [] });
         return { success: true, order: orderRes.order };

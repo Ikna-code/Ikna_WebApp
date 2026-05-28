@@ -68,7 +68,8 @@ const PerspectiveGallery = ({ products, children }) => {
             style={{ x: useTransform(spreadXFar, v => -v), translateZ: -100, rotateY: rotateSideFar }}
             className="absolute w-32 h-48 md:w-44 md:h-64 rounded-xl overflow-hidden shadow-2xl border border-white/10"
           >
-            <img src={`${IMAGE_BASE_URL}/${products[0]?.image}`} className="w-full h-full object-cover" alt="" />
+                            <img src={'/images/sample images/brown_modal.jpeg'} className="w-full h-full object-cover" alt="" />
+
           </motion.div>
 
           {/* INNER LEFT */}
@@ -88,11 +89,9 @@ const PerspectiveGallery = ({ products, children }) => {
   className="relative group w-52 h-80 md:w-64 md:h-96 rounded-2xl overflow-hidden border-2 border-[#ffbec6]/40 shadow-2xl z-40"
 >
   {/* The Base Image */}
-  <img 
-    src={`${IMAGE_BASE_URL}/${products[2]?.image}`} 
-    className="w-full h-full object-cover" 
-    alt={products[2]?.name} 
-  />
+
+
+    <img src={'/images/sample images/Elevate_Center.png'} className="w-full h-full object-cover" alt="" />
 
   {/* 1. Permanent Dark Gradient (Bottom weighted) */}
   <div className="absolute inset-0 bg-gradient-to-t from-[#43012a] via-[#321327]/40 to-transparent" />
@@ -101,17 +100,21 @@ const PerspectiveGallery = ({ products, children }) => {
   {/* <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-500" /> */}
 
   {/* 3. Text Content Overlay */}
-  <div className="absolute bottom-0 left-0 right-0 p-6 text-white z-10">
+  {/* <div className="absolute bottom-0 left-0 right-0 p-6 text-white z-10">
     <p className="text-xs uppercase tracking-widest opacity-70 mb-1">Premium Collection</p>
     <h3 className="text-xl font-semibold tracking-tight">{products[2]?.name || 'Product Title'}</h3>
-  </div>
+  </div> */}
 </motion.div>
           {/* INNER RIGHT */}
           <motion.div 
             style={{ x: spreadXNear, translateZ: 100, rotateY: useTransform(rotateSideNear, v => -v) }}
             className="absolute w-40 h-56 md:w-52 md:h-72 rounded-xl overflow-hidden shadow-2xl border border-white/20 z-20"
           >
-            <img src={`${IMAGE_BASE_URL}/${products[3]?.image}`} className="w-full h-full object-cover" alt="" />
+              <img 
+    src={`${IMAGE_BASE_URL}/${products[2]?.image}`} 
+    className="w-full h-full object-cover" 
+    alt={products[2]?.name} 
+  />
           </motion.div>
 
           {/* FAR RIGHT */}
@@ -119,7 +122,8 @@ const PerspectiveGallery = ({ products, children }) => {
             style={{ x: spreadXFar, translateZ: -100, rotateY: useTransform(rotateSideFar, v => -v) }}
             className="absolute w-32 h-48 md:w-44 md:h-64 rounded-xl overflow-hidden shadow-2xl border border-white/10"
           >
-            <img src={`${IMAGE_BASE_URL}/${products[10]?.image}`} className="w-full h-full object-cover" alt="" />
+            <img src={'/images/sample images/IMG_1502.jpeg'} className="w-full h-full object-cover" alt="" />
+
           </motion.div>
         </div>
 
@@ -128,7 +132,7 @@ const PerspectiveGallery = ({ products, children }) => {
           style={{ y: whiteSectionY }}
           className="absolute inset-0 z-[100] bg-[#F9F3F5]   shadow-[0_-20px_50px_rgba(0,0,0,0.3)] overflow-y-auto"
         >
-          <div className="max-w-7xl mx-auto py-12 px-4 text-[#321327]">
+          <div className="max-w-8xl mx-auto py-12 px-4 text-[#321327]">
             {children}
           </div>
         </motion.div>

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Search, X, Tag } from "lucide-react";
 import { cn } from "@/utils/cn";
 
@@ -11,92 +11,76 @@ interface SearchBarProps {
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose }) => {
-  const [query, setQuery] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inputRef = useRef<HTMLInputElement>(null);
 
+  // Read current search param directly from URL to keep source of truth synchronized
+  const currentSearchParam = searchParams.get("search") || "";
+  const [query, setQuery] = useState(currentSearchParam);
+
+  // Sync state whenever URL parameter changes or modal opens
   useEffect(() => {
     if (isOpen) {
+      setQuery(currentSearchParam);
       inputRef.current?.focus();
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "unset";
     }
-
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [isOpen]);
+  }, [isOpen, currentSearchParam]);
 
   // ESC key close
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
-
     window.addEventListener("keydown", handleEsc);
-
     return () => window.removeEventListener("keydown", handleEsc);
   }, [onClose]);
 
-  // Existing product list
+  // Static product categories list - always fully visible now
   const braProducts = [
-    {
-      text: "Barely there - Light padded",
-      type: "light padded",
-    },
-    {
-      text: "Non-wired cotton bra",
-      type: "cotton bra",
-    },
-    {
-      text: "Barely There Bridgerton limited edition",
-      type: "limited edition",
-    },
-    {
-      text: "COMFY SUPPORTIVE MINIMIZER BRA",
-      type: "minimizer bra",
-    },
-    {
-      text: "EVERYDAY WEAR COMFY BRA",
-      type: "everyday wear",
-    },
-    {
-      text: "PADDED BRA",
-      type: "padded bra",
-    },
-    {
-      text: "SIDE NET COVERAGE BRA",
-      type: "coverage bra",
-    },
+    { text: "Barely there - Light padded", type: "light padded" },
+    { text: "Non-wired cotton bra", type: "cotton bra" },
+    { text: "Barely There Bridgerton limited edition", type: "limited edition" },
+    { text: "COMFY SUPPORTIVE MINIMIZER BRA", type: "minimizer bra" },
+    { text: "EVERYDAY WEAR COMFY BRA", type: "everyday wear" },
+    { text: "PADDED BRA", type: "padded bra" },
+    { text: "SIDE NET COVERAGE BRA", type: "coverage bra" },
   ];
 
-  // Filter products based on search query
-  const filteredProducts = useMemo(() => {
-    if (!query.trim()) return braProducts;
+  // Global routing updater
+  const updateSearchRoute = (searchText: string) => {
+    if (searchText.trim() === "") {
+      router.push("/shop");
+    } else {
+      const encodedQuery = encodeURIComponent(searchText);
+      router.push(`/shop?search=${encodedQuery}`);
+    }
+  };
 
-    return braProducts.filter((item) =>
-      item.text.toLowerCase().includes(query.toLowerCase())
-    );
-  }, [query]);
-
-  // Navigate to shop page
-  const navigateToSearch = (searchText: string) => {
-    const encodedQuery = encodeURIComponent(searchText);
-
-    // Example:
-    // /shop?search=padded%20bra
-    router.push(`/shop?search=${encodedQuery}`);
-
-    onClose();
+  // Handles typing transitions
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setQuery(val);
+    updateSearchRoute(val);
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    updateSearchRoute(query);
+    onClose(); 
+  };
 
-    if (!query.trim()) return;
-
-    navigateToSearch(query);
+  // Handles clicking the 'X' button explicitly
+  const handleClearSearch = () => {
+    setQuery("");
+    updateSearchRoute(""); 
+    inputRef.current?.focus();
   };
 
   return (
@@ -127,76 +111,76 @@ const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose }) => {
             onClick={onClose}
             className="p-2 hover:bg-[#321327]/5 rounded-full transition-colors"
           >
-            <X
-              size={24}
-              strokeWidth={1.5}
-              className="text-[#321327]"
-            />
+            <X size={24} strokeWidth={1.5} className="text-[#321327]" />
           </button>
         </div>
 
         {/* CONTENT */}
         <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-6 sm:py-8 scrollbar-thin scrollbar-thumb-transparent">
           {/* SEARCH INPUT */}
-          <form
-            onSubmit={handleSearchSubmit}
-            className="relative mb-10"
-          >
+          <form onSubmit={handleSearchSubmit} className="relative mb-10">
             <input
               ref={inputRef}
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={handleInputChange}
               placeholder="Search bras..."
-              className="w-full bg-transparent border-b-2 border-[#321327] py-4 pr-10 text-lg sm:text-xl font-light outline-none text-[#321327] placeholder:text-[#321327]/30 focus:border-[#840d5c] transition-colors"
+              className="w-full bg-transparent border-b-2 border-[#321327] py-4 pr-16 text-lg sm:text-xl font-light outline-none text-[#321327] placeholder:text-[#321327]/30 focus:border-[#840d5c] transition-colors"
             />
 
-            <button
-              type="submit"
-              className="absolute right-0 top-1/2 -translate-y-1/2 text-[#321327] hover:text-[#840d5c] transition-colors"
-            >
-              <Search size={24} strokeWidth={1.5} />
-            </button>
+            {/* ACTION BUTTONS */}
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              {query && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="p-1 text-[#321327]/40 hover:text-[#321327] transition-colors rounded-full hover:bg-[#321327]/5"
+                  aria-label="Clear search"
+                >
+                  <X size={18} strokeWidth={2} />
+                </button>
+              )}
+              <button
+                type="submit"
+                className="p-1 text-[#321327] hover:text-[#840d5c] transition-colors"
+              >
+                <Search size={24} strokeWidth={1.5} />
+              </button>
+            </div>
           </form>
 
-          {/* RESULTS */}
+          {/* RESULTS / CATEGORIES PANEL */}
           <div className="space-y-6">
             <p className="text-[10px] font-bold tracking-[0.2em] text-[#321327]/50 uppercase">
-              {query ? "Search Results" : "Trending Bras"}
+              Browse Categories
             </p>
 
             <div className="flex flex-col gap-3">
-              {filteredProducts.length > 0 ? (
-                filteredProducts.map((item, index) => (
-                  <button
-                    key={index}
-                    onClick={() => navigateToSearch(item.text)}
-                    className="flex items-center justify-between p-4 bg-white border border-[#321327]/5 rounded-xl hover:border-[#840d5c]/30 hover:shadow-md transition-all text-left group"
-                  >
-                    <div className="pr-3">
-                      <span className="block text-[9px] font-bold uppercase text-[#840d5c] mb-1 tracking-wide">
-                        {item.type}
-                      </span>
+              {braProducts.map((item, index) => (
+                <button
+                  key={index}
+                  onClick={() => {
+                    setQuery(item.text);
+                    updateSearchRoute(item.text);
+                  }}
+                  className="flex items-center justify-between p-4 bg-white border border-[#321327]/5 rounded-xl hover:border-[#840d5c]/30 hover:shadow-md transition-all text-left group"
+                >
+                  <div className="pr-3">
+                    <span className="block text-[9px] font-bold uppercase text-[#840d5c] mb-1 tracking-wide">
+                      {item.type}
+                    </span>
 
-                      <span className="text-sm sm:text-[15px] font-medium text-[#321327] group-hover:text-[#840d5c] transition-colors leading-snug">
-                        {item.text}
-                      </span>
-                    </div>
+                    <span className="text-sm sm:text-[15px] font-medium text-[#321327] group-hover:text-[#840d5c] transition-colors leading-snug">
+                      {item.text}
+                    </span>
+                  </div>
 
-                    <Tag
-                      size={14}
-                      className="shrink-0 text-[#321327]/20 group-hover:text-[#840d5c]/50 transition-colors"
-                    />
-                  </button>
-                ))
-              ) : (
-                <div className="bg-white rounded-xl border border-[#321327]/10 p-6 text-center">
-                  <p className="text-[#321327]/60 text-sm">
-                    No bras found for{" "}
-                    <span className="font-semibold">"{query}"</span>
-                  </p>
-                </div>
-              )}
+                  <Tag
+                    size={14}
+                    className="shrink-0 text-[#321327]/20 group-hover:text-[#840d5c]/50 transition-colors"
+                  />
+                </button>
+              ))}
             </div>
           </div>
         </div>

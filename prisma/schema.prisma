@@ -31,23 +31,28 @@ enum PaymentStatus {
   REFUNDED
 }
 
+// --- NEW ENUMS FOR PROMOTIONS ---
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
 // --- MODELS ---
 
 model User {
   id            String         @id // Matches Supabase Auth ID
   email         String         @unique
   role          Role           @default(USER)
-  firstName String? @map("first_name") // Maps JS firstName to DB first_name
-  lastName  String? @map("last_name")
-  phone     String?
+  firstName     String?        @map("first_name") // Maps JS firstName to DB first_name
+  lastName      String?        @map("last_name")
+  phone         String?
   
   addresses     Address[]
   cartItems     CartItem[]
   wishlistItems WishlistItem[]
   orders        Order[]
-
-  reviews   Review[]
-  
+  reviews       Review[]
 
   @@map("User")
 }
@@ -70,7 +75,7 @@ model Address {
   @@map("addresses")
 }
 
-// --- PRODUCT TABLES (UNALTERED AS REQUESTED) ---
+// --- PRODUCT TABLES ---
 
 model Product {
   id          String   @id @default(cuid())
@@ -91,8 +96,10 @@ model Product {
   cartItems     CartItem[]
   wishlistItems WishlistItem[]
   orderItems    OrderItem[]
+  reviews       Review[]
 
-  reviews        Review[]
+  // New implicit relation for Combo Offers (Many-to-Many mapping table created automatically)
+  comboOffers   ComboOffer[]   @relation("ComboProducts")
 
   @@map("Product")
 }
@@ -108,7 +115,7 @@ model ProductImage {
   @@map("product_images")
 }
 
-// --- TRANSACTIONAL TABLES (FIXED LOOPS) ---
+// --- TRANSACTIONAL TABLES ---
 
 model CartItem {
   id           String  @id @default(cuid())
@@ -116,6 +123,7 @@ model CartItem {
   productId    String  @map("productId")
   quantity     Int     @default(1)
   selectedSize String? // Fixed: Stores the size the user wants
+  category     String?
 
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -137,22 +145,27 @@ model WishlistItem {
   @@map("wishlist_items")
 }
 
-model Order {
-  id           String      @id @default(cuid())
-  userId       String
-  addressId    String?     // Link to the address record
-  totalAmount  Decimal     @db.Decimal(10, 2)
-  status       OrderStatus @default(PENDING)
-  createdAt    DateTime    @default(now())
-  
-  // Important: Snapshots the shipping address as text so it never changes 
-  // even if the user deletes the Address from their profile later.
-  shippingAddress String?  
+// --- MODIFIED ORDER MODEL ---
 
-  user        User        @relation(fields: [userId], references: [id])
-  address     Address?    @relation(fields: [addressId], references: [id], onDelete: SetNull)
-  orderItems  OrderItem[]
-  payment     Payment?
+model Order {
+  id              String      @id @default(cuid())
+  userId          String
+  addressId       String?     // Link to the address record
+  totalAmount     Decimal     @db.Decimal(10, 2)
+  status          OrderStatus @default(PENDING)
+  createdAt       DateTime    @default(now())
+  shippingAddress String?     
+
+  // New Audit tracking fields for discounts
+  discountAmount  Decimal     @default(0.00) @db.Decimal(10, 2) // Total currency saved
+  couponAppliedId String?     // ID tracker for coupon analytics
+  isFirstOrder    Boolean     @default(false) // Flags if this order triggered the 15% first-time deal
+
+  user            User        @relation(fields: [userId], references: [id])
+  address         Address?    @relation(fields: [addressId], references: [id], onDelete: SetNull)
+  coupon          Coupon?     @relation(fields: [couponAppliedId], references: [id], onDelete: SetNull)
+  orderItems      OrderItem[]
+  payment         Payment?
 
   @@map("orders")
 }
@@ -165,8 +178,12 @@ model OrderItem {
   price        Decimal @db.Decimal(10, 2) // Captures price at time of purchase
   selectedSize String? // Captures size at time of purchase
 
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product   Product @relation(fields: [productId], references: [id])
+  // Optional link to see if this item was part of a combo transaction
+  comboOfferId String?
+  comboOffer   ComboOffer? @relation(fields: [comboOfferId], references: [id], onDelete: SetNull)
+
+  order        Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      Product @relation(fields: [productId], references: [id])
 
   @@map("order_items")
 }
@@ -177,7 +194,7 @@ model Payment {
   amount        Decimal       @db.Decimal(10, 2)
   status        PaymentStatus
   provider      String        // e.g. "Stripe", "Razorpay"
-  transactionId String?       @unique // Nullable until payment is successful
+  transactionId String?       @unique 
   createdAt     DateTime      @default(now())
 
   order         Order         @relation(fields: [orderId], references: [id])
@@ -185,33 +202,63 @@ model Payment {
   @@map("payments")
 }
 
+// --- NEW PROMOTION MODELS ---
+
+model Coupon {
+  id           String       @id @default(cuid())
+  code         String       @unique // e.g., "WELCOME15", "SUMMER20"
+  discountType DiscountType @default(PERCENTAGE)
+  value        Decimal      @db.Decimal(10, 2) // e.g., 15.00 for percentage, 250.00 for currency
+  minSubtotal  Decimal      @default(0.00) @db.Decimal(10, 2) // Minimum cart spend to activate
+  isActive     Boolean      @default(true)
+  expiresAt    DateTime?    // Optional absolute cutoff
+  createdAt    DateTime     @default(now())
+
+  orders       Order[]      // Historical usage records
+
+  @@map("coupons")
+}
+
+model ComboOffer {
+  id          String      @id @default(cuid())
+  name        String      // e.g., "Shirt + Pants Bundle"
+  discountPct Float       // Discount percentage automatically applied if items coexist in cart
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+
+  // Many-to-Many relation to find associated products
+  products    Product[]   @relation("ComboProducts")
+  orderItems  OrderItem[] // Tracks items sold via this deal
+
+  @@map("combo_offers")
+}
+
 // --- REVIEW MODELS ---
 
 model Review {
-  id        String   @id @default(cuid())
-  rating    Int      @default(5) // 1 to 5 stars
-  title     String?  // e.g., "Finally, a bra that doesn't dig in!"
-  comment   String   @db.Text
-  isVerified Boolean @default(false)
-  helpful   Int      @default(0) // Count for "Helpful" button
-  fitExperience String? // e.g., "True to size", "Runs small"
-  createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  rating        Int      @default(5) 
+  title         String?  
+  comment       String   @db.Text
+  isVerified    Boolean  @default(false)
+  helpful       Int      @default(0) 
+  fitExperience String? 
+  createdAt     DateTime @default(now())
 
-  // Relations
-  userId    String
-  productId String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  images    ReviewImage[]
+  userId        String
+  productId     String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  images        ReviewImage[]
 
   @@map("reviews")
 }
 
 model ReviewImage {
-  id        String @id @default(cuid())
-  url       String
-  reviewId  String
-  review    Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  url      String
+  reviewId String
+  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 
   @@map("review_images")
 }

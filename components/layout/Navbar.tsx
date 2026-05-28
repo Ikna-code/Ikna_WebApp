@@ -11,7 +11,7 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
   const pathname = usePathname();
 
   const navLinks = [
-    { name: "Admin Dashboard", href: "/Admin" },
+    // { name: "Admin Dashboard", href: "/Admin" },
     { name: "HOME", href: "/" },
     { name: "SHOP", href: "/shop" },
     { name: "ABOUT IKNA", href: "/about-us" },

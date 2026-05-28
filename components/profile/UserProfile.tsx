@@ -134,7 +134,7 @@ const handleMouseMove = (e) => {
     { label: 'ORDERS', icon: <Package size={18} />, href: '/account/orders', count: dbUser?._count?.orders, id: 2 },
     { label: 'WISHLIST', icon: <Heart size={18} />, href: '/account/wishlist', count: dbUser?._count?.wishlistItems, id: 3 },
     { label: 'ADDRESS HUB', icon: <MapPin size={18} />, href: '/account/address', id: 4 },
-    { label: 'PAYMENTS', icon: <CreditCard size={18} />, href: '/account/payments', id: 5 },
+    // { label: 'PAYMENTS', icon: <CreditCard size={18} />, href: '/account/payments', id: 5 },
     { label: 'SETTINGS', icon: <Settings size={18} />, href: '/account/settings', id: 6 },
   ];
 
@@ -206,7 +206,7 @@ const handleMouseMove = (e) => {
   onMouseLeave={handleMouseLeave}
   onMouseUp={handleMouseUp}
   onMouseMove={handleMouseMove}
-  className="flex flex-row bg-white/95 backdrop-blur-md p-2 md:p-3 border border-[#321327]/10 rounded-2xl md:rounded-full shadow-md items-center justify-start w-full gap-1 md:gap-4 overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing select-none scroll-smooth">
+  className="flex flex-row bg-white/95 backdrop-blur-md p-2 md:p-3 border border-[#321327]/10 rounded-2xl md:rounded-full shadow-md items-center justify-between w-full gap-1 md:gap-4 overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing select-none scroll-smooth">
   {menuItems.map((item) => {
     const isActive = activeStep === item.id;
     return (

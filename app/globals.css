@@ -170,3 +170,155 @@ background:
   height: 0px;
   display: none;
 }
+
+
+/* Privacy Policy Styles */
+/* 1. Announcement Bar */
+.announcementBar {
+  background-color: #1a1a1a; /* Dark sleek banner */
+  color: #ffffff;
+  text-align: center;
+  padding: 10px 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* 2. Navigation Header */
+.header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px 40px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #eae7e4;
+}
+
+.logo {
+  font-family: serif; /* Elegant branding look */
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: lowercase;
+  color: #1a1a1a;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.logo:hover {
+  opacity: 0.8;
+}
+
+/* 3. Main Layout Container */
+.policyContainer {
+  max-width: 720px; /* Optimal reading width for blocks of text */
+  margin: 60px auto;
+  padding: 0 24px;
+}
+
+/* 4. Document Heading Elements */
+.policyHeader {
+  margin-bottom: 40px;
+  border-bottom: 2px solid #1a1a1a;
+  padding-bottom: 20px;
+}
+
+.policyHeader h1 {
+  font-family: serif;
+  font-size: 2.5rem;
+  font-weight: 400;
+  margin: 0 0 10px 0;
+  color: #1a1a1a;
+}
+
+.effectiveDate {
+  font-size: 0.9rem;
+  color: #76716e;
+  font-style: italic;
+}
+
+.introText {
+  font-size: 1.1rem;
+  color: #4a4744;
+  margin-bottom: 48px;
+}
+
+/* 5. Content Sections & Typography */
+.policySection {
+  margin-bottom: 40px;
+}
+
+.policySection h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #1a1a1a;
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.policySection p {
+  color: #4a4744;
+  margin-bottom: 16px;
+}
+
+/* Styled Lists */
+.policySection ul {
+  margin: 0 0 24px 0;
+  padding-left: 24px;
+}
+
+.policySection li {
+  color: #4a4744;
+  margin-bottom: 8px;
+}
+
+/* 6. Contact Box Card */
+.contactBox {
+  background-color: #f5f2ef; /* Soft contrasting tint */
+  border-left: 3px solid #1a1a1a;
+  padding: 24px;
+  border-radius: 4px;
+  margin-top: 20px;
+}
+
+.contactBox p {
+  margin: 0 0 8px 0;
+}
+
+.contactBox p:last-child {
+  margin-bottom: 0;
+}
+
+/* 7. Footer */
+.footer {
+  background-color: #ffffff;
+  border-top: 1px solid #eae7e4;
+  padding: 40px 24px;
+  text-align: center;
+  margin-top: 100px;
+}
+
+.footer p {
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: #76716e;
+  margin: 0;
+}
+
+/* 8. Responsive Adjustments */
+@media (max-width: 640px) {
+  .policyContainer {
+    margin: 40px auto;
+  }
+  
+  .policyHeader h1 {
+    font-size: 2rem;
+  }
+  
+  .header {
+    padding: 16px 24px;
+  }
+}

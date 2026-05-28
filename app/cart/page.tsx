@@ -6,24 +6,29 @@ import Link from 'next/link';
 import Script from "next/script";
 import { Trash2, Plus, Minus, ChevronLeft, ShoppingBag, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
-import { updateCartQuantity, removeFromCart, getCartItemsWithDetails, clearCart } from "@/backend/actions/order";
+import { updateCartQuantity, removeFromCart, clearCart } from "@/backend/actions/order";
 import { createRazorpayOrder } from "@/backend/actions/payment";
 import { verifyPayment } from "@/backend/actions/verify";
 import { IMAGE_BASE_URL } from '@/public/constants/constants';
 import { createClient } from '@/backend/lib/supabaseClient';
+import { useStore } from '@/store/useStore'; 
 
 const CartPage = () => {
   // 1. STATE MANAGEMENT
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string>("");
-  const [cartItems, setCartItems] = useState<any[]>([]);
+  const [couponCode, setCouponCode] = useState("");
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
 
   const supabase = createClient();
 
-  // 2. AUTHENTICATION: Get real user on mount
+  // 2. GLOBAL STORE SELECTORS
+  const cartItems = useStore((state) => state.cartItems);
+  const fetchCart = useStore((state) => state.fetchCart); 
+
+  // 3. AUTHENTICATION: Get real user on mount
   useEffect(() => {
     const getAuthUser = async () => {
       try {
@@ -41,34 +46,35 @@ const CartPage = () => {
     getAuthUser();
   }, []);
 
-  // 3. DATA FETCHING: Fetch cart when userId is available
+  // 4. DATA FETCHING: Hydrate global Zustand store
   useEffect(() => {
     if (!userId) {
       if (!authLoading) setLoading(false);
       return;
     }
 
-    const fetchCart = async () => {
+    const loadGlobalCart = async () => {
       try {
         setLoading(true);
-        const products = await getCartItemsWithDetails(userId);
-        setCartItems(products);
+        if (fetchCart) {
+          await fetchCart(userId);
+        }
       } catch (error) {
-        console.error("Failed to fetch products:", error);
+        console.error("Failed to sync store products:", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchCart();
-  }, [userId, authLoading]);
+    loadGlobalCart();
+  }, [userId, authLoading, fetchCart]);
 
-  // 4. PAYMENT LOGIC
+  // 5. PAYMENT LOGIC
   const handlePayment = async () => {
     if (!userId || cartItems.length === 0) return;
     
     setIsProcessing(true);
     try {
-      const orderData = await createRazorpayOrder(userId);
+      const orderData = await createRazorpayOrder(userId, couponCode || null);
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, 
@@ -86,8 +92,8 @@ const CartPage = () => {
           );
 
           if (result.success) {
-            clearCart(userId);
-            setCartItems([]);
+            await clearCart(userId);
+            if (fetchCart) await fetchCart(userId);
             window.location.href = `/success?orderId=${orderData.dbOrderId}`;
           } else {
             alert("Payment verification failed. Please contact support.");
@@ -110,28 +116,34 @@ const CartPage = () => {
     }
   };
 
-  // 5. UI ACTIONS
+  // 6. UI ACTIONS: Linked directly to mutations + global state updates
   const updateQuantity = async (cartItemId: string, newQty: number) => {
     if (newQty < 1) return;
-    const oldItems = [...cartItems];
-    setCartItems(prev => prev.map(item => 
-      item.id === cartItemId ? { ...item, quantity: newQty } : item
-    ));
+    
     const response = await updateCartQuantity(cartItemId, newQty);
-    if (!response.success) setCartItems(oldItems);
+    
+    if (response.success && userId && fetchCart) {
+      await fetchCart(userId);
+    } else if (!response.success) {
+      alert("Could not update item quantity.");
+    }
   };
 
   const removeItem = async (id: string) => {
-    const oldItems = [...cartItems];
-    setCartItems(prev => prev.filter(item => item.id !== id));
-    const response = await removeFromCart(id);
-    if (response?.error) setCartItems(oldItems);
+    const response = await removeFromCart(id) as { error?: string };
+    
+    if (!response?.error && userId && fetchCart) {
+      await fetchCart(userId);
+    } else if (response?.error) {
+      alert("Could not remove item from bag.");
+    }
   };
 
-  // 6. CALCULATIONS
+  // 7. CALCULATIONS: Hardened case-insensitive fallbacks for prices
   const subtotal = cartItems.reduce((acc, item) => {
-    const price = item?.Product?.price || 0;
-    return acc + (price * item.quantity);
+    const price = item?.Product?.price || item?.product?.price || item?.price || 0;
+    const quantity = item.quantity || 1;
+    return acc + (price * quantity);
   }, 0);
 
   const freeShippingThreshold = 5000;
@@ -139,7 +151,7 @@ const CartPage = () => {
   const total = subtotal + shipping;
   const progressToFreeShipping = Math.min((subtotal / freeShippingThreshold) * 100, 100);
 
-  // 7. LOADING & EMPTY STATES
+  // 8. LOADING & EMPTY STATES
   if (authLoading || (loading && cartItems.length === 0)) {
     return (
       <div className="bg-[#FAF3F5] min-h-screen flex items-center justify-center">
@@ -197,42 +209,49 @@ const CartPage = () => {
               
               {/* LEFT: ITEMS LIST */}
               <div className="lg:col-span-2 space-y-4 md:space-y-6">
-                {cartItems.map((item) => (
-                  <div key={item.id} className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-[2.5rem] flex flex-col sm:flex-row gap-4 sm:gap-6 items-start sm:items-center border border-[#840d5c]/5 shadow-sm hover:shadow-md transition-all w-full">
-                    
-                    {/* Image Container */}
-                    <div className="relative w-full sm:w-28 h-48 sm:h-36 bg-[#FAF9FA] rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 border border-[#840d5c]/5">
-                      <Image src={`${IMAGE_BASE_URL}${item.Product?.image}`} alt={item.Product?.name || "Product"} fill className="object-cover" />
-                    </div>
+                {cartItems.map((item) => {
+                  const targetProduct = item?.Product || item?.product || item; 
+                  const fallbackImage = targetProduct?.image || targetProduct?.image_path || '';
+                  const fallbackName = targetProduct?.name || 'Product';
+                  const fallbackPrice = targetProduct?.price || item?.price || 0;
 
-                    {/* Content Details */}
-                    <div className="flex-grow w-full space-y-3">
-                      <div className="flex justify-between items-start gap-4">
-                        <div>
-                          <h3 className="text-base sm:text-lg font-serif text-[#321327] leading-tight">{item.Product?.name}</h3>
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-[#840d5c]/60 mt-1">
-                             Size {item.selectedSize || item.Product?.size}
-                          </p>
-                        </div>
-                        <p className="text-base sm:text-lg font-bold text-[#321327] whitespace-nowrap">₹{item.Product?.price?.toLocaleString()}</p>
+                  return (
+                    <div key={item.id} className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-[2.5rem] flex flex-col sm:flex-row gap-4 sm:gap-6 items-start sm:items-center border border-[#840d5c]/5 shadow-sm hover:shadow-md transition-all w-full">
+                      
+                      {/* Image Container */}
+                      <div className="relative w-full sm:w-28 h-48 sm:h-36 bg-[#FAF9FA] rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 border border-[#840d5c]/5">
+                        <Image src={`${IMAGE_BASE_URL}${fallbackImage}`} alt={fallbackName} fill className="object-cover" />
                       </div>
 
-                      {/* Actions row */}
-                      <div className="flex justify-between items-center pt-2 border-t border-[#840d5c]/5 sm:border-none">
-                        <div className="flex items-center gap-3 sm:gap-4 bg-[#FAF3F5] px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border border-[#840d5c]/10">
-                          <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="text-[#321327]/60 hover:text-[#840d5c] p-0.5"><Minus size={12} /></button>
-                          <span className="text-xs font-bold text-[#321327] min-w-[1rem] text-center">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="text-[#321327]/60 hover:text-[#840d5c] p-0.5"><Plus size={12} /></button>
+                      {/* Content Details */}
+                      <div className="flex-grow w-full space-y-3">
+                        <div className="flex justify-between items-start gap-4">
+                          <div>
+                            <h3 className="text-base sm:text-lg font-serif text-[#321327] leading-tight">{fallbackName}</h3>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-[#840d5c]/60 mt-1">
+                               Size {item.selectedSize || targetProduct?.size || 'M'}
+                            </p>
+                          </div>
+                          <p className="text-base sm:text-lg font-bold text-[#321327] whitespace-nowrap">₹{fallbackPrice.toLocaleString()}</p>
                         </div>
 
-                        <button onClick={() => removeItem(item.id)} className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-red-400 hover:text-red-600 transition-colors py-1">
-                          <Trash2 size={13} /> Remove
-                        </button>
-                      </div>
-                    </div>
+                        {/* Actions row */}
+                        <div className="flex justify-between items-center pt-2 border-t border-[#840d5c]/5 sm:border-none">
+                          <div className="flex items-center gap-3 sm:gap-4 bg-[#FAF3F5] px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border border-[#840d5c]/10">
+                            <button onClick={() => updateQuantity(item.id, (item.quantity || 1) - 1)} className="text-[#321327]/60 hover:text-[#840d5c] p-0.5"><Minus size={12} /></button>
+                            <span className="text-xs font-bold text-[#321327] min-w-[1rem] text-center">{item.quantity || 1}</span>
+                            <button onClick={() => updateQuantity(item.id, (item.quantity || 1) + 1)} className="text-[#321327]/60 hover:text-[#840d5c] p-0.5"><Plus size={12} /></button>
+                          </div>
 
-                  </div>
-                ))}
+                          <button onClick={() => removeItem(item.id)} className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-red-400 hover:text-red-600 transition-colors py-1">
+                            <Trash2 size={13} /> Remove
+                          </button>
+                        </div>
+                      </div>
+
+                    </div>
+                  );
+                })}
               </div>
 
               {/* RIGHT: SUMMARY & CHECKOUT */}
@@ -247,7 +266,7 @@ const CartPage = () => {
                     <div className="flex justify-between items-center text-[9px] sm:text-[10px] font-bold uppercase tracking-widest gap-2">
                       <span className="opacity-60">Shipping Progress</span>
                       <span className="text-[#840d5c] bg-white px-2 py-0.5 rounded-md font-black text-[9px] whitespace-nowrap">
-                        {subtotal >= freeShippingThreshold ? "FREE SHIPPING" : `₹${freeShippingThreshold - subtotal} to free`}
+                        {subtotal >= freeShippingThreshold ? "FREE SHIPPING" : `₹${(freeShippingThreshold - subtotal).toLocaleString()} to free`}
                       </span>
                     </div>
                     <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
@@ -270,6 +289,19 @@ const CartPage = () => {
                         {shipping === 0 ? 'FREE' : `₹${shipping}`}
                       </span>
                     </div>
+                  </div>
+
+                  <div className="space-y-2 relative z-10">
+                    <label htmlFor="coupon" className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest opacity-60 block">
+                      Coupon Code
+                    </label>
+                    <input
+                      id="coupon"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      placeholder="ENTER CODE"
+                      className="w-full rounded-full bg-white/10 border border-white/20 px-4 py-3 text-xs tracking-wider uppercase placeholder:text-white/40 focus:outline-none focus:border-white/40"
+                    />
                   </div>
 
                   {/* Total Amount */}

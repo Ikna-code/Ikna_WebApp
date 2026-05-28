@@ -52,6 +52,7 @@ export const ProductCard = ({
     setIsPending(true);
 
     try {
+      // Replace this with your actual server action / API call function
       const result = await toggleWishlistAction(userId, product.id);
 
       if (result.success) {
@@ -73,7 +74,6 @@ export const ProductCard = ({
   };
 
   /* ---------------- TAG CONDITIONS ---------------- */
-
   const isNewArrival = product?.isNewArrival;
   const isBestSeller = product?.isBestSeller;
   const isLimitedStock = product?.stock <= 5;
@@ -95,13 +95,11 @@ export const ProductCard = ({
         hover:-translate-y-1
         shadow-[0_10px_35px_rgba(132,13,92,0.10)]
         hover:shadow-[0_16px_40px_rgba(132,13,92,0.14)]
-
         min-h-[230px]
         md:max-h-[400px]
         h-full
       "
     >
-
       {/* Tooltip */}
       {tooltip.show && (
         <div className="absolute top-0 left-0 right-0 z-50 animate-in slide-in-from-top duration-300">
@@ -113,7 +111,6 @@ export const ProductCard = ({
 
       {/* ---------------- TAGS ---------------- */}
       <div className="absolute top-3 left-3 z-40 flex flex-col gap-2">
-
         {/* NEW ARRIVAL */}
         {isNewArrival && (
           <div
@@ -204,12 +201,12 @@ export const ProductCard = ({
         )}
       </div>
 
-      {/* Wishlist */}
+      {/* ---------------- WISHLIST BUTTON ---------------- */}
       <div className="absolute top-3 right-3 z-40">
         <button
           onClick={handleWishlistClick}
           disabled={isPending}
-          className="
+          className={`
             bg-white/95
             backdrop-blur-md
             p-2.5
@@ -220,12 +217,13 @@ export const ProductCard = ({
             hover:scale-110
             hover:bg-[#321327]
             hover:text-[#f7d46b]
-          "
+            ${isWished ? 'text-[#840d5c]' : 'text-[#321327]'}
+          `}
         >
           {isWished ? (
-            <FaHeart className="text-[#840d5c] text-sm md:text-base" />
+            <FaHeart className="text-inherit text-sm md:text-base" />
           ) : (
-            <FaRegHeart className="text-[#321327] text-sm md:text-base" />
+            <FaRegHeart className="text-inherit text-sm md:text-base" />
           )}
         </button>
       </div>
@@ -273,7 +271,6 @@ export const ProductCard = ({
 
       {/* PRODUCT CONTENT */}
       <div className="flex flex-col flex-1 px-4 pt-2 pb-2">
-
         {/* Product Title */}
         <h2
           className="
@@ -288,18 +285,11 @@ export const ProductCard = ({
           {product.name}
         </h2>
 
-
-
         {/* Price */}
         <div className="flex items-end gap-2 mt-3">
-
           <div className="text-[24px] md:text-[25px] font-bold text-[#840d5c]">
-            Rs.{product.price}
+            ₹ {product.price}
           </div>
-
-          {/* <div className="text-xs md:text-sm line-through text-[#a89ca4] mb-1">
-            Rs.{product.price + 150}
-          </div> */}
         </div>
 
         {/* Add To Cart */}
@@ -308,24 +298,19 @@ export const ProductCard = ({
             mt-4
             w-full
             py-3
-
             rounded-[18px]
-
             bg-gradient-to-r
             from-[#321327]
             via-[#5d1040]
             to-[#840d5c]
-
             text-white
             font-bold
             uppercase
             text-[10px]
             md:text-[11px]
             tracking-[0.22em]
-
             transition-all
             duration-300
-
             hover:brightness-110
             hover:text-[#f7d46b]
           "

@@ -3,6 +3,8 @@
 import { db } from "@/backend/lib/db";
 import { revalidatePath } from "next/cache";
 import { supabase } from '../lib/supabaseClient';// 🛒 CART ACTIONS
+import { Prisma } from "@prisma/client";
+import { calculateComboDiscounts, validateCouponCode } from "./promotions";
 
 /**
  * Adds a product to the user's cart. 
@@ -12,7 +14,8 @@ export async function addToCart(
   userId, 
   productId, 
   selectedSize, 
-  quantity= 1
+  quantity= 1,
+  category
 ) {
   try {
     // 1. Verify product exists and check stock
@@ -46,6 +49,7 @@ export async function addToCart(
         productId,
         selectedSize,
         quantity,
+        category, // Store category for potential combo logic
       },
     });
 
@@ -95,7 +99,8 @@ export const getCartItemsWithDetails = async (userId) => {
         name,
         price,
         description,
-        image,        
+        image, 
+        category,       
         product_images (
           image_path,
           is_primary
@@ -161,10 +166,16 @@ console.log("Parsed quantity:", qty);
  * Removes a specific item from the cart.
  */
 export async function removeFromCart(cartItemId) {
-  await db.cartItem.delete({
-    where: { id: cartItemId },
-  });
-  revalidatePath("/cart");
+  try {
+    await db.cartItem.delete({
+      where: { id: cartItemId },
+    });
+    revalidatePath("/cart");
+    return { success: true };
+  } catch (error) {
+    console.error("Remove from cart error:", error);
+    return { success: false, error: "Failed to remove item" };
+  }
 }
 
 export async function clearCart(userId) {
@@ -185,10 +196,22 @@ export async function clearCart(userId) {
  * Converts CartItems into an Order. 
  * This is a transaction: it creates the order AND clears the cart.
  */
-export async function createOrder(userId) {
+/**
+ * Converts CartItems into an authenticated Order tracking promotions safely.
+ * Handles: Combo Discounts -> Coupon Code Deductions -> First Time 15% Reduction.
+ * @param {string} userId
+ * @param {string | null} [couponCode]
+ * @param {{ clearCart?: boolean; orderStatus?: string }} [options]
+ */
+export async function createOrder(userId, couponCode = null, options = {}) {
   try {
+    const {
+      clearCart = true,
+      orderStatus = "PENDING",
+    } = options;
+
     const result = await db.$transaction(async (tx) => {
-      // 1. Get cart items with product details to get current prices
+      // 1. Get raw cart items along with explicit product prices
       const cartItems = await tx.cartItem.findMany({
         where: { userId },
         include: { product: true },
@@ -196,41 +219,127 @@ export async function createOrder(userId) {
 
       if (cartItems.length === 0) throw new Error("Cart is empty");
 
-      // 2. Calculate total
-      const totalAmount = cartItems.reduce(
-        (sum, item) => sum + item.product.price * item.quantity,
-        0
-      );
+      // 2. Step A: Compute Combo Offer variations
+      const comboDiscounts = await calculateComboDiscounts(tx, cartItems);
 
-      // 3. Create the Order and OrderItems
+      let workingSubtotal = new Prisma.Decimal(0);
+      let totalDiscountAccumulator = new Prisma.Decimal(0);
+
+      // Create pre-calculated structure mapping item records
+      const preparedOrderItems = cartItems.map((item) => {
+        const originalPrice = new Prisma.Decimal(item.product.price);
+        const comboMeta = comboDiscounts[item.productId];
+        
+        let finalUnitPrice = originalPrice;
+        let appliedComboId = null;
+
+        if (comboMeta) {
+          finalUnitPrice = originalPrice.sub(comboMeta.amountPerUnit);
+          appliedComboId = comboMeta.comboOfferId;
+          
+          // Accumulate line item variance
+          const totalLineComboSavings = comboMeta.amountPerUnit.mul(item.quantity);
+          totalDiscountAccumulator = totalDiscountAccumulator.add(totalLineComboSavings);
+        }
+
+        const lineItemCost = finalUnitPrice.mul(item.quantity);
+        workingSubtotal = workingSubtotal.add(lineItemCost);
+
+        return {
+          productId: item.productId,
+          quantity: item.quantity,
+          price: finalUnitPrice, // Record final price after combo mapping
+          selectedSize: item.selectedSize,
+          comboOfferId: appliedComboId
+        };
+      });
+
+      // 3. Step B: Validate and execute Coupon Deductions
+      let appliedCouponId = null;
+      if (couponCode) {
+        const coupon = await validateCouponCode(tx, couponCode, workingSubtotal, userId);
+        if (coupon) {
+          appliedCouponId = coupon.id;
+          let couponSavings = new Prisma.Decimal(0);
+
+          if (coupon.discountType === "PERCENTAGE") {
+            couponSavings = workingSubtotal.mul(coupon.value).div(100);
+          } else {
+            couponSavings = new Prisma.Decimal(coupon.value);
+          }
+
+          // Bound deduction limits to prevent negative subtotals
+          if (couponSavings.gt(workingSubtotal)) couponSavings = workingSubtotal;
+
+          workingSubtotal = workingSubtotal.sub(couponSavings);
+          totalDiscountAccumulator = totalDiscountAccumulator.add(couponSavings);
+        }
+      }
+
+      // 4. Step C: Enforce explicit 15% Welcome Rules automatically
+      // Scan database history for verified transactions belonging to this customer profile
+      const priorOrderCount = await tx.order.count({
+        where: {
+          userId: userId,
+          status: { in: ["PAID", "SHIPPED", "DELIVERED"] }
+        }
+      });
+
+      let isFirstTimeOfferApplied = false;
+      if (priorOrderCount === 0) {
+        isFirstTimeOfferApplied = true;
+        
+        // Calculate a 15% discount on the remaining subtotal
+        const firstTimeSavings = workingSubtotal.mul(0.15);
+        
+        workingSubtotal = workingSubtotal.sub(firstTimeSavings);
+        totalDiscountAccumulator = totalDiscountAccumulator.add(firstTimeSavings);
+      }
+
+      // 5. Finalize the Database Records
       const order = await tx.order.create({
         data: {
           userId,
-          totalAmount,
-          status: "PENDING",
+          totalAmount: workingSubtotal,
+          status: orderStatus,
+          discountAmount: totalDiscountAccumulator,
+          couponAppliedId: appliedCouponId,
+          isFirstOrder: isFirstTimeOfferApplied,
           orderItems: {
-            create: cartItems.map((item) => ({
+            create: preparedOrderItems.map(item => ({
               productId: item.productId,
               quantity: item.quantity,
-              price: item.product.price, // Snapshots price at checkout
-            })),
+              price: item.price,
+              selectedSize: item.selectedSize,
+              comboOfferId: item.comboOfferId
+            }))
           },
         },
       });
 
-      // 4. Clear the user's cart
-      await tx.cartItem.deleteMany({
-        where: { userId },
-      });
-
+      // 6. Purge active items inside cart table
+      if (clearCart) {
+        await tx.cartItem.deleteMany({
+          where: { userId },
+        });
+      }
+      console.log("--- PROMOTION ENGINE DEBUG ---");
+console.log("Initial Cart Items Total:", cartItems.reduce((acc, i) => acc + (i.product.price * i.quantity), 0));
+console.log("Combo Savings Applied:", comboDiscounts);
+console.log("Subtotal After Combos:", workingSubtotal.toString());
+console.log("Coupon ID Applied:", appliedCouponId);
+console.log("First Order Flag Active?:", isFirstTimeOfferApplied);
+console.log("Final Amount Charged to User:", workingSubtotal.toString());
+console.log("Total Saved Saved in Audit Log:", totalDiscountAccumulator.toString());
       return order;
     });
 
     revalidatePath("/orders");
+    revalidatePath("/cart");
     return { success: true, order: result };
   } catch (error) {
-    console.error("Checkout error:", error);
-    return { success: false, error: "Checkout failed" };
+    console.error("Secure Checkout Failure Mode:", error);
+    return { success: false, error: error.message || "Checkout execution crashed" };
   }
 }
 
