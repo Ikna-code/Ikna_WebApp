@@ -79,6 +79,11 @@ const ReviewsPage = ({productId}: {productId: string}) => {
   };
 
   const handleOpenCreate = () => {
+    if (!userId) {
+      alert('Please log in to write a review.');
+      return;
+    }
+
     setEditingReview(null);
     setIsModalOpen(true);
   };
@@ -147,7 +152,7 @@ const ReviewsPage = ({productId}: {productId: string}) => {
           className="w-full py-4 bg-[#840d5c] text-white text-[10px] font-bold uppercase tracking-[0.2em] rounded-full shadow-xl shadow-[#840d5c]/20 active:scale-95 lg:hover:scale-105 transition-transform"
           onClick={handleOpenCreate}
         >
-          Write A Review
+          {userId ? 'Write A Review' : 'Login To Review'}
         </button>
         <button 
           className="w-full py-4 border border-[#840d5c]/20 text-[#840d5c] text-[10px] font-bold uppercase tracking-[0.2em] rounded-full lg:hover:bg-[#FAF3F5] transition-colors"

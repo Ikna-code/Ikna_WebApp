@@ -1,8 +1,20 @@
 "use server";
 
 import { PrismaClient } from "@prisma/client";
+import { createServerSupabaseClient } from "@/backend/lib/supabaseServer";
 
 const prisma = new PrismaClient();
+
+async function requireAuthenticatedUserId() {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user }, error } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    throw new Error("Unauthorized");
+  }
+
+  return user.id;
+}
 
 // 1. Fetch reviews for a product
 export async function getReviews(productId: string, ratingFilter?: number) {
@@ -33,7 +45,7 @@ export async function getReviews(productId: string, ratingFilter?: number) {
 
 // 2. Create a new review
 export async function createReview(
-  userId: string,
+  _userId: string,
   data: {
     productId: string;
     rating: number;
@@ -44,6 +56,8 @@ export async function createReview(
   }
 ) {
   try {
+    const authenticatedUserId = await requireAuthenticatedUserId();
+
     return await prisma.review.create({
       data: {
         rating: data.rating,
@@ -51,21 +65,20 @@ export async function createReview(
         comment: data.comment,
         isVerified: data.isVerified || false,
         fitExperience: data.fitExperience,
-        userId: userId,
+        userId: authenticatedUserId,
         productId: data.productId,
       },
     });
   } catch (error) {
     console.error("Error creating review:", error);
-    // Return the actual error message or code for better debugging
-    throw new Error(`Could not create review: ${error instanceof Error ? error.message : 'Unknown database error'}`);
+    throw new Error(error instanceof Error ? error.message : "Could not create review.");
   }
 }
 
 // 3. Update an existing review (Protected)
 export async function updateReview(
   reviewId: string,
-  userId: string,
+  _userId: string,
   data: {
     rating?: number;
     title?: string;
@@ -74,11 +87,13 @@ export async function updateReview(
   }
 ) {
   try {
+    const authenticatedUserId = await requireAuthenticatedUserId();
+
     const existingReview = await prisma.review.findUnique({
       where: { id: reviewId },
     });
 
-    if (!existingReview || existingReview.userId !== userId) {
+    if (!existingReview || existingReview.userId !== authenticatedUserId) {
       throw new Error("Unauthorized: You cannot edit other users' reviews.");
     }
 
@@ -88,18 +103,20 @@ export async function updateReview(
     });
   } catch (error) {
     console.error("Error updating review:", error);
-    throw new Error("Could not update review.");
+    throw new Error(error instanceof Error ? error.message : "Could not update review.");
   }
 }
 
 // 4. Delete an existing review (Protected)
-export async function deleteReview(reviewId: string, userId: string) {
+export async function deleteReview(reviewId: string, _userId: string) {
   try {
+    const authenticatedUserId = await requireAuthenticatedUserId();
+
     const existingReview = await prisma.review.findUnique({
       where: { id: reviewId },
     });
 
-    if (!existingReview || existingReview.userId !== userId) {
+    if (!existingReview || existingReview.userId !== authenticatedUserId) {
       throw new Error("Unauthorized: You cannot delete other users' reviews.");
     }
 
@@ -108,6 +125,6 @@ export async function deleteReview(reviewId: string, userId: string) {
     });
   } catch (error) {
     console.error("Error deleting review:", error);
-    throw new Error("Could not delete review.");
+    throw new Error(error instanceof Error ? error.message : "Could not delete review.");
   }
 }
