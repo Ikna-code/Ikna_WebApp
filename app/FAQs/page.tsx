@@ -8,44 +8,166 @@ import Footer from "@/components/layout/Footer";
 // Mock Data matching common e-commerce & IKNA specific features
 const faqData = [
   {
+    id: "product-fit",
+    category: "Product & Fit",
+    questions: [
+      {
+        q: "How do I choose the right bra size?",
+        a: "Ikna bras are designed for comfort, support, and confidence. You can use the size guide available on each product page to measure your band and cup size accurately before placing an order.",
+      },
+      {
+        q: "Are Ikna bras suitable for daily wear?",
+        a: "Yes. Ikna bras are crafted for all-day comfort with breathable fabrics, smooth finishes, and supportive designs suitable for everyday use.",
+      },
+      {
+        q: "Do your bras provide full coverage?",
+        a: "Ikna offers different coverage styles depending on the product design. Product descriptions clearly mention whether the bra provides light, medium, or full coverage.",
+      },
+      {
+        q: "Will the bra be visible under fitted outfits?",
+        a: "Most Ikna bras are designed with seamless and smooth finishes to reduce visibility under T-shirts, dresses, and body-hugging outfits.",
+      },
+      {
+        q: "Are the straps adjustable?",
+        a: "Yes. Most Ikna bras come with adjustable straps to help you achieve a personalized and comfortable fit.",
+      },
+      {
+        q: "Do your bras have padding?",
+        a: "Ikna offers both padded and non-padded options depending on the style. Product details mention all specifications clearly.",
+      },
+      {
+        q: "Can I wear Ikna bras for long hours?",
+        a: "Absolutely. Comfort-focused materials and ergonomic support make them suitable for extended wear throughout the day.",
+      },
+      {
+        q: "Are your bras wire-free or underwired?",
+        a: "Ikna offers different support options including wire-free and underwired styles based on customer preferences and outfit needs.",
+      },
+    ],
+  },
+  {
+    id: "fabric-comfort",
+    category: "Fabric & Comfort",
+    questions: [
+      {
+        q: "What fabrics are used in Ikna bras?",
+        a: "Ikna uses soft, skin-friendly, breathable, and stretchable fabrics designed for comfort and durability.",
+      },
+      {
+        q: "Are the materials safe for sensitive skin?",
+        a: "Yes. Fabrics are selected carefully to provide a soft feel and minimize irritation for most skin types.",
+      },
+      {
+        q: "Will the bra lose shape after washing?",
+        a: "With proper care and gentle washing, Ikna bras are designed to maintain their shape and elasticity over time.",
+      },
+      {
+        q: "Are your bras lightweight?",
+        a: "Yes. The designs focus on lightweight comfort without compromising support.",
+      },
+      {
+        q: "Do the bras offer breathable comfort in hot weather?",
+        a: "Yes. Breathable materials help improve airflow and reduce discomfort during warmer conditions.",
+      },
+      {
+        q: "Can I wear these bras under white or light-colored clothing?",
+        a: "Nude and seamless options are ideal for wearing under white or light-colored outfits.",
+      },
+    ],
+  },
+  {
     id: "orders-shipping",
     category: "Orders & Shipping",
     questions: [
       {
-        q: "How long will it take to receive my order?",
-        a: "Orders are typically processed within 24-48 hours. Standard shipping takes 3-5 business days depending on your location in India.",
+        q: "How long does shipping take?",
+        a: "Delivery timelines may vary based on location, but orders are usually processed and shipped within a few business days.",
       },
       {
-        q: "How can I track my order?",
-        a: "Once your order is shipped, we will send a tracking link to your registered email address and phone number via SMS/WhatsApp.",
+        q: "Do you offer nationwide delivery?",
+        a: "Yes. Ikna delivers across multiple locations to ensure customers can shop conveniently online.",
+      },
+      {
+        q: "Will I receive order tracking details?",
+        a: "Yes. Tracking information will be shared once your order has been dispatched.",
+      },
+      {
+        q: "Can I change my shipping address after placing an order?",
+        a: "Address changes may be possible before the order is shipped. Customers should contact support as early as possible.",
+      },
+      {
+        q: "What payment methods are accepted?",
+        a: "Ikna supports secure online payment options including cards, UPI, net banking, and other available payment gateways.",
+      },
+      {
+        q: "Is Cash on Delivery available?",
+        a: "Availability of Cash on Delivery depends on the delivery location and order eligibility.",
       },
     ],
   },
   {
-    id: "sizing-fit",
-    category: "Sizing & Fit",
+    id: "returns-exchanges",
+    category: "Returns, Exchanges & Hygiene",
     questions: [
       {
-        q: "How do I find my perfect bra size?",
-        a: "We highly recommend taking our 5-question Interactive Fit Quiz available on our homepage! It takes less than a minute and has a 98% accuracy rate for finding the perfect fit without digging wires.",
+        q: "Do you offer returns or refunds?",
+        a: "Due to hygiene and intimate wear safety standards, Ikna does not offer returns or refunds on bra products.",
       },
       {
-        q: "What if the bra I ordered doesn't fit?",
-        a: "Don't worry! We offer hassle-free exchanges within 7 days of delivery. Make sure the tags are intact and the product is unworn.",
+        q: "Why are returns not accepted?",
+        a: "Bras are intimate wear products, and maintaining hygiene and product safety for all customers is a top priority.",
+      },
+      {
+        q: "What if I receive a damaged or incorrect product?",
+        a: "Customers should contact support immediately with order details and product images for assistance.",
+      },
+      {
+        q: "Can I exchange a product for another size?",
+        a: "Exchange eligibility depends on the condition and issue reported. Customers are encouraged to review the size guide carefully before ordering.",
       },
     ],
   },
   {
-    id: "offers-payments",
-    category: "Offers & Payments",
+    id: "care-instructions",
+    category: "Care Instructions",
     questions: [
       {
-        q: "How does the 'Pick any 3 for Rs.999' combo offer work?",
-        a: "It's simple! Add any 3 bras from our special combo collection to your cart. The discount will automatically apply at checkout—no coupon code needed.",
+        q: "How should I wash my Ikna bras?",
+        a: "Hand washing with mild detergent is recommended to maintain fabric softness, elasticity, and shape.",
       },
       {
-        q: "Are my payment details secure?",
-        a: "Absolutely. All payments are processed through secure, encrypted third-party payment gateways. IKNA does not store any card or banking information on our servers.",
+        q: "Can I machine wash the bras?",
+        a: "Gentle machine washing inside a laundry bag may be possible for certain styles, but hand washing is preferred.",
+      },
+      {
+        q: "Should I tumble dry the bras?",
+        a: "Air drying is recommended to preserve elasticity and fabric quality.",
+      },
+      {
+        q: "How can I make my bras last longer?",
+        a: "Avoid harsh detergents, excessive stretching, and high heat exposure while washing or drying.",
+      },
+    ],
+  },
+  {
+    id: "brand-support",
+    category: "Brand & Customer Support",
+    questions: [
+      {
+        q: "What makes Ikna different from other lingerie brands?",
+        a: "Ikna focuses on combining comfort, confidence, elegance, and everyday practicality through thoughtfully designed bras.",
+      },
+      {
+        q: "How can I contact customer support?",
+        a: "Customers can reach out through the contact details provided on the website for assistance with orders, sizing, or general inquiries.",
+      },
+      {
+        q: "Do you launch new collections regularly?",
+        a: "Yes. Ikna continuously explores modern styles, comfort innovations, and customer-inspired designs.",
+      },
+      {
+        q: "Are your products designed for all body types?",
+        a: "Ikna aims to create inclusive designs that support comfort and confidence across different body shapes and sizes.",
       },
     ],
   },
@@ -60,7 +182,7 @@ export default function FAQPage() {
   return (
     <div className="min-h-screen bg-[#FAF6F8] text-[#2D2D2D] font-sans antialiased flex flex-col">
       {/* TOP ANNOUNCEMENT BAR */}
-<Header/>
+      <Header />
 
       {/* TITLE HEAD */}
       <div className="text-center pt-12 pb-6 px-4">
@@ -76,7 +198,7 @@ export default function FAQPage() {
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 md:px-8 pb-20 flex flex-col md:flex-row gap-6 md:gap-8 items-start">
         
         {/* RESPONSIVE TOPIC MENU */}
-        <aside className="w-full md:w-64 bg-white rounded-2xl p-0 md:p-4   lg:p-4 shadow-sm border border-gray-100 md:sticky md:top-24">
+        <aside className="w-full md:w-64 bg-white rounded-2xl p-0 md:p-4 lg:p-4 shadow-sm border border-gray-100 md:sticky md:top-24">
           <p className="hidden md:block text-[10px] font-bold tracking-widest uppercase text-gray-400 px-3 mb-3">
             Browse Topics
           </p>
@@ -156,7 +278,7 @@ export default function FAQPage() {
                   </button>
                   <div
                     className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                      isOpen ? "max-h-40 opacity-100 mt-2" : "max-h-0 opacity-0"
+                      isOpen ? "max-h-60 opacity-100 mt-2" : "max-h-0 opacity-0"
                     }`}
                   >
                     <p className="text-gray-600 text-sm leading-relaxed bg-[#FAF6F8] p-4 rounded-xl border border-pink-50/20">
@@ -171,7 +293,7 @@ export default function FAQPage() {
       </main>
 
       {/* FOOTER SECTION */}
-<Footer />
+      <Footer />
     </div>
   );
 }

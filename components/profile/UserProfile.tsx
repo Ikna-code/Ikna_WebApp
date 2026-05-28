@@ -12,6 +12,7 @@ import WishlistPage from '@/app/account/wishlist/page';
 import AddressPage from '@/app/account/address/page';
 import PaymentMethodsPage from '@/app/account/payments/page';
 import UserSettings from '@/app/account/settings/page';
+import { useStore } from '@/store/useStore';
 
 // 1. Define your component/section views
 const DashboardView = ({ dbUser }: { dbUser: any }) => (
@@ -65,6 +66,8 @@ const SettingsView = ({ dbUser , refetch}: { dbUser: any, refetch: () => void })
 const UserProfile = () => {
   const [dbUser, setDbUser] = useState<any>(null);
   const [fetchingProfile, setFetchingProfile] = useState(true);
+  const orders = useStore((state) => state.orders);
+  const wishlistItems = useStore((state) => state.wishlist);
   
   // Hydration-safe Tab State
   const [activeStep, setActiveStep] = useState(1);
@@ -132,8 +135,8 @@ const UserProfile = () => {
 
   const menuItems = [
     { label: 'DASHBOARD', icon: <LayoutGrid size={18} />, id: 1, href: '/account' },
-    { label: 'ORDERS', icon: <Package size={18} />, href: '/account/orders', count: dbUser?._count?.orders, id: 2 },
-    { label: 'WISHLIST', icon: <Heart size={18} />, href: '/account/wishlist', count: dbUser?._count?.wishlistItems, id: 3 },
+    { label: 'ORDERS', icon: <Package size={18} />, href: '/account/orders', count: orders.length, id: 2 },
+    { label: 'WISHLIST', icon: <Heart size={18} />, href: '/account/wishlist', count: wishlistItems.length, id: 3 },
     { label: 'ADDRESS HUB', icon: <MapPin size={18} />, href: '/account/address', id: 4 },
     // { label: 'PAYMENTS', icon: <CreditCard size={18} />, href: '/account/payments', id: 5 },
     { label: 'SETTINGS', icon: <Settings size={18} />, href: '/account/settings', id: 6 },
