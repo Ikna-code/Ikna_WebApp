@@ -1,93 +1,40 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Heart, ShoppingBag, Trash2, Sparkles, Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import { IMAGE_BASE_URL } from '@/public/constants/constants';
-import { getWishlist, removeFromWishlist } from '@/backend/actions/order';
-import { createClient } from '@/backend/lib/supabaseClient';
+import { removeFromWishlist } from '@/backend/actions/order';
+import { useStore } from '@/store/useStore';
 
 const WishlistPage = () => {
-  // 1. STATE MANAGEMENT
-  const [userId, setUserId] = useState<string | null>(null);
-  const [wishlistItems, setWishlistItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [authLoading, setAuthLoading] = useState(true);
+  const user = useStore((s) => s.user);
+  const isAuthInitialized = useStore((s) => s.isAuthInitialized);
+  const storeWishlist = useStore((s) => s.wishlist);
+  const setWishlist = useStore((s) => s.fetchWishlist); // used for refetch after remove
+  const toggleWishlist = useStore((s) => s.toggleWishlist);
 
-  const supabase = createClient();
+  const wishlistItems = useMemo(() =>
+    storeWishlist.map((item: any) => ({
+      productId: item.id,
+      name: item.name,
+      price: item.price,
+      image: item.image,
+      category: item.category || "Collection",
+    })),
+    [storeWishlist]
+  );
 
-  // 2. FETCH AUTHENTICATED USER ON MOUNT
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        if (error) {
-          console.error("Auth error:", error);
-          return;
-        }
-        if (user) {
-          setUserId(user.id);
-        }
-      } catch (err) {
-        console.error("Auth error:", err);
-      } finally {
-        setAuthLoading(false);
-      }
-    };
-    fetchUser();
-  }, []);
-
-  // 3. FETCH WISHLIST DATA ONCE USER ID IS AVAILABLE
-  useEffect(() => {
-    if (!userId) return;
-
-    const fetchWishlistData = async () => {
-      try {
-        setLoading(true);
-        const wishlistData = await getWishlist(userId);
-        
-        const formattedItems = wishlistData.map((item: any) => ({
-          productId: item.id,
-          name: item.name,
-          price: item.price,
-          image: item.image,
-          category: item.category || "Collection"
-        }));
-
-        setWishlistItems(formattedItems);
-      } catch (error) {
-        console.error("Failed to fetch wishlist:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchWishlistData();
-  }, [userId]);
-
-  // 4. REMOVE ITEM LOGIC (DELETE FUNCTIONALITY)
+  // REMOVE ITEM — optimistically update the store via toggleWishlist
   const removeItem = async (productId: string) => {
-    if (!userId) return;
-
-    const previousItems = [...wishlistItems];
-    setWishlistItems(prev => prev.filter(item => item.productId !== productId));
-
-    try {
-      const response = await removeFromWishlist(productId, userId);
-      if (!response.success) {
-        setWishlistItems(previousItems);
-        alert("Could not remove item. Please try again.");
-      }
-    } catch (error) {
-      setWishlistItems(previousItems);
-      console.error("Delete failed:", error);
-    }
+    if (!user?.id) return;
+    await toggleWishlist(user.id, productId);
   };
 
-  // 5. LOADING & AUTH STATES
-  if (authLoading) {
+  // AUTH LOADING STATE
+  if (!isAuthInitialized) {
     return (
       <div className="bg-[#FAF3F5] min-h-screen flex items-center justify-center">
         <Loader2 className="animate-spin text-[#840d5c]" size={32} />
@@ -95,7 +42,7 @@ const WishlistPage = () => {
     );
   }
 
-  if (!userId) {
+  if (!user) {
     return (
       <div className="bg-[#FAF3F5] min-h-screen flex flex-col items-center justify-center p-6 text-center">
         <Heart className="text-[#840d5c]/20 mb-4" size={64} />
@@ -107,6 +54,8 @@ const WishlistPage = () => {
       </div>
     );
   }
+
+  const loading = false; // data is already in store — no local loading state needed
 
   return (
     <div className="bg-[#FAF3F5] min-h-screen flex flex-col">

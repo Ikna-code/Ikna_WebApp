@@ -124,25 +124,23 @@ const Header = () => {
       <SearchBar isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
 
       {/* PROFILE DRAWER */}
-      <div 
-        className={`fixed inset-0 z-[110] flex justify-end pointer-events-none transition-colors duration-300 ${
-          isProfileOpen ? 'pointer-events-auto bg-[#321327]/40 backdrop-blur-sm' : 'bg-transparent'
-        }`}
-        onClick={() => setIsProfileOpen(false)}
-      >
-        <div 
-          className={`w-full  bg-[#F9F3F5] h-full shadow-2xl flex flex-col transition-transform duration-300 transform pointer-events-auto ${
-            isProfileOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}
-          onClick={(e) => e.stopPropagation()}
+      {isProfileOpen && (
+        <div
+          className="fixed inset-0 z-[110] flex justify-end pointer-events-auto transition-colors duration-300 bg-[#321327]/40 backdrop-blur-sm"
+          onClick={() => setIsProfileOpen(false)}
         >
-          <div className="flex justify-between items-center p-4 border-b border-[#840d5c]/10">
-            <span className="text-xs font-bold tracking-[0.2em] text-[#321327] uppercase">Account Profile</span>
-            <button onClick={() => setIsProfileOpen(false)} className="p-2"><X size={20} /></button>
+          <div
+            className="w-full bg-[#F9F3F5] h-full shadow-2xl flex flex-col transition-transform duration-300 transform pointer-events-auto translate-x-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-4 border-b border-[#840d5c]/10">
+              <span className="text-xs font-bold tracking-[0.2em] text-[#321327] uppercase">Account Profile</span>
+              <button onClick={() => setIsProfileOpen(false)} className="p-2"><X size={20} /></button>
+            </div>
+            <UserProfile />
           </div>
-          <UserProfile/>
         </div>
-      </div>
+      )}
     </>
   );
 };

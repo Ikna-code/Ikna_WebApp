@@ -1,35 +1,18 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import Header from '@/components/layout/Header';
 import { Package, ChevronDown, CheckCircle2, MapPin, Loader2 } from 'lucide-react';
 import { IMAGE_BASE_URL } from '@/public/constants/constants';
 import ShipmentTracker from './ShipmentTracker';
+import { useStore } from '@/store/useStore';
 
 const OrdersPage = () => {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const orders = useStore((s) => s.orders);
+  const isOrdersInitialized = useStore((s) => s.isOrdersInitialized);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('/api/orders'); 
-        if (!response.ok) {
-          throw new Error('Failed to fetch orders');
-        }
-        const data = await response.json();
-        setOrders(data);
-      } catch (error) {
-        console.error('Error fetching orders:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrders();
-  }, []);
+  const loading = !isOrdersInitialized;
 
   const toggleAccordion = (id: string) => {
     setActiveOrderId(activeOrderId === id ? null : id);

@@ -10,9 +10,7 @@ import { PiShirtFolded } from 'react-icons/pi';
 import { useRouter } from 'next/navigation';
 
 import { IMAGE_BASE_URL } from '@/public/constants/constants';
-import { getAllProducts } from "@/backend/actions/products";
-import { toggleWishlistAction, getWishlist } from '@/backend/actions/order';
-import { createClient } from '@/backend/lib/supabaseClient';
+import { useStore } from '@/store/useStore';
 
 // --- PRODUCT CARD COMPONENT ---
 export const ProductCard = ({
@@ -23,7 +21,7 @@ export const ProductCard = ({
 }: {
   product: any,
   isWished: boolean,
-  onToggleWishlist: (id: string) => void,
+  onToggleWishlist: (id: string) => void | Promise<void>,
   userId: string | null
 }) => {
   const [tooltip, setTooltip] = useState<{ show: boolean, msg: string }>({
@@ -52,20 +50,8 @@ export const ProductCard = ({
     setIsPending(true);
 
     try {
-      // Replace this with your actual server action / API call function
-      const result = await toggleWishlistAction(userId, product.id);
-
-      if (result.success) {
-        onToggleWishlist(product.id);
-
-        showTooltip(
-          !isWished
-            ? 'Added to Wishlist'
-            : 'Removed from Wishlist'
-        );
-      } else {
-        showTooltip(result?.error || "Something went wrong");
-      }
+      await onToggleWishlist(product.id);
+      showTooltip(!isWished ? 'Added to Wishlist' : 'Removed from Wishlist');
     } catch (error) {
       showTooltip("Connection error");
     } finally {
@@ -323,43 +309,22 @@ export const ProductCard = ({
 };
 // --- MAIN PRODUCT GRID COMPONENT ---
 const ProductGrid = () => {
-  const [wishlist, setWishlist] = useState<string[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const user = useStore((state) => state.user);
+  const isAuthInitialized = useStore((state) => state.isAuthInitialized);
+  const products = useStore((state) => state.products);
+  const isProductsInitialized = useStore((state) => state.isProductsInitialized);
+  const wishlistItems = useStore((state) => state.wishlist);
+  const toggleWishlist = useStore((state) => state.toggleWishlist);
+  const wishlist = useMemo(() => wishlistItems.map((item: any) => item.id), [wishlistItems]);
   
   const router = useRouter();
-  const supabase = createClient();
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        const currentUserId = user?.id || null;
-        setUserId(currentUserId);
-
-        const fetchedProducts = await getAllProducts();
-        setProducts(fetchedProducts || []);
-
-        if (currentUserId) {
-          const wishlistData = await getWishlist(currentUserId);
-          const wishlistIds = wishlistData.map((item: any) => item.productId);
-          setWishlist(wishlistIds);
-        }
-      } catch (error) {
-        console.error("Critical error loading grid data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, []);
-
-  const toggleWishlistInState = (id: string) => {
-    setWishlist((prev) => prev.includes(id) ? prev.filter(pId => pId !== id) : [...prev, id]);
+  const toggleWishlistInState = async (id: string) => {
+    if (!user?.id) return;
+    await toggleWishlist(user.id, id);
   };
+
+  const loading = !isProductsInitialized || !isAuthInitialized;
 
   return (
     <section className="bg-[#faf3f5] py-8 md:py-16 min-h-screen">
@@ -390,7 +355,7 @@ const ProductGrid = () => {
                   product={product} 
                   isWished={wishlist.includes(product.id)} 
                   onToggleWishlist={toggleWishlistInState} 
-                  userId={userId} 
+                  userId={user?.id || null} 
                 />
               </div>
             ))}

@@ -1,11 +1,11 @@
 "use client";
-import React, { useState, useEffect, useCallback, use } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Star, CheckCircle2, ThumbsUp, ChevronLeft, Filter, Trash2, Edit } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import ReviewModal from './ReviewModal';
 import { getReviews, deleteReview, createReview, updateReview } from '@/backend/actions/review';
-import { createClient } from '@/backend/lib/supabaseClient';
+import { useStore } from '@/store/useStore';
 
 interface Review {
   id: string;
@@ -26,24 +26,14 @@ interface Review {
 const ReviewsPage = ({productId}: {productId: string}) => {
   const PRODUCT_ID = productId || '';
 
-  const [userId, setUserId] = useState<string | null>(null);
+  const user = useStore((state) => state.user);
+  const userId = user?.id || null;
   const [reviews, setReviews] = useState<Review[]>([]);
   const [activeFilter, setActiveFilter] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   
   const router = useRouter();
-  const supabase = createClient();
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-      }
-    };
-    fetchUser();
-  }, [supabase]);
 
   const fetchReviews = useCallback(async () => {
     if (!PRODUCT_ID) return;

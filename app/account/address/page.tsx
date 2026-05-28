@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { MapPin, Plus, Trash2, Edit3, X, Loader2, CheckCircle2 } from 'lucide-react';
-import { saveAddressAction, deleteAddressAction, getAddressesByUserId } from '@/backend/actions/settings';
-import { createClient } from '@/backend/lib/supabaseClient';
+import { useStore } from '@/store/useStore';
 
 interface Address {
   id: string;
@@ -18,18 +17,17 @@ interface Address {
 }
 
 const AddressPage = () => {
-  const [addresses, setAddresses] = useState<Address[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [isPending, setIsPending] = useState(false);
-  
-  // Auth and toast states
-  const [userId, setUserId] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showDefaultToast, setShowDefaultToast] = useState(false);
 
-  const supabase = createClient();
+  const user = useStore((state) => state.user);
+  const isAuthInitialized = useStore((state) => state.isAuthInitialized);
+  const addresses = useStore((state) => state.addresses) as Address[];
+  const isLoading = useStore((state) => state.isLoading);
+  const saveAddress = useStore((state) => state.saveAddress);
+  const deleteAddress = useStore((state) => state.deleteAddress);
 
   // Handle scroll locking when modal opens
   useEffect(() => {
@@ -42,56 +40,12 @@ const AddressPage = () => {
   }, [isFormOpen]);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        setIsLoading(true);
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.user?.id) {
-          setUserId(session.user.id);
-          setIsAuthenticated(true);
-          await fetchAddresses(session.user.id);
-        } else {
-          setIsAuthenticated(false);
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("Authentication check failed:", error);
-        setIsAuthenticated(false);
-        setIsLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  const fetchAddresses = async (id: string) => {
-    try {
-      setIsLoading(true);
-      const result = await getAddressesByUserId(id);
-      if (result && result.success && result.data) {
-        setAddresses(result.data);
-        
-        const hasDefault = result.data.some((addr: Address) => addr.isDefault);
-        if (result.data.length > 0 && !hasDefault) {
-          setShowDefaultToast(true);
-        } else {
-          setShowDefaultToast(false);
-        }
-      } else {
-        console.error(result?.error || "Error fetching addresses.");
-        setAddresses([]);
-      }
-    } catch (e) {
-      console.error("Failed to fetch addresses", e);
-      setAddresses([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const hasDefault = addresses.some((addr: Address) => addr.isDefault);
+    setShowDefaultToast(addresses.length > 0 && !hasDefault);
+  }, [addresses]);
 
   const handleFormSubmit = async (formData: FormData, isDefaultOverride = false) => {
-    if (!userId) {
+    if (!user?.id) {
       alert("You must be logged in to save an address.");
       return;
     }
@@ -112,15 +66,9 @@ const AddressPage = () => {
     const addressId = editingAddress ? editingAddress.id : null;
 
     try {
-      const result = await saveAddressAction(userId, data, addressId);
-      
-      if (result && result.success) {
-        setIsFormOpen(false);
-        setEditingAddress(null);
-        await fetchAddresses(userId);
-      } else {
-        alert(result?.error || "Error saving address.");
-      }
+      await saveAddress(user.id, data, addressId);
+      setIsFormOpen(false);
+      setEditingAddress(null);
     } catch (e) {
       console.error("An unexpected error occurred during submission:", e);
       alert("An unexpected error occurred. Please try again.");
@@ -130,22 +78,16 @@ const AddressPage = () => {
   };
 
   const handleSetDefault = async (addr: Address) => {
-    if (!userId || isPending) return;
+    if (!user?.id || isPending) return;
     setIsPending(true);
     setEditingAddress(addr);
 
     try {
-      const result = await saveAddressAction(
-        userId, 
+      await saveAddress(
+        user.id,
         { ...addr, isDefault: true }, 
         addr.id 
       );
-
-      if (result.success) {
-        await fetchAddresses(userId);
-      } else {
-        alert(result.error);
-      }
     } catch (error) {
       console.error("Failed to set default address:", error);
     } finally {
@@ -154,7 +96,7 @@ const AddressPage = () => {
   };
 
   const handleDelete = async (addressId: string) => {
-    if (!userId) {
+    if (!user?.id) {
       alert("You must be logged in to delete an address.");
       return;
     }
@@ -163,12 +105,7 @@ const AddressPage = () => {
     setIsPending(true); 
     
     try {
-      const result = await deleteAddressAction(userId, addressId);
-      if (result && result.success) {
-        await fetchAddresses(userId);
-      } else {
-        alert(result?.error || "Failed to delete address.");
-      }
+      await deleteAddress(user.id, addressId);
     } catch (e) {
       console.error("Failed to delete address:", e);
       alert("Failed to delete address.");
@@ -182,7 +119,15 @@ const AddressPage = () => {
     setIsFormOpen(true);
   };
 
-  if (!isAuthenticated && !isLoading) {
+  if (!isAuthInitialized || isLoading) {
+    return (
+      <div className="bg-[#FAF3F5] min-h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin text-[#840d5c]" size={32} />
+      </div>
+    );
+  }
+
+  if (!user) {
     return (
       <div className="bg-[#FAF3F5] min-h-screen flex items-center justify-center p-4 text-center">
         <p className="text-[#321327]/60 text-sm">Access Denied. Please log in to view this page.</p>

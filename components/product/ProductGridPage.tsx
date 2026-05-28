@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 
 import { ProductCard } from "./ProductGrid";
-import { getWishlist } from "@/backend/actions/order";
-import { createClient } from "@/backend/lib/supabaseClient";
 import Footer from "@/components/layout/Footer";
+import { useStore } from "@/store/useStore";
 
 interface ProductGridPageProps {
   products: any[];
@@ -15,47 +14,16 @@ interface ProductGridPageProps {
 const ProductGridPage: React.FC<ProductGridPageProps> = ({
   products = [],
 }) => {
-  const [wishlist, setWishlist] = useState<string[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const user = useStore((state) => state.user);
+  const wishlistItems = useStore((state) => state.wishlist);
+  const toggleWishlist = useStore((state) => state.toggleWishlist);
+  const wishlist = useMemo(() => wishlistItems.map((item: any) => item.id), [wishlistItems]);
 
   // Filter and Sort states
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [sortBy, setSortBy] = useState<string>("default");
 
   const router = useRouter();
-  const supabase = createClient();
-
-  useEffect(() => {
-    const loadWishlist = async () => {
-      try {
-        setLoading(true);
-
-        // Logged in user
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        const currentUserId = user?.id || null;
-        setUserId(currentUserId);
-
-        // Wishlist
-        if (currentUserId) {
-          const wishlistData = await getWishlist(currentUserId);
-          const wishlistIds = wishlistData.map(
-            (item: any) => item.productId
-          );
-          setWishlist(wishIds);
-        }
-      } catch (error) {
-        console.error("Critical error loading wishlist:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadWishlist();
-  }, []);
 
   // Determine the searched/main category based on the initial products list
   const mainCategoryName = useMemo(() => {
@@ -97,21 +65,10 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   }, [products, selectedCategory, sortBy]);
 
   // Local wishlist sync
-  const handleLocalToggle = (id: string) => {
-    setWishlist((prev) =>
-      prev.includes(id)
-        ? prev.filter((pId) => pId !== id)
-        : [...prev, id]
-    );
+  const handleLocalToggle = async (id: string) => {
+    if (!user?.id) return;
+    await toggleWishlist(user.id, id);
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#F9F3F5] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-[#840d5c] border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -189,7 +146,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
                     product={product}
                     isWished={wishlist.includes(product.id)}
                     onToggleWishlist={handleLocalToggle}
-                    userId={userId}
+                    userId={user?.id || null}
                   />
                 </div>
               ))}

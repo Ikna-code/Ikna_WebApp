@@ -10,66 +10,22 @@ import { updateCartQuantity, removeFromCart, clearCart } from "@/backend/actions
 import { createRazorpayOrder } from "@/backend/actions/payment";
 import { verifyPayment } from "@/backend/actions/verify";
 import { IMAGE_BASE_URL } from '@/public/constants/constants';
-import { createClient } from '@/backend/lib/supabaseClient';
 import { useStore } from '@/store/useStore'; 
 
 const CartPage = () => {
   // 1. STATE MANAGEMENT
-  const [userId, setUserId] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string>("");
   const [couponCode, setCouponCode] = useState("");
-  const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
-
-  const supabase = createClient();
 
   // 2. GLOBAL STORE SELECTORS
+  const user = useStore((state) => state.user);
+  const isAuthInitialized = useStore((state) => state.isAuthInitialized);
   const cartItems = useStore((state) => state.cartItems);
   const fetchCart = useStore((state) => state.fetchCart); 
 
-  // 3. AUTHENTICATION: Get real user on mount
-  useEffect(() => {
-    const getAuthUser = async () => {
-      try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        if (user) {
-          setUserId(user.id);
-          setUserEmail(user.email || "");
-        }
-      } catch (err) {
-        console.error("Auth initialization error:", err);
-      } finally {
-        setAuthLoading(false);
-      }
-    };
-    getAuthUser();
-  }, []);
-
-  // 4. DATA FETCHING: Hydrate global Zustand store
-  useEffect(() => {
-    if (!userId) {
-      if (!authLoading) setLoading(false);
-      return;
-    }
-
-    const loadGlobalCart = async () => {
-      try {
-        setLoading(true);
-        if (fetchCart) {
-          await fetchCart(userId);
-        }
-      } catch (error) {
-        console.error("Failed to sync store products:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadGlobalCart();
-  }, [userId, authLoading, fetchCart]);
-
   // 5. PAYMENT LOGIC
   const handlePayment = async () => {
+    const userId = user?.id;
     if (!userId || cartItems.length === 0) return;
     
     setIsProcessing(true);
@@ -100,8 +56,8 @@ const CartPage = () => {
           }
         },
         prefill: {
-          name: userEmail.split('@')[0],
-          email: userEmail,
+          name: (user?.email || '').split('@')[0],
+          email: user?.email || '',
         },
         theme: { color: "#840d5c" },
       };
@@ -118,6 +74,7 @@ const CartPage = () => {
 
   // 6. UI ACTIONS: Linked directly to mutations + global state updates
   const updateQuantity = async (cartItemId: string, newQty: number) => {
+    const userId = user?.id;
     if (newQty < 1) return;
     
     const response = await updateCartQuantity(cartItemId, newQty);
@@ -130,6 +87,7 @@ const CartPage = () => {
   };
 
   const removeItem = async (id: string) => {
+    const userId = user?.id;
     const response = await removeFromCart(id) as { error?: string };
     
     if (!response?.error && userId && fetchCart) {
@@ -152,7 +110,7 @@ const CartPage = () => {
   const progressToFreeShipping = Math.min((subtotal / freeShippingThreshold) * 100, 100);
 
   // 8. LOADING & EMPTY STATES
-  if (authLoading || (loading && cartItems.length === 0)) {
+  if (!isAuthInitialized) {
     return (
       <div className="bg-[#FAF3F5] min-h-screen flex items-center justify-center">
         <Loader2 className="animate-spin text-[#840d5c]" size={32} />
@@ -160,7 +118,7 @@ const CartPage = () => {
     );
   }
 
-  if (!userId && !authLoading) {
+  if (!user) {
     return (
       <div className="bg-[#FAF3F5] min-h-screen flex flex-col items-center justify-center p-6 text-center">
         <ShoppingBag className="text-[#840d5c]/20 mb-4" size={64} />
@@ -178,7 +136,7 @@ const CartPage = () => {
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <Header />
 
-      <main className="flex-grow px-4 sm:px-6 md:px-8 py-6 md:py-12">
+      <main className="grow px-4 sm:px-6 md:px-8 py-6 md:py-12">
         <div className="max-w-6xl mx-auto w-full">
           
           {/* HEADER SECTION */}

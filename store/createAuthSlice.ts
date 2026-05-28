@@ -1,32 +1,36 @@
 import { StateCreator } from "zustand";
-// import { syncUser } from "@/backend/actions/user"; // Assumed path for syncUser
+import { createClient } from "@/backend/lib/supabaseClient";
 
 export interface AuthSlice {
   user: any | null;
+  isAuthInitialized: boolean;
   isLoading: boolean;
   error: string | null;
-  // syncUserSession: (supabaseUser: any) => Promise<void>;
+  fetchUser: () => Promise<void>;
   clearUser: () => void;
 }
 
-export const createAuthSlice: StateCreator<AuthSlice> = (set) => ({
+export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
   user: null,
+  isAuthInitialized: false,
   isLoading: false,
   error: null,
 
-  // syncUserSession: async (supabaseUser) => {
-  //   set({ isLoading: true, error: null });
-  //   try {
-  //     const res = await syncUser(supabaseUser);
-  //     if (res.success) {
-  //       set({ user: res.user, isLoading: false });
-  //     } else {
-  //       set({ error: typeof res.error === "string" ? res.error : "Failed to sync", isLoading: false });
-  //     }
-  //   } catch (e: any) {
-  //     set({ error: e.message || "Failed to sync user", isLoading: false });
-  //   }
-  // },
+  fetchUser: async () => {
+    if (get().isAuthInitialized) return;
+    set({ isLoading: true, error: null });
+    try {
+      const supabase = createClient();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) {
+        set({ error: error.message, isLoading: false, isAuthInitialized: true });
+      } else {
+        set({ user, isLoading: false, isAuthInitialized: true });
+      }
+    } catch (e: any) {
+      set({ error: e.message || "Failed to fetch user", isLoading: false, isAuthInitialized: true });
+    }
+  },
 
-  clearUser: () => set({ user: null }),
+  clearUser: () => set({ user: null, isAuthInitialized: false }),
 });

@@ -3,6 +3,7 @@ import { getAddressesByUserId, saveAddressAction, deleteAddressAction } from "@/
 
 export interface AddressSlice {
   addresses: any[];
+  isAddressesInitialized: boolean;
   isLoading: boolean;
   error: string | null;
   fetchAddresses: (userId: string) => Promise<void>;
@@ -10,18 +11,20 @@ export interface AddressSlice {
   deleteAddress: (userId: string, addressId: string) => Promise<void>;
 }
 
-export const createAddressSlice: StateCreator<AddressSlice> = (set) => ({
+export const createAddressSlice: StateCreator<AddressSlice> = (set, get) => ({
   addresses: [],
+  isAddressesInitialized: false,
   isLoading: false,
   error: null,
 
   fetchAddresses: async (userId: string) => {
+    if (get().isAddressesInitialized) return;
     set({ isLoading: true });
     const res = await getAddressesByUserId(userId);
     if (res.success && res.data) {
-      set({ addresses: res.data, isLoading: false });
+      set({ addresses: res.data, isLoading: false, isAddressesInitialized: true });
     } else {
-      set({ error: res.error, isLoading: false });
+      set({ error: res.error, isLoading: false, isAddressesInitialized: true });
     }
   },
 

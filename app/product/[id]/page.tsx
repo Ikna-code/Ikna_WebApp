@@ -15,9 +15,7 @@ import {
 } from 'lucide-react';
 
 import ReviewSection from '@/app/reviews/page';
-import { getProductWithImages } from "@/backend/actions/products";
 import { IMAGE_BASE_URL } from '@/public/constants/constants';
-import { createClient } from '@/backend/lib/supabaseClient';
 import { useStore } from '@/store/useStore';
 import Footer from '@/components/layout/Footer';
 
@@ -26,14 +24,11 @@ import Footer from '@/components/layout/Footer';
 const SingleProductPage = () => {
   const { id } = useParams();
   const router = useRouter();
-  const supabase = createClient();
 
   const [activeImgIdx, setActiveImgIdx] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false); 
-  const [productData, setProductData] = useState<any>(null);
   const [selectedSize, setSelectedSize] = useState<string>('');
-  const [userId, setUserId] = useState<string | null>(null);
 
   const reviewRef = useRef<HTMLDivElement>(null);
 
@@ -50,33 +45,34 @@ const SingleProductPage = () => {
   /* ---------------- STORE SELECTORS ---------------- */
   const cartItems = useStore((state) => state.cartItems);
   const addItemToCart = useStore((state) => state.addItemToCart);
+  const user = useStore((state) => state.user);
+  const fetchProductDetails = useStore((state) => state.fetchProductDetails);
+
+  const productId = id?.toString() || '';
+  const productData = useStore((state) =>
+    productId ? state.productDetailsById[productId] : null
+  );
 
   /* ---------------- INIT ---------------- */
 
   useEffect(() => {
     const initPage = async () => {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (user) setUserId(user.id);
-
-        const data = await getProductWithImages(id?.toString() || "");
-        setProductData(data);
+        if (!productId || productData) return;
+        await fetchProductDetails(productId);
       } catch (error) {
         console.error("Initialization error:", error);
       }
     };
 
     initPage();
-  }, [id, supabase.auth]);
+  }, [productId, productData, fetchProductDetails]);
 
   /* ---------------- PRODUCT ---------------- */
 
   const product = useMemo(() => {
-    return productData && productData.id === id ? productData : null;
-  }, [productData, id]);
+    return productData && productData.id === productId ? productData : null;
+  }, [productData, productId]);
 
   /* ---------------- SORTED SIZES ARRAY FOR THE CHIP LIST ---------------- */
   const availableSizes = useMemo(() => {
@@ -154,6 +150,7 @@ const SingleProductPage = () => {
   /* ---------------- ADD TO BAG ---------------- */
 
   const handleAddToBag = async () => {
+    const userId = user?.id;
     if (!userId) {
       alert("Please login first");
       return;
@@ -517,7 +514,7 @@ const SingleProductPage = () => {
 
           {/* REVIEWS TRACK */}
           <div ref={reviewRef}>
-            <ReviewSection productId={id} />
+            <ReviewSection productId={id?.toString() || ''} />
           </div>
 
         </div>

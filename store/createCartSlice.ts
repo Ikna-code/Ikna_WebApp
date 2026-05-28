@@ -10,9 +10,14 @@ import {
 
 export interface CartSlice {
   cartItems: any[];
+  isCartInitialized: boolean;
+  cartUserId: string | null;
+  orders: any[];
+  isOrdersInitialized: boolean;
   isLoading: boolean;
   error: string | null;
-  fetchCart: (userId: string) => Promise<void>;
+  fetchCart: (userId: string, force?: boolean) => Promise<void>;
+  fetchOrders: () => Promise<void>;
   addItemToCart: (userId: string, productId: string, selectedSize: string, quantity?: number, category?: string) => Promise<void>;
   updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
   removeItem: (cartItemId: string) => Promise<void>;
@@ -22,17 +27,37 @@ export interface CartSlice {
 
 export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
   cartItems: [],
+  isCartInitialized: false,
+  cartUserId: null,
+  orders: [],
+  isOrdersInitialized: false,
   isLoading: false,
   error: null,
 
-  fetchCart: async (userId) => {
+  fetchOrders: async () => {
+    if (get().isOrdersInitialized) return;
+    try {
+      const response = await fetch('/api/orders');
+      if (!response.ok) throw new Error('Failed to fetch orders');
+      const data = await response.json();
+      set({ orders: data, isOrdersInitialized: true });
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    }
+  },
+
+  fetchCart: async (userId, force = false) => {
+    if (!force && get().isCartInitialized && get().cartUserId === userId) {
+      return;
+    }
+
     set({ isLoading: true, error: null });
     const res = await getCartItems(userId);
     // Explicitly check for success and items
     if (res?.success && Array.isArray(res.items)) {
-      set({ cartItems: res.items, isLoading: false });
+      set({ cartItems: res.items, isLoading: false, isCartInitialized: true, cartUserId: userId });
     } else {
-      set({ error: (res?.error as string) || "Failed to fetch cart", isLoading: false });
+      set({ error: (res?.error as string) || "Failed to fetch cart", isLoading: false, isCartInitialized: true, cartUserId: userId });
     }
   },
 
@@ -42,20 +67,13 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
       const res = await addToCart(userId, productId, selectedSize, quantity, category);
       
       if (res?.success && res.cartItem) {
-        const currentItems = get().cartItems;
-        // Use a unique identifier (ID from DB) to check for existence
-        const exists = currentItems.find(item => item.id === res.cartItem.id);
-        
-        let newItems;
-        if (exists) {
-          newItems = currentItems.map(item => 
-            item.id === res.cartItem.id ? res.cartItem : item
-          );
+        // Rehydrate from DB so each cart item includes nested product fields (image/price).
+        const cartRes = await getCartItems(userId);
+        if (cartRes?.success && Array.isArray(cartRes.items)) {
+          set({ cartItems: cartRes.items, isLoading: false, isCartInitialized: true, cartUserId: userId });
         } else {
-          newItems = [...currentItems, res.cartItem];
+          set({ isLoading: false });
         }
-        
-        set({ cartItems: newItems, isLoading: false });
       } else {
         set({ error: (res?.error as string) || "Error adding item", isLoading: false });
       }
