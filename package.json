@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
+    "@google-analytics/data": "^6.1.0",
     "@prisma/client": "^5.22.0",
     "@stripe/stripe-js": "^9.3.1",
     "@supabase/ssr": "^0.10.2",

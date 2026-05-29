@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Box, ClipboardList, Users, Megaphone, LogOut, ChevronDown, Menu, X } from 'lucide-react';
+import { BarChart3, Box, ClipboardList, Users, Megaphone, LogOut, ChevronDown, Menu, X, MessageSquareWarning } from 'lucide-react';
 
 const navItems = [
   { icon: BarChart3, label: 'Sales Analytics', link: '/Admin' },
@@ -11,6 +11,7 @@ const navItems = [
   { icon: ClipboardList, label: 'Orders', link: '/Admin/OrderDashboard' },
   { icon: Users, label: 'Customers', link: '/Admin/CustomersDashboard' },
   { icon: Megaphone, label: 'Marketing', link: '/Admin/MarketingDashboard' },
+  { icon: MessageSquareWarning, label: 'Reviews & Issues', link: '/Admin/Reviews' },
 ];
 
 function SidebarContent({ onNavigate, pathname }) {

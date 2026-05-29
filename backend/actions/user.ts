@@ -2,25 +2,16 @@
 "use server"
 
 import { db } from "@/backend/lib/db";
-// 1. IMPORT the Server version of the client
-import { createServerSupabaseClient } from '@/backend/lib/supabaseServer'; 
+import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
 
 /**
  * Fetches the currently authenticated user's profile from Prisma
  */
 export async function getUser() {
-  // 2. AWAIT the server client (since it uses cookies())
-  const supabase = await createServerSupabaseClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
+  const dbUser = await ensureCurrentDbUser();
 
-  console.log("Auth User found on server:", authUser?.id);
-
-  if (!authUser) {
-    return { ok: false, error: 'Unauthorized' };
-  }
-
-  const dbUser = await db.user.findUnique({
-    where: { id: authUser.id },
+  const fullUser = await db.user.findUnique({
+    where: { id: dbUser.id },
     include: {
       _count: {
         select: { orders: true, wishlistItems: true }
@@ -28,23 +19,15 @@ export async function getUser() {
     }
   });
 
-  if (!dbUser) {
-    return { ok: false, error: 'User not found in database' };
-  }
-
   // 3. Keep the JSON serialization to avoid "Plain Object" errors
-  return { ok: true, user: JSON.parse(JSON.stringify(dbUser)) };
+  return { ok: true, user: JSON.parse(JSON.stringify(fullUser)) };
 }
 
 /**
  * Updates user metadata in Prisma
  */
 export async function updateUserProfile(data: { firstName?: string; lastName?: string; phone?: string }) {
-  // 4. Use the server client here too
-  const supabase = await createServerSupabaseClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
-
-  if (!authUser) return { success: false, error: "Unauthorized" };
+  const authUser = await ensureCurrentDbUser();
 
   try {
     const updatedUser = await db.user.update({

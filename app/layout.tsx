@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Script from "next/script";
 import AppInitializer from "@/components/utility/AppInitializer";
+
+const GA4_ID = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID;
 
 const rawSiteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
@@ -105,6 +108,22 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col overflow-x-hidden" >
         <AppInitializer />
         {children}
+        {GA4_ID && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA4_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script id="ga4-init" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${GA4_ID}', { page_path: window.location.pathname });
+              `}
+            </Script>
+          </>
+        )}
       </body>
     </html>
   );

@@ -18,14 +18,24 @@ function MetricCard({ title, value, percentage, icon: Icon, iconBg, iconColor })
   );
 }
 
-export default function MetricCardsGroup() {
+export default function MetricCardsGroup({ timePeriod = 'week', onTimePeriodChange }) {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 items-start">
       {/* Time-range Filters */}
       <div className="xl:col-span-1 flex xl:flex-col gap-1.5 p-1.5 bg-white rounded-2xl border border-[#E9E4E0] shadow-sm self-stretch justify-between">
-        <button className="flex-1 py-2 text-center text-xs font-semibold rounded-xl bg-[#3D0A21] text-white shadow-sm transition-all">Week</button>
-        <button className="flex-1 py-2 text-center text-xs font-medium rounded-xl text-[#7A6B73] hover:bg-[#FAF6F4] transition-all">Month</button>
-        <button className="flex-1 py-2 text-center text-xs font-medium rounded-xl text-[#7A6B73] hover:bg-[#FAF6F4] transition-all">Year</button>
+        {['week', 'month', 'year'].map((period) => (
+          <button
+            key={period}
+            onClick={() => onTimePeriodChange(period)}
+            className={`flex-1 py-2 text-center text-xs font-semibold rounded-xl transition-all ${
+              timePeriod === period
+                ? 'bg-[#3D0A21] text-white shadow-sm'
+                : 'text-[#7A6B73] hover:bg-[#FAF6F4]'
+            }`}
+          >
+            {period.charAt(0).toUpperCase() + period.slice(1)}
+          </button>
+        ))}
       </div>
 
       {/* Grid Indicators */}

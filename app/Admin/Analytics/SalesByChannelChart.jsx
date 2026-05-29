@@ -9,10 +9,10 @@ const data = [
   { name: 'Others', value: 2800, percentage: '2%', color: '#F7C844' },
 ];
 
-export default function SalesByChannelChart() {
+export default function SalesByChannelChart({ timePeriod = 'week' }) {
   return (
     <div className="bg-white p-6 rounded-3xl border border-[#E9E4E0] shadow-sm flex flex-col h-[360px]">
-      <h2 className="text-base font-bold text-[#2B1B24] mb-4">Sales by Channel</h2>
+      <h2 className="text-base font-bold text-[#2B1B24] mb-4">Sales by Channel ({timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)})</h2>
       
       <div className="flex flex-row items-center justify-between h-full gap-2">
         <div className="relative w-1/2 h-full min-h-[140px]">
