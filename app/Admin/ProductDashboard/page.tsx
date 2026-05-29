@@ -85,14 +85,14 @@ export default function ProductManagementDashboard() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">
             Global Admin
           </span>
           <h1 className="text-2xl font-black text-[#5b153b]">Product Management</h1>
         </div>
-        <div className="flex items-center gap-3 text-xs">
+        <div className="flex w-full flex-wrap items-center gap-3 text-xs xl:w-auto xl:justify-end">
           <div className="bg-white px-4 py-2.5 rounded-2xl border border-neutral-200 shadow-sm flex items-center gap-3">
             <span className="text-neutral-400">Total Skus:</span>
             <span className="font-extrabold text-neutral-800">162</span>
@@ -109,7 +109,7 @@ export default function ProductManagementDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 xl:col-span-9 space-y-6">
           {/* Filter Panel Layer */}
-          <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm flex flex-wrap gap-6 items-center">
+          <div className="flex flex-wrap items-center gap-4 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm sm:gap-6 sm:p-6">
             <div className="flex-1 min-w-[180px]">
               <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-1">
                 Category
@@ -189,8 +189,8 @@ export default function ProductManagementDashboard() {
           </div>
 
           {/* Actions Toolbar */}
-          <div className="flex justify-between items-center flex-wrap gap-3 bg-white p-4 rounded-2xl border border-neutral-200 shadow-sm">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center gap-3">
               <button className="text-xs border border-neutral-300 bg-neutral-50 hover:bg-neutral-100 px-3 py-2 rounded-xl flex items-center gap-2 font-semibold">
                 <Filter className="w-4 h-4" /> Multi-select
               </button>
@@ -198,7 +198,7 @@ export default function ProductManagementDashboard() {
                 More <ChevronDown className="w-3.5 h-3.5" />
               </button>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
               <button className="text-xs border border-neutral-300 px-3 py-2 rounded-xl flex items-center gap-1 font-semibold text-neutral-700">
                 <Sliders className="w-3.5 h-3.5" /> Bulk Edit Price
               </button>
@@ -212,8 +212,8 @@ export default function ProductManagementDashboard() {
           </div>
 
           {/* Product Table */}
-          <div className="bg-white rounded-3xl border border-neutral-200 shadow-sm overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+          <div className="overflow-x-auto rounded-3xl border border-neutral-200 bg-white shadow-sm">
+            <table className="w-full min-w-[860px] border-collapse text-left text-xs">
               <thead>
                 <tr className="border-b border-neutral-200 text-neutral-400 tracking-wider">
                   <th className="py-4 px-6">

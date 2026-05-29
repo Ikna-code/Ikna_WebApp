@@ -73,9 +73,9 @@ export default function Marketing() {
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl border border-neutral-200 shadow-sm divide-y divide-neutral-100">
+        <div className="divide-y divide-neutral-100 rounded-3xl border border-neutral-200 bg-white shadow-sm">
           {campaigns.map((c) => (
-            <div key={c.id} className="p-6 flex items-center justify-between">
+            <div key={c.id} className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 bg-[#3d0d26]/10 rounded-2xl flex items-center justify-center text-[#5b153b]">
                   <Megaphone className="w-4 h-4" />
@@ -85,7 +85,7 @@ export default function Marketing() {
                   <p className="text-[9px] text-neutral-400 font-medium">Audience: {c.audience}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-3 sm:justify-end">
                 <span className="text-[10px] bg-neutral-100 text-neutral-600 px-2 py-0.5 font-bold rounded-lg">
                   {c.reach} Reach
                 </span>
