@@ -18,7 +18,14 @@ function MetricCard({ title, value, percentage, icon: Icon, iconBg, iconColor })
   );
 }
 
-export default function MetricCardsGroup({ timePeriod = 'week', onTimePeriodChange }) {
+export default function MetricCardsGroup({ timePeriod = 'week', onTimePeriodChange, metrics }) {
+  const metricItems = metrics || [
+    { title: 'Total Sales', value: '₹1,28,450', percentage: '18.6%', iconBg: 'bg-[#FDF0F4]', iconColor: 'text-[#D84B77]' },
+    { title: 'Orders', value: '542', percentage: '12.4%', icon: ShoppingBag, iconBg: 'bg-[#FFF0F4]', iconColor: 'text-[#E0537A]' },
+    { title: 'Avg. Order Value', value: '₹2,371', percentage: '8.2%', icon: Users, iconBg: 'bg-[#F6EFF4]', iconColor: 'text-[#A1477A]' },
+    { title: 'Units Sold', value: '1,248', percentage: '15.3%', icon: Box, iconBg: 'bg-[#FFF1F3]', iconColor: 'text-[#E5536D]' },
+  ];
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 items-start">
       {/* Time-range Filters */}
@@ -40,10 +47,9 @@ export default function MetricCardsGroup({ timePeriod = 'week', onTimePeriodChan
 
       {/* Grid Indicators */}
       <div className="xl:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-        <MetricCard title="Total Sales" value="₹1,28,450" percentage="18.6%" iconBg="bg-[#FDF0F4]" iconColor="text-[#D84B77]" />
-        <MetricCard title="Orders" value="542" percentage="12.4%" icon={ShoppingBag} iconBg="bg-[#FFF0F4]" iconColor="text-[#E0537A]" />
-        <MetricCard title="Avg. Order Value" value="₹2,371" percentage="8.2%" icon={Users} iconBg="bg-[#F6EFF4]" iconColor="text-[#A1477A]" />
-        <MetricCard title="Units Sold" value="1,248" percentage="15.3%" icon={Box} iconBg="bg-[#FFF1F3]" iconColor="text-[#E5536D]" />
+        {metricItems.map((item) => (
+          <MetricCard key={item.title} {...item} />
+        ))}
       </div>
     </div>
   );

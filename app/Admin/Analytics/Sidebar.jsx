@@ -10,7 +10,6 @@ const navItems = [
   { icon: Box, label: 'Products', link: '/Admin/ProductDashboard' },
   { icon: ClipboardList, label: 'Orders', link: '/Admin/OrderDashboard' },
   { icon: Users, label: 'Customers', link: '/Admin/CustomersDashboard' },
-  { icon: Megaphone, label: 'Marketing', link: '/Admin/MarketingDashboard' },
   { icon: MessageSquareWarning, label: 'Reviews & Issues', link: '/Admin/Reviews' },
 ];
 

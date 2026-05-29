@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Calendar, Download, ChevronDown } from 'lucide-react';
+import { Calendar, Download, ChevronDown, Eye, X } from 'lucide-react';
 
-export default function Header({ startDate, endDate, onDateChange, onExport }) {
+export default function Header({ startDate, endDate, onDateChange, onExport, reportPreview }) {
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [tempStart, setTempStart] = useState(startDate);
   const [tempEnd, setTempEnd] = useState(endDate);
 
@@ -106,7 +107,7 @@ export default function Header({ startDate, endDate, onDateChange, onExport }) {
               />
               
               {/* 3. Updated positioning strategy */}
-              <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 sm:absolute sm:top-full sm:left-auto sm:right-0 sm:translate-x-0 sm:translate-y-0 mt-0 sm:mt-2 z-50 bg-white rounded-2xl shadow-xl border border-[#E9E4E0] p-6 w-[calc(100vw-2rem)] max-w-[340px] sm:w-80">
+              <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 sm:absolute sm:top-full sm:left-auto sm:right-0 sm:translate-x-0 sm:translate-y-0 mt-0 sm:mt-2 z-50 bg-white rounded-2xl shadow-xl border border-[#E9E4E0] p-6 w-[calc(100vw-2rem)] max-w-85 sm:w-80">
                 <div className="mb-4">
                   <p className="text-xs text-[#7A6B73] mb-3">Select date range (click dates to toggle start/end)</p>
                   {renderCalendarMonth(tempStart)}
@@ -130,6 +131,13 @@ export default function Header({ startDate, endDate, onDateChange, onExport }) {
           )}
         </div>
         <button
+          onClick={() => setPreviewOpen(true)}
+          className="bg-white text-[#3D0A21] px-4 py-2 rounded-xl flex items-center gap-2 text-xs font-medium border border-[#E9E4E0] hover:bg-[#FAF6F4] transition-colors shadow-sm"
+        >
+          <Eye className="w-4 h-4" />
+          <span>Preview</span>
+        </button>
+        <button
           onClick={onExport}
           className="bg-[#3D0A21] text-white px-4 py-2 rounded-xl flex items-center gap-2 text-xs font-medium hover:bg-[#521330] transition-colors shadow-sm"
         >
@@ -137,6 +145,50 @@ export default function Header({ startDate, endDate, onDateChange, onExport }) {
           <span>Export Report</span>
         </button>
       </div>
+
+      {previewOpen && reportPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2B0516]/45 p-4">
+          <div className="w-full max-w-2xl rounded-3xl border border-[#E9E4E0] bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-[#E9E4E0] pb-4">
+              <div>
+                <h2 className="text-xl font-bold text-[#2B1B24]">Sales Report Preview</h2>
+                <p className="mt-1 text-xs text-[#7A6B73]">{reportPreview.period}</p>
+              </div>
+              <button
+                onClick={() => setPreviewOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#E9E4E0] text-[#7A6B73] hover:bg-[#FAF6F4]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {reportPreview.metrics.map((metric) => (
+                <div key={metric.title} className="rounded-2xl border border-[#E9E4E0] bg-[#FAF6F4] p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#7A6B73]">{metric.title}</p>
+                  <p className="mt-2 text-xl font-bold text-[#2B1B24]">{metric.value}</p>
+                  <p className="mt-1 text-[10px] font-semibold text-emerald-600">{metric.percentage}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-[#E9E4E0] p-4">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#7A6B73]">Channel Breakdown</p>
+              <div className="mt-3 space-y-2">
+                {reportPreview.channels.map((channel) => (
+                  <div key={channel.name} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: channel.color }} />
+                      <span className="text-[#2B1B24]">{channel.name}</span>
+                    </div>
+                    <span className="font-semibold text-[#4A3C44]">₹{channel.value.toLocaleString()} ({channel.percentage})</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
-const data = [
+const defaultData = [
   { name: 'Website', value: 69283, percentage: '54%', color: '#5C0632' },
   { name: 'Mobile App', value: 30742, percentage: '24%', color: '#E0537A' },
   { name: 'Instagram Shop', value: 15385, percentage: '12%', color: '#FBB3CB' },
@@ -9,13 +9,15 @@ const data = [
   { name: 'Others', value: 2800, percentage: '2%', color: '#F7C844' },
 ];
 
-export default function SalesByChannelChart({ timePeriod = 'week' }) {
+export default function SalesByChannelChart({ timePeriod = 'week', data = defaultData, totalLabel }) {
+  const totalValue = totalLabel || `₹${data.reduce((sum, item) => sum + item.value, 0).toLocaleString()}`;
+
   return (
-    <div className="bg-white p-6 rounded-3xl border border-[#E9E4E0] shadow-sm flex flex-col h-[360px]">
+    <div className="bg-white p-6 rounded-3xl border border-[#E9E4E0] shadow-sm flex flex-col h-90">
       <h2 className="text-base font-bold text-[#2B1B24] mb-4">Sales by Channel ({timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)})</h2>
       
       <div className="flex flex-row items-center justify-between h-full gap-2">
-        <div className="relative w-1/2 h-full min-h-[140px]">
+        <div className="relative w-1/2 h-full min-h-35">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={data} cx="50%" cy="50%" innerRadius={42} outerRadius={60} paddingAngle={2} dataKey="value">
@@ -27,7 +29,7 @@ export default function SalesByChannelChart({ timePeriod = 'week' }) {
           </ResponsiveContainer>
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span className="text-[10px] text-[#A1959C] uppercase tracking-wider font-semibold">Total</span>
-            <span className="text-xs font-extrabold text-[#2B1B24] tracking-tight">₹1,28,450</span>
+            <span className="text-xs font-extrabold text-[#2B1B24] tracking-tight">{totalValue}</span>
           </div>
         </div>
 

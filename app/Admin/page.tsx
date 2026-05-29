@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Header from './Analytics/Header';
 import MetricCardsGroup from './Analytics/MetricCardsGroup';
 import SalesOverviewChart from './Analytics/SalesOverviewChart';
@@ -9,65 +9,86 @@ import TopSellingProducts from './Analytics/TopSellingProducts';
 import SalesTrendChart from './Analytics/SalesTrendChart';
 // SalesTrendChart is now UserVisitsChart — re-exported from the same file
 import RecentOrders from './Analytics/RecentOrders';
-import Link from 'next/link';
-import { AlertTriangle, CheckCircle2, MessageSquareWarning, Star } from 'lucide-react';
 
-type ReviewSummary = {
-  totalReviews: number;
-  needsAttention: number;
-  watchList: number;
-  averageRating: number;
+type TimePeriod = 'week' | 'month' | 'year';
+
+type MetricItem = {
+  title: string;
+  value: string;
+  percentage: string;
+  iconBg: string;
+  iconColor: string;
 };
 
-type ReviewRow = {
-  id: string;
-  rating: number;
-  title: string | null;
-  comment: string;
-  fitExperience: string | null;
-  isVerified: boolean;
-  createdAt: string;
-  user: { id: string; email: string };
-  product: { id: string; name: string; category: string; image: string };
+type ChannelItem = {
+  name: string;
+  value: number;
+  percentage: string;
+  color: string;
+};
+
+const metricsByPeriod: Record<TimePeriod, MetricItem[]> = {
+  week: [
+    { title: 'Total Sales', value: '₹1,28,450', percentage: '18.6%', iconBg: 'bg-[#FDF0F4]', iconColor: 'text-[#D84B77]' },
+    { title: 'Orders', value: '542', percentage: '12.4%', iconBg: 'bg-[#FFF0F4]', iconColor: 'text-[#E0537A]' },
+    { title: 'Avg. Order Value', value: '₹2,371', percentage: '8.2%', iconBg: 'bg-[#F6EFF4]', iconColor: 'text-[#A1477A]' },
+    { title: 'Units Sold', value: '1,248', percentage: '15.3%', iconBg: 'bg-[#FFF1F3]', iconColor: 'text-[#E5536D]' },
+  ],
+  month: [
+    { title: 'Total Sales', value: '₹3,97,800', percentage: '14.2%', iconBg: 'bg-[#FDF0F4]', iconColor: 'text-[#D84B77]' },
+    { title: 'Orders', value: '1,864', percentage: '10.1%', iconBg: 'bg-[#FFF0F4]', iconColor: 'text-[#E0537A]' },
+    { title: 'Avg. Order Value', value: '₹2,134', percentage: '4.8%', iconBg: 'bg-[#F6EFF4]', iconColor: 'text-[#A1477A]' },
+    { title: 'Units Sold', value: '4,286', percentage: '11.7%', iconBg: 'bg-[#FFF1F3]', iconColor: 'text-[#E5536D]' },
+  ],
+  year: [
+    { title: 'Total Sales', value: '₹53,00,000', percentage: '21.4%', iconBg: 'bg-[#FDF0F4]', iconColor: 'text-[#D84B77]' },
+    { title: 'Orders', value: '24,860', percentage: '17.3%', iconBg: 'bg-[#FFF0F4]', iconColor: 'text-[#E0537A]' },
+    { title: 'Avg. Order Value', value: '₹2,132', percentage: '3.9%', iconBg: 'bg-[#F6EFF4]', iconColor: 'text-[#A1477A]' },
+    { title: 'Units Sold', value: '58,920', percentage: '19.1%', iconBg: 'bg-[#FFF1F3]', iconColor: 'text-[#E5536D]' },
+  ],
+};
+
+const channelDataByPeriod: Record<TimePeriod, ChannelItem[]> = {
+  week: [
+    { name: 'Website', value: 69283, percentage: '54%', color: '#5C0632' },
+    { name: 'Mobile App', value: 30742, percentage: '24%', color: '#E0537A' },
+    { name: 'Instagram Shop', value: 15385, percentage: '12%', color: '#FBB3CB' },
+    { name: 'Marketplace', value: 10240, percentage: '8%', color: '#AC88CD' },
+    { name: 'Others', value: 2800, percentage: '2%', color: '#F7C844' },
+  ],
+  month: [
+    { name: 'Website', value: 212000, percentage: '53%', color: '#5C0632' },
+    { name: 'Mobile App', value: 97300, percentage: '24%', color: '#E0537A' },
+    { name: 'Instagram Shop', value: 47600, percentage: '12%', color: '#FBB3CB' },
+    { name: 'Marketplace', value: 29200, percentage: '7%', color: '#AC88CD' },
+    { name: 'Others', value: 11700, percentage: '4%', color: '#F7C844' },
+  ],
+  year: [
+    { name: 'Website', value: 2860000, percentage: '54%', color: '#5C0632' },
+    { name: 'Mobile App', value: 1325000, percentage: '25%', color: '#E0537A' },
+    { name: 'Instagram Shop', value: 582000, percentage: '11%', color: '#FBB3CB' },
+    { name: 'Marketplace', value: 371000, percentage: '7%', color: '#AC88CD' },
+    { name: 'Others', value: 162000, percentage: '3%', color: '#F7C844' },
+  ],
 };
 
 export default function Dashboard() {
   const [startDate, setStartDate] = useState(new Date(2026, 4, 4));
   const [endDate, setEndDate] = useState(new Date(2026, 4, 10));
-  const [timePeriod, setTimePeriod] = useState('week');
-  const [reviewSummary, setReviewSummary] = useState<ReviewSummary>({
-    totalReviews: 0,
-    needsAttention: 0,
-    watchList: 0,
-    averageRating: 0,
-  });
-  const [reviewRows, setReviewRows] = useState<ReviewRow[]>([]);
-  const [reviewError, setReviewError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const loadReviews = async () => {
-      try {
-        const response = await fetch('/api/admin/reviews');
-
-        if (!response.ok) {
-          throw new Error('Unable to load reviews');
-        }
-
-        const data = await response.json();
-        setReviewSummary(data.summary);
-        setReviewRows(data.reviews);
-        setReviewError(null);
-      } catch (error) {
-        setReviewError('Reviews are not available right now.');
-      }
-    };
-
-    loadReviews();
-  }, []);
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('week');
 
   const formatDateRange = () => {
     const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
     return `${startDate.toLocaleDateString('en-US', options)} – ${endDate.toLocaleDateString('en-US', options)}`;
+  };
+
+  const activeMetrics = metricsByPeriod[timePeriod];
+  const activeChannels = channelDataByPeriod[timePeriod];
+  const channelTotal = activeChannels.reduce((sum, item) => sum + item.value, 0);
+  const reportPreview = {
+    period: `${timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)} • ${formatDateRange()}`,
+    metrics: activeMetrics,
+    channels: activeChannels,
   };
 
   const handleExportReport = () => {
@@ -77,10 +98,10 @@ export default function Dashboard() {
       ['Time Frame', timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)],
       [''],
       ['Metrics'],
-      ['Total Sales', '₹1,28,450'],
-      ['Orders', '542'],
-      ['Avg. Order Value', '₹2,371'],
-      ['Units Sold', '1,248'],
+      ...activeMetrics.map((metric) => [metric.title, metric.value, metric.percentage]),
+      [''],
+      ['Sales by Channel'],
+      ...activeChannels.map((channel) => [channel.name, `₹${channel.value.toLocaleString()}`, channel.percentage]),
       [''],
       ['Generated on', new Date().toLocaleString()]
     ].map(row => row.join(',')).join('\n');
@@ -104,8 +125,9 @@ export default function Dashboard() {
             setEndDate(end);
           }}
           onExport={handleExportReport}
+          reportPreview={reportPreview}
         />
-        <MetricCardsGroup timePeriod={timePeriod} onTimePeriodChange={setTimePeriod} />
+        <MetricCardsGroup timePeriod={timePeriod} onTimePeriodChange={setTimePeriod} metrics={activeMetrics} />
         
         {/* Charts Row */}
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
@@ -113,7 +135,7 @@ export default function Dashboard() {
             <SalesOverviewChart timePeriod={timePeriod} />
           </div>
           <div>
-            <SalesByChannelChart timePeriod={timePeriod} />
+            <SalesByChannelChart timePeriod={timePeriod} data={activeChannels} totalLabel={`₹${channelTotal.toLocaleString()}`} />
           </div>
         </div>
 
@@ -124,98 +146,7 @@ export default function Dashboard() {
           <RecentOrders />
         </div>
 
-        <section className="rounded-[2rem] border border-[#E9E4E0] bg-white p-6 shadow-sm md:p-8">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-[#3D0A21]">
-                <MessageSquareWarning className="h-5 w-5" />
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em]">Customer feedback</p>
-              </div>
-              <h2 className="text-2xl font-bold tracking-tight text-[#2B1B24]">Reviews & Issues</h2>
-              <p className="max-w-2xl text-sm leading-relaxed text-[#7A6B73]">
-                See what customers are saying, spot serious issues quickly, and open the full review board when you
-                need to investigate.
-              </p>
-            </div>
-            <Link
-              href="/Admin/Reviews"
-              className="inline-flex items-center justify-center rounded-full bg-[#3D0A21] px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-white transition hover:bg-[#521330]"
-            >
-              Open full review board
-            </Link>
-          </div>
 
-          {reviewError ? (
-            <div className="mt-6 rounded-2xl border border-dashed border-[#E9E4E0] bg-[#FAF6F4] p-5 text-sm text-[#7A6B73]">
-              {reviewError}
-            </div>
-          ) : (
-            <>
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <ReviewStatCard icon={Star} label="Average rating" value={reviewSummary.averageRating.toFixed(1)} />
-                <ReviewStatCard icon={MessageSquareWarning} label="Total reviews" value={reviewSummary.totalReviews.toString()} />
-                <ReviewStatCard icon={AlertTriangle} label="Needs attention" value={reviewSummary.needsAttention.toString()} tone="danger" />
-                <ReviewStatCard icon={CheckCircle2} label="Watch list" value={reviewSummary.watchList.toString()} tone="warning" />
-              </div>
-
-              <div className="mt-6 grid gap-4 xl:grid-cols-2">
-                {reviewRows.length > 0 ? (
-                  reviewRows.map((review) => (
-                    <div key={review.id} className="rounded-[1.5rem] border border-[#E9E4E0] bg-[#FAF6F4] p-5 shadow-sm">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#7A6B73]">{review.product.name}</p>
-                          <p className="mt-1 text-sm font-semibold text-[#2B1B24]">{review.user.email}</p>
-                        </div>
-                        <span className="rounded-full bg-[#3D0A21] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-white">
-                          {review.rating} star
-                        </span>
-                      </div>
-                      <h3 className="mt-4 text-base font-bold text-[#2B1B24]">{review.title || 'Untitled review'}</h3>
-                      <p className="mt-2 text-sm leading-relaxed text-[#522d42]/85 line-clamp-3">{review.comment}</p>
-                      <p className="mt-3 text-xs text-[#7A6B73]">
-                        {new Date(review.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-[#E9E4E0] bg-[#FAF6F4] p-5 text-sm text-[#7A6B73] xl:col-span-2">
-                    No reviews available yet.
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </section>
       </div>
-  );
-}
-
-function ReviewStatCard({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  tone?: 'danger' | 'warning';
-}) {
-  const toneClasses =
-    tone === 'danger'
-      ? 'bg-red-50 text-red-700 border-red-100'
-      : tone === 'warning'
-        ? 'bg-amber-50 text-amber-700 border-amber-100'
-        : 'bg-[#FAF6F4] text-[#3D0A21] border-[#E9E4E0]';
-
-  return (
-    <div className={`rounded-2xl border p-4 shadow-sm ${toneClasses}`}>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[10px] font-bold uppercase tracking-[0.24em] opacity-80">{label}</p>
-        <Icon className="h-4 w-4" />
-      </div>
-      <p className="mt-3 text-2xl font-bold tracking-tight">{value}</p>
-    </div>
   );
 }
