@@ -4,8 +4,9 @@ import { createAuthSlice, AuthSlice } from "./createAuthSlice";
 import { createCartSlice, CartSlice } from "./createCartSlice";
 import { createProductSlice, ProductSlice } from "./createProductSlice";
 import { createAddressSlice, AddressSlice } from "./createAddressSlice";
+import { createAdminSlice, AdminSlice } from "./createAdminSlice";
 
-type StoreState = AuthSlice & CartSlice & ProductSlice & AddressSlice;
+type StoreState = AuthSlice & CartSlice & ProductSlice & AddressSlice & AdminSlice;
 
 export const useStore = create<StoreState>()(
   devtools((...a) => ({
@@ -13,5 +14,6 @@ export const useStore = create<StoreState>()(
     ...createCartSlice(...a),
     ...createProductSlice(...a),
     ...createAddressSlice(...a),
+    ...createAdminSlice(...a),
   }))
 );

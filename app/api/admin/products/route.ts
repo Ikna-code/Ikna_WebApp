@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
         image: primaryImagePath,
         description: body.description,
         tag: body.tag || null,
+        rating: typeof body?.rating === 'number' ? body.rating : null,
         sizes,
         images: imagePaths.length
           ? {

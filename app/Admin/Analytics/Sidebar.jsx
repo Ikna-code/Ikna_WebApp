@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BarChart3, Box, ClipboardList, Users, Megaphone, LogOut, ChevronDown, Menu, X, MessageSquareWarning } from 'lucide-react';
+import { useStore } from '@/store/useStore';
 
 const navItems = [
   { icon: BarChart3, label: 'Sales Analytics', link: '/Admin' },
@@ -89,7 +90,9 @@ function SidebarContent({ onNavigate, pathname }) {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileOpen = useStore((state) => state.isAdminMenuOpen);
+  const setMobileOpen = useStore((state) => state.setAdminMenuOpen);
+  const toggleMobileMenu = useStore((state) => state.toggleAdminMenu);
 
   return (
     <>
@@ -101,7 +104,7 @@ export default function Sidebar() {
           </div>
           <button
             type="button"
-            onClick={() => setMobileOpen((value) => !value)}
+            onClick={toggleMobileMenu}
             aria-label={mobileOpen ? 'Close admin menu' : 'Open admin menu'}
             className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#E9E4E0] bg-white text-[#3D0A21] shadow-sm"
           >

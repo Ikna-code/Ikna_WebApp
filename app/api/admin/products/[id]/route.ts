@@ -38,7 +38,14 @@ export async function PATCH(
       image?: string;
       description?: string;
       tag?: string | null;
+      rating?: number | null;
       sizes?: string[];
+      images?: {
+        create: Array<{
+          image_path: string;
+          is_primary: boolean;
+        }>;
+      };
     } = {};
 
     if (typeof body?.name === 'string') updateData.name = body.name;
@@ -48,8 +55,20 @@ export async function PATCH(
     if (typeof body?.image === 'string') updateData.image = body.image;
     if (typeof body?.description === 'string') updateData.description = body.description;
     if (typeof body?.tag === 'string' || body?.tag === null) updateData.tag = body.tag;
+    if (typeof body?.rating === 'number' || body?.rating === null) updateData.rating = body.rating;
     if (Array.isArray(body?.sizes)) {
       updateData.sizes = body.sizes.filter((item: unknown) => typeof item === 'string');
+    }
+    if (Array.isArray(body?.imagePaths)) {
+      const imagePaths = body.imagePaths.filter((item: unknown) => typeof item === 'string' && item.length > 0);
+      if (imagePaths.length) {
+        updateData.images = {
+          create: imagePaths.map((path: string, index: number) => ({
+            image_path: path,
+            is_primary: index === 0,
+          })),
+        };
+      }
     }
 
     const updatedProduct = await prisma.product.update({
