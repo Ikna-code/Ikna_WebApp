@@ -12,6 +12,19 @@ interface Order {
   status: 'Processing' | 'In Transit' | 'Packed' | 'Delivered';
 }
 
+const ORDER_STATUSES: Order['status'][] = ['Processing', 'Packed', 'In Transit', 'Delivered'];
+
+const statusBadgeClassMap: Record<Order['status'], string> = {
+  Processing: 'bg-amber-100 text-amber-800 border-amber-200',
+  Packed: 'bg-violet-100 text-violet-800 border-violet-200',
+  'In Transit': 'bg-sky-100 text-sky-800 border-sky-200',
+  Delivered: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+};
+
+function getStatusBadgeClass(status: Order['status']) {
+  return statusBadgeClassMap[status];
+}
+
 const initialOrders: Order[] = [
   {
     id: 'IKNA-1042',
@@ -51,6 +64,20 @@ export default function Orders() {
   const [orders, setOrders] = useState<Order[]>(initialOrders);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatusOrder, setSelectedStatusOrder] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'All' | Order['status']>('All');
+
+  const statusCounts = ORDER_STATUSES.reduce(
+    (acc, status) => {
+      acc[status] = orders.filter((order) => order.status === status).length;
+      return acc;
+    },
+    {
+      Processing: 0,
+      Packed: 0,
+      'In Transit': 0,
+      Delivered: 0,
+    } as Record<Order['status'], number>
+  );
 
   const handleUpdateStatus = (orderId: string, newStatus: Order['status']) => {
     setOrders((currentOrders) =>
@@ -63,8 +90,9 @@ export default function Orders() {
 
   const filteredOrders = orders.filter(
     (o) =>
-      o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.customer.toLowerCase().includes(searchQuery.toLowerCase())
+      (o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        o.customer.toLowerCase().includes(searchQuery.toLowerCase())) &&
+      (statusFilter === 'All' || o.status === statusFilter)
   );
 
   return (
@@ -88,6 +116,54 @@ export default function Orders() {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {ORDER_STATUSES.map((status) => (
+          <button
+            key={status}
+            onClick={() => setStatusFilter(status)}
+            className={`rounded-2xl border p-4 text-left shadow-sm transition ${
+              statusFilter === status
+                ? 'border-[#5b153b] bg-[#5b153b]/5'
+                : 'border-neutral-200 bg-white hover:border-neutral-300'
+            }`}
+          >
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-500">{status}</p>
+            <div className="mt-2 flex items-center justify-between">
+              <p className="text-2xl font-black text-[#2f1a26]">{statusCounts[status]}</p>
+              <span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${getStatusBadgeClass(status)}`}>
+                {status}
+              </span>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => setStatusFilter('All')}
+          className={`rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition ${
+            statusFilter === 'All'
+              ? 'border-[#5b153b] bg-[#5b153b] text-white'
+              : 'border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400'
+          }`}
+        >
+          All Orders ({orders.length})
+        </button>
+        {ORDER_STATUSES.map((status) => (
+          <button
+            key={status}
+            onClick={() => setStatusFilter(status)}
+            className={`rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition ${
+              statusFilter === status
+                ? 'border-[#5b153b] bg-[#5b153b] text-white'
+                : 'border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400'
+            }`}
+          >
+            {status} ({statusCounts[status]})
+          </button>
+        ))}
+      </div>
+
       <div className="grid gap-4 md:hidden">
         {filteredOrders.map((o) => (
           <div key={o.id} className="rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm">
@@ -96,7 +172,7 @@ export default function Orders() {
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Order</p>
                 <p className="mt-1 font-mono text-sm font-bold text-neutral-800">{o.id}</p>
               </div>
-              <span className="rounded-full bg-[#5b153b]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#5b153b]">
+              <span className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${getStatusBadgeClass(o.status)}`}>
                 {o.status}
               </span>
             </div>
@@ -131,7 +207,7 @@ export default function Orders() {
 
               {selectedStatusOrder === o.id && (
                 <div className="absolute left-0 top-12 z-10 w-full rounded-xl border border-neutral-200 bg-white py-2 shadow-lg">
-                  {['Processing', 'Packed', 'In Transit', 'Delivered'].map((status) => (
+                  {ORDER_STATUSES.map((status) => (
                     <button
                       key={status}
                       onClick={() => handleUpdateStatus(o.id, status as Order['status'])}
@@ -179,7 +255,7 @@ export default function Orders() {
                     onClick={() =>
                       setSelectedStatusOrder(selectedStatusOrder === o.id ? null : o.id)
                     }
-                    className="flex items-center gap-2 bg-neutral-50 px-3 py-1.5 rounded-xl border border-neutral-300 font-semibold text-neutral-700 hover:bg-neutral-100 cursor-pointer text-[10px]"
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border font-semibold hover:bg-neutral-100 cursor-pointer text-[10px] ${getStatusBadgeClass(o.status)}`}
                   >
                     {o.status}
                     <ChevronDown className="w-3 h-3 text-neutral-400" />
@@ -187,7 +263,7 @@ export default function Orders() {
 
                   {selectedStatusOrder === o.id && (
                     <div className="absolute z-10 top-12 left-0 bg-white border border-neutral-200 rounded-xl shadow-lg w-36 py-2">
-                      {['Processing', 'Packed', 'In Transit', 'Delivered'].map((status) => (
+                      {ORDER_STATUSES.map((status) => (
                         <button
                           key={status}
                           onClick={() => handleUpdateStatus(o.id, status as Order['status'])}
