@@ -3,12 +3,80 @@ import React, { useEffect, useState } from 'react';
 import { createClient } from '@/backend/lib/supabaseClient';
 import { Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { sendAuthEventNotification } from '@/backend/actions/auth';
+
+function getAppBaseUrl() {
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (configured) return configured.replace(/\/$/, '');
+  if (typeof window !== 'undefined') return window.location.origin;
+  return 'http://localhost:3000';
+}
+
+function buildRedirectUrl(path: string) {
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  return `${getAppBaseUrl()}${normalized}`;
+}
+
+function getFriendlyAuthErrorMessage(error: any) {
+  const errorCode = String(error?.code || '').toLowerCase();
+  let message = String(error?.message || '').toLowerCase();
+
+  // Some providers return JSON-like strings: {"code":"invalid_credentials","message":"..."}
+  if (message.startsWith('{') && message.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(message);
+      message = String(parsed?.message || message).toLowerCase();
+      if (!errorCode && parsed?.code) {
+        if (String(parsed.code).toLowerCase() === 'invalid_credentials') {
+          return 'Incorrect password';
+        }
+      }
+    } catch {
+      // Ignore parse failures and continue with the raw message.
+    }
+  }
+
+  if (message.includes('user already registered') || message.includes('already exists')) {
+    return 'User already exists';
+  }
+
+  if (errorCode === 'invalid_credentials') {
+    return 'Incorrect password';
+  }
+
+  if (
+    message.includes('invalid login credentials') ||
+    message.includes('invalid credentials') ||
+    message.includes('invalid password') ||
+    message.includes('wrong password')
+  ) {
+    return 'Incorrect password';
+  }
+
+  return error?.message || 'An unexpected error occurred';
+}
+
+async function sendAuthEmailOnce(email: string, event: 'signup' | 'login') {
+  if (!email) return;
+
+  const cacheKey = `ikna_auth_email_${event}_${email}`;
+  const now = Date.now();
+  const recent = Number(sessionStorage.getItem(cacheKey) || 0);
+
+  if (recent && now - recent < 2 * 60 * 1000) {
+    return;
+  }
+
+  sessionStorage.setItem(cacheKey, String(now));
+  await sendAuthEventNotification(email, event);
+}
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authError, setAuthError] = useState('');
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,10 +91,14 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
     initializeAuth();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       console.log("Auth state changed:", currentSession);
       setSession(currentSession);
       setLoading(false);
+
+      if (event === 'SIGNED_IN' && currentSession?.user?.email) {
+        await sendAuthEmailOnce(currentSession.user.email, 'login');
+      }
     });
 
     return () => authListener.subscription.unsubscribe();
@@ -35,17 +107,51 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setAuthError('');
     
     try {
-      const { error } = authMode === 'signup' 
-        ? await supabase.auth.signUp({ email, password })
-        : await supabase.auth.signInWithPassword({ email, password });
+      if (authMode === 'signup') {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: buildRedirectUrl('/'),
+          },
+        });
+
+        if (error) {
+          setAuthError(getFriendlyAuthErrorMessage(error));
+          return;
+        }
+
+        await sendAuthEmailOnce(email, 'signup');
+
+        if (!data.session) {
+          alert('Verification email sent. Please verify your email before logging in.');
+          setAuthMode('login');
+          return;
+        }
+
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
-        alert(error.message);
+        setAuthError(getFriendlyAuthErrorMessage(error));
+        return;
       }
+
+      const emailConfirmedAt = data?.user?.email_confirmed_at;
+      if (!emailConfirmedAt) {
+        await supabase.auth.signOut();
+        setAuthError('Please verify your email before logging in.');
+        return;
+      }
+
+      await sendAuthEmailOnce(email, 'login');
     } catch (err: any) {
-      alert(err.message || 'An unexpected error occurred');
+      setAuthError(getFriendlyAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -57,15 +163,15 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+          redirectTo: buildRedirectUrl('/'),
         },
       });
       
       if (error) {
-        alert(error.message);
+        setAuthError(getFriendlyAuthErrorMessage(error));
       }
     } catch (err: any) {
-      alert(err.message || 'An unexpected error occurred');
+      setAuthError(getFriendlyAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -118,6 +224,12 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         required 
       />
     </div>
+
+    {authError && (
+      <p className="text-[10px] font-bold tracking-[0.1em] text-red-600 uppercase">
+        {authError}
+      </p>
+    )}
 
     <button 
       type="submit" 

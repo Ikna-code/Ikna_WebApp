@@ -15,6 +15,13 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner'; 
 import { updateUserProfile } from '@/backend/actions/user';
 
+function getAppBaseUrl() {
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (configured) return configured.replace(/\/$/, '');
+  if (typeof window !== 'undefined') return window.location.origin;
+  return 'http://localhost:3000';
+}
+
 // Define a proper interface for your user
 interface DbUser {
   firstName?: string;
@@ -90,7 +97,7 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser, onUpdate: () => vo
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(dbUser.email, {
-        redirectTo: `${window.location.origin}/account/settings?reset=true`,
+        redirectTo: `${getAppBaseUrl()}/account/settings?reset=true`,
       });
       if (error) throw error;
       toast.success("Password reset link sent to your email!");
