@@ -8,7 +8,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       Changed 'min-h-screen' to 'h-screen' and forced 'overflow-hidden' + 'overscroll-none' globally.
       This locks the browser layout container in place on both mobile and desktop.
     */
-    <div className="h-screen w-screen bg-[#F7F4F0] text-[#2B1B24] antialiased flex overflow-hidden overscroll-none isolate">
+    <div className="h-screen w-screen bg-[#f8eef4] text-[#2f1126] antialiased flex overflow-hidden overscroll-none isolate">
       
       <Sidebar />
       

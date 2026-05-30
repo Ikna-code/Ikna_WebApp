@@ -38,12 +38,12 @@ export default function Marketing() {
           <span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">
             Promotions
           </span>
-          <h1 className="text-2xl font-black text-[#5b153b] mb-6">Marketing Campaigns</h1>
+          <h1 className="text-2xl font-black text-[#840d5c] mb-6">Marketing Campaigns</h1>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
           <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm flex items-center gap-4">
-            <div className="w-10 h-10 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-600">
+            <div className="w-10 h-10 bg-[#f7e8f1] rounded-2xl flex items-center justify-center text-[#840d5c]">
               <TrendingUp className="w-5 h-5" />
             </div>
             <div>
@@ -77,7 +77,7 @@ export default function Marketing() {
           {campaigns.map((c) => (
             <div key={c.id} className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#3d0d26]/10 rounded-2xl flex items-center justify-center text-[#5b153b]">
+                <div className="w-10 h-10 bg-[#840d5c]/10 rounded-2xl flex items-center justify-center text-[#840d5c]">
                   <Megaphone className="w-4 h-4" />
                 </div>
                 <div>
@@ -101,7 +101,7 @@ export default function Marketing() {
       {/* Campaign Creation Form */}
       <div className="xl:col-span-1">
         <form onSubmit={handleCreateCampaign} className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-sm space-y-4">
-          <h3 className="text-base font-black text-[#5b153b]">Create Campaign</h3>
+          <h3 className="text-base font-black text-[#840d5c]">Create Campaign</h3>
           
           <div className="space-y-3">
             <div>
@@ -114,7 +114,7 @@ export default function Marketing() {
                 placeholder="e.g. Summer Clearance Sale"
                 value={campaignTitle}
                 onChange={(e) => setCampaignTitle(e.target.value)}
-                className="w-full text-xs border border-neutral-300 rounded-xl px-3 py-2.5 outline-none focus:border-[#5b153b] transition"
+                className="w-full text-xs border border-neutral-300 rounded-xl px-3 py-2.5 outline-none focus:border-[#840d5c] transition"
               />
             </div>
 
@@ -127,7 +127,7 @@ export default function Marketing() {
                 placeholder="e.g. 20"
                 value={discountPercent}
                 onChange={(e) => setDiscountPercent(e.target.value)}
-                className="w-full text-xs border border-neutral-300 rounded-xl px-3 py-2.5 outline-none focus:border-[#5b153b] transition"
+                className="w-full text-xs border border-neutral-300 rounded-xl px-3 py-2.5 outline-none focus:border-[#840d5c] transition"
               />
             </div>
 
@@ -135,7 +135,7 @@ export default function Marketing() {
               <label className="block text-[9px] font-black tracking-widest text-neutral-400 mb-1">
                 TARGET AUDIENCE
               </label>
-              <select className="w-full text-xs bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2.5 outline-none focus:border-[#5b153b] transition">
+              <select className="w-full text-xs bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2.5 outline-none focus:border-[#840d5c] transition">
                 <option>All Customers</option>
                 <option>VIP Shoppers Only</option>
                 <option>Lapsed Buyers</option>
@@ -144,7 +144,7 @@ export default function Marketing() {
 
             <button
               type="submit"
-              className="w-full bg-[#3d0d26] text-white text-xs py-3 rounded-xl font-extrabold hover:bg-[#5b153b] transition shadow-sm flex items-center justify-center gap-2"
+              className="w-full bg-[#840d5c] text-white text-xs py-3 rounded-xl font-extrabold hover:bg-[#840d5c] transition shadow-sm flex items-center justify-center gap-2"
             >
               <Plus className="w-4 h-4" /> Launch Campaign
             </button>

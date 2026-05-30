@@ -45,7 +45,7 @@ export default function SalesChart({
 
               {/* VALUE */}
 
-              <span className="text-xs font-medium text-[#2d0b1f] mb-2">
+              <span className="text-xs font-medium text-[#2f1126] mb-2">
                 ₹
                 {Math.floor(
                   item.sales / 1000
@@ -61,8 +61,8 @@ export default function SalesChart({
                 }}
                 className={`w-full max-w-[48px] rounded-t-2xl shadow-inner ${
                   dark
-                    ? 'bg-gradient-to-b from-[#2d0017] to-[#7d003d]'
-                    : 'bg-gradient-to-b from-[#f6b7c7] to-[#de7c98]'
+                    ? 'bg-gradient-to-b from-[#6d0b4b] to-[#840d5c]'
+                    : 'bg-gradient-to-b from-[#d58cb5] to-[#a33c82]'
                 }`}
               />
 

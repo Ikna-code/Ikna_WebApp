@@ -34,7 +34,7 @@ export default function Customers() {
           <span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">
             Audience
           </span>
-          <h1 className="text-2xl font-black text-[#5b153b]">Customer Profiles</h1>
+          <h1 className="text-2xl font-black text-[#840d5c]">Customer Profiles</h1>
         </div>
         <div className="flex items-center gap-2 bg-white px-3 py-2.5 rounded-2xl border border-neutral-200 shadow-sm w-full max-w-xs">
           <Search className="w-4 h-4 text-neutral-400" />
@@ -56,7 +56,7 @@ export default function Customers() {
                 <h3 className="text-base font-extrabold text-neutral-800">{c.name}</h3>
                 <p className="text-[10px] text-neutral-400 font-medium">Joined {c.joinDate}</p>
               </div>
-              <span className="bg-[#5b153b]/10 text-[#5b153b] text-[10px] font-extrabold px-3 py-1 rounded-xl">
+              <span className="bg-[#840d5c]/10 text-[#840d5c] text-[10px] font-extrabold px-3 py-1 rounded-xl">
                 VIP
               </span>
             </div>
@@ -78,7 +78,7 @@ export default function Customers() {
 
             <div className="bg-neutral-50 p-3 rounded-2xl flex justify-between items-center">
               <span className="text-[10px] text-neutral-400 font-bold uppercase">Total Lifetime Spend</span>
-              <span className="text-sm font-black text-[#3d0d26]">₹{c.totalSpent}</span>
+              <span className="text-sm font-black text-[#840d5c]">₹{c.totalSpent}</span>
             </div>
           </div>
         ))}

@@ -19,31 +19,31 @@ const defaultData = [
     name: "T-Shirt Bras",
     value: 69283,
     percentage: "54%",
-    color: "#5C0632",
+    color: "#840d5c",
   },
   {
     name: "Push-Up Bras",
     value: 30742,
     percentage: "24%",
-    color: "#E0537A",
+    color: "#a33c82",
   },
   {
     name: "Non-Padded Bras",
     value: 15385,
     percentage: "12%",
-    color: "#FBB3CB",
+    color: "#c66aa0",
   },
   {
     name: "Panty",
     value: 10240,
     percentage: "8%",
-    color: "#AC88CD",
+    color: "#d58cb5",
   },
   {
     name: "Shapewear",
     value: 2800,
     percentage: "2%",
-    color: "#F7C844",
+    color: "#e8bfd5",
   },
 ];
 
@@ -61,9 +61,9 @@ export default function SalesByCategoryChart({
   const hasData = data.length > 0;
 
   return (
-    <div className="bg-white rounded-3xl border border-[#E9E4E0] shadow-sm p-6 h-[500px] flex flex-col">
+    <div className="bg-white rounded-3xl border border-[#e8bfd5] shadow-sm p-6 h-[500px] flex flex-col">
       {/* Header */}
-      <h2 className="text-base font-bold text-[#2B1B24] mb-4 shrink-0">
+      <h2 className="text-base font-bold text-[#2f1126] mb-4 shrink-0">
         Sales by Category ({formatTimePeriodLabel(timePeriod)})
       </h2>
 
@@ -95,11 +95,11 @@ export default function SalesByCategoryChart({
 
             {/* Center Label */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-sm font-semibold uppercase tracking-wider text-[#A1959C]">
+              <span className="text-sm font-semibold uppercase tracking-wider text-[#8a5f79]">
                 Total
               </span>
 
-              <span className="text-3xl font-extrabold text-[#2B1B24]">
+              <span className="text-3xl font-extrabold text-[#2f1126]">
                 {totalValue}
               </span>
             </div>
@@ -122,7 +122,7 @@ export default function SalesByCategoryChart({
                     />
 
                     <span
-                      className="truncate text-sm font-medium text-[#4A3C44]"
+                      className="truncate text-sm font-medium text-[#5c2a46]"
                       title={item.name}
                     >
                       {item.name}
@@ -130,11 +130,11 @@ export default function SalesByCategoryChart({
                   </div>
 
                   <div className="text-right shrink-0">
-                    <p className="font-bold text-[#2B1B24] text-base leading-none">
+                    <p className="font-bold text-[#2f1126] text-base leading-none">
                       {item.percentage}
                     </p>
 
-                    <p className="text-xs text-[#A1959C] mt-1">
+                    <p className="text-xs text-[#8a5f79] mt-1">
                       ₹{item.value.toLocaleString()}
                     </p>
                   </div>
@@ -144,7 +144,7 @@ export default function SalesByCategoryChart({
           </div>
         </div>
       ) : (
-        <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-[#E9E4E0] text-sm font-medium text-[#7A6B73]">
+        <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-[#e8bfd5] text-sm font-medium text-[#8a5f79]">
           No results found
         </div>
       )}

@@ -15,8 +15,15 @@ export default function SalesPieChart({
     (acc, item) => acc + item.value,
     0
   );
+  const percentages = total
+    ? data.map((item) => (item.value / total) * 100)
+    : data.map(() => 0);
 
-  let cumulative = 0;
+  const offsets = percentages.map((_, index) =>
+    -percentages
+      .slice(0, index)
+      .reduce((sum, value) => sum + value, 0)
+  );
 
   return (
     <div className="flex flex-col items-center">
@@ -28,22 +35,17 @@ export default function SalesPieChart({
           className="w-full h-full rotate-[-90deg]"
         >
           {data.map((item, index) => {
-            const value =
-              (item.value / total) * 100;
+            const value = percentages[index];
 
             const dashArray = `${value} ${
               100 - value
             }`;
-
-            const dashOffset =
-              -cumulative;
-
-            cumulative += value;
+            const dashOffset = offsets[index];
 
             const colors = [
-              '#3a001e',
-              '#b54d74',
-              '#e3a7b7',
+              '#840d5c',
+              '#a33c82',
+              '#d58cb5',
             ];
 
             return (

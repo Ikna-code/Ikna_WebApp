@@ -15,11 +15,11 @@ const CustomTooltip = ({ active, payload }) => {
 
   const point = payload[0].payload;
   return (
-    <div className="rounded-xl border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur-md">
-      <p className="mb-1 text-xs font-semibold text-slate-500">{point.label}</p>
+    <div className="rounded-xl border border-[#e8bfd5] bg-white/95 p-3 shadow-xl backdrop-blur-md">
+      <p className="mb-1 text-xs font-semibold text-[#8a5f79]">{point.label}</p>
       <div className="flex items-center gap-2">
         <span className="h-2.5 w-2.5 rounded-full bg-[#840d5c]" />
-        <p className="text-sm font-bold text-slate-900">₹{payload[0].value.toLocaleString('en-IN')}</p>
+        <p className="text-sm font-bold text-[#2f1126]">₹{payload[0].value.toLocaleString('en-IN')}</p>
       </div>
     </div>
   );
@@ -67,14 +67,14 @@ function SalesOverviewChart({ timePeriod = 'week', data, legendLabel }) {
   };
 
   return (
-    <div className="flex flex-col justify-between rounded-2xl border border-slate-100 bg-white shadow-sm  h-[500px]">
+    <div className="flex flex-col justify-between rounded-2xl border border-[#e8bfd5] bg-white shadow-sm  h-[500px]">
       <div className="mb-6 flex items-center justify-between p-6 pb-0">
         <div>
-          <h2 className="mt-0.5 text-lg font-bold text-slate-800">Sales Overview ({formatTimePeriodLabel(timePeriod)})</h2>
+          <h2 className="mt-0.5 text-lg font-bold text-[#2f1126]">Sales Overview ({formatTimePeriodLabel(timePeriod)})</h2>
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-1.5 text-xs font-medium">
+        <div className="flex items-center gap-2 rounded-lg border border-[#edd4e3] bg-[#f8eef4] px-3 py-1.5 text-xs font-medium">
           <span className="h-2 w-2 rounded-full bg-[#840d5c]" />
-          <span className="text-slate-600">{legendLabel}</span>
+          <span className="text-[#8a5f79]">{legendLabel}</span>
         </div>
       </div>
 
@@ -88,14 +88,14 @@ function SalesOverviewChart({ timePeriod = 'week', data, legendLabel }) {
                   <stop offset="95%" stopColor="#840d5c" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1deea" vertical={false} />
               <XAxis
                 dataKey="label"
-                stroke="#94a3b8"
+                stroke="#b48da3"
                 tickLine={false}
                 axisLine={false}
                 interval={xTickInterval}
-                tick={{ fontSize: xTickFontSize, fill: '#64748b' }}
+                tick={{ fontSize: xTickFontSize, fill: '#8a5f79' }}
                 angle={xTickAngle}
                 textAnchor={xTickAngle ? 'end' : 'middle'}
                 minTickGap={0}
@@ -103,15 +103,15 @@ function SalesOverviewChart({ timePeriod = 'week', data, legendLabel }) {
                 dy={8}
               />
               <YAxis
-                stroke="#94a3b8"
+                stroke="#b48da3"
                 tickLine={false}
                 axisLine={false}
                 tickCount={yTickCount}
                 tickFormatter={yTickFormatter}
-                tick={{ fontSize: 11, fill: '#64748b' }}
+                tick={{ fontSize: 11, fill: '#8a5f79' }}
                 width={56}
               />
-              <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1, strokeDasharray: '4 4' }} />
+              <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e8bfd5', strokeWidth: 1, strokeDasharray: '4 4' }} />
               <Area
                 type="monotone"
                 dataKey="current"
@@ -127,7 +127,7 @@ function SalesOverviewChart({ timePeriod = 'week', data, legendLabel }) {
           </ResponsiveContainer>
         </div>
       ) : (
-        <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 text-sm font-medium text-slate-400">
+        <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-[#e8bfd5] bg-[#f8eef4]/60 text-sm font-medium text-[#8a5f79]">
           No statistical data available for this range
         </div>
       )}

@@ -2,8 +2,9 @@
 
 import React, { useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Box, ClipboardList, Users, Megaphone, LogOut, ChevronDown, Menu, X, MessageSquareWarning } from 'lucide-react';
+import { BarChart3, Box, ClipboardList, Users, LogOut, ChevronDown, Menu, X, MessageSquareWarning } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 
 const navItems = [
@@ -26,12 +27,11 @@ function SidebarContent({ onNavigate, pathname }) {
     <>
       <div>
         <div className="mb-6 flex items-center gap-3 px-2 sm:mb-8">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FAF6F8] text-xl font-bold text-[#3D0A21] shadow-sm">
-            i
+          <div className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#f7e8f1] text-xl font-bold text-[#840d5c] shadow-sm">
+            <Image src="/images/AI_images/logo1_ikna.png" alt="Ikna Logo" fill className="object-cover" sizes="36px" />
           </div>
           <div>
-            <span className="block text-2xl font-bold tracking-tight text-white">ikna</span>
-            <span className="text-[10px] uppercase tracking-[0.24em] text-[#CBB2BE]">Admin Console</span>
+            <span className="text-[10px] uppercase tracking-[0.24em] text-[#e7cfe0]">Admin Console</span>
           </div>
         </div>
 
@@ -46,8 +46,8 @@ function SidebarContent({ onNavigate, pathname }) {
                 onClick={onNavigate}
                 className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-[#5C0632] text-white shadow-inner'
-                    : 'text-[#CBB2BE] hover:bg-[#5C0632]/30 hover:text-white'
+                    ? 'bg-[#840d5c] text-white shadow-inner'
+                    : 'text-[#e7cfe0] hover:bg-[#840d5c]/35 hover:text-white'
                 }`}
               >
                 <item.icon className={`h-5 w-5 ${isActive ? 'opacity-90' : 'opacity-70'}`} />
@@ -59,12 +59,12 @@ function SidebarContent({ onNavigate, pathname }) {
       </div>
 
       <div className="space-y-5">
-        <button className="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-[#CBB2BE] transition-colors hover:text-white">
+        <button className="flex w-full items-center gap-3 px-4 py-2 text-sm font-medium text-[#e7cfe0] transition-colors hover:text-white">
           <LogOut className="h-5 w-5 opacity-70" />
           <span>Log Out</span>
         </button>
 
-        <div className="relative overflow-hidden rounded-2xl border border-[#6B1F43] bg-[#521330] p-4">
+        <div className="relative overflow-hidden rounded-2xl border border-[#a33c82] bg-[#6d0b4b] p-4">
           <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-xl">
             👙
           </div>
@@ -73,15 +73,15 @@ function SidebarContent({ onNavigate, pathname }) {
           </p>
         </div>
 
-        <div className="flex items-center justify-between rounded-xl border border-white/5 bg-[#2B0516] p-2.5">
+        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[#5a073f] p-2.5">
           <div className="flex min-w-0 items-center gap-2.5">
             <div className="h-9 w-9 shrink-0 rounded-full border border-white/20 bg-cover bg-center" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80')` }} />
             <div className="min-w-0 text-left">
               <p className="mb-0.5 truncate text-xs font-bold leading-none text-white">Admin User</p>
-              <p className="truncate text-[10px] text-[#A68897]">admin@ikna.com</p>
+              <p className="truncate text-[10px] text-[#d8b8cc]">admin@ikna.com</p>
             </div>
           </div>
-          <ChevronDown className="h-4 w-4 shrink-0 text-[#A68897]" />
+          <ChevronDown className="h-4 w-4 shrink-0 text-[#d8b8cc]" />
         </div>
       </div>
     </>
@@ -96,17 +96,17 @@ export default function Sidebar() {
 
   return (
     <>
-      <div className="fixed inset-x-0 top-0 z-40 border-b border-[#E9E4E0] bg-[#F7F4F0]/95 px-4 py-3 backdrop-blur lg:hidden">
+      <div className="fixed inset-x-0 top-0 z-40 border-b border-[#e8bfd5] bg-[#f8eef4]/95 px-4 py-3 backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-400 items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.24em] text-[#7A6B73]">Admin Console</p>
-            <p className="text-lg font-bold text-[#2B1B24]">IKNA Dashboard</p>
+            <p className="text-[10px] uppercase tracking-[0.24em] text-[#8a5f79]">Admin Console</p>
+            <p className="text-lg font-bold text-[#2f1126]">IKNA Dashboard</p>
           </div>
           <button
             type="button"
             onClick={toggleMobileMenu}
             aria-label={mobileOpen ? 'Close admin menu' : 'Open admin menu'}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#E9E4E0] bg-white text-[#3D0A21] shadow-sm"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#e8bfd5] bg-white text-[#840d5c] shadow-sm"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -118,11 +118,11 @@ export default function Sidebar() {
           type="button"
           aria-label="Close admin navigation overlay"
           onClick={() => setMobileOpen(false)}
-          className="fixed inset-0 z-40 bg-[#2B0516]/45 lg:hidden"
+          className="fixed inset-0 z-40 bg-[#4f0838]/45 lg:hidden"
         />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 flex w-[88vw] max-w-72 flex-col justify-between bg-[#3D0A21] p-5 text-[#F3EBEF] shadow-2xl transition-transform duration-300 sm:max-w-80 sm:p-6 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-64 lg:max-w-none lg:translate-x-0 lg:shadow-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} `}>
+      <aside className={`fixed inset-y-0 left-0 z-50 flex w-[88vw] max-w-72 flex-col justify-between bg-[#4b0333] p-5 text-[#f7edf4] shadow-2xl transition-transform duration-300 sm:max-w-80 sm:p-6 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-64 lg:max-w-none lg:translate-x-0 lg:shadow-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} `}>
         <SidebarContent onNavigate={() => setMobileOpen(false)} pathname={pathname} />
       </aside>
     </>

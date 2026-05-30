@@ -134,7 +134,7 @@ export default function Orders() {
           }`}
         >
           <div className="flex items-center justify-center gap-2">
-            <span className="relative rounded-lg border p-1 bg-fuchsia-50 text-fuchsia-800 border-fuchsia-200">
+            <span className="relative rounded-lg border p-1 bg-[#f7e8f1] text-[#6d0b4b] border-[#e8bfd5]">
               <RotateCcw className="h-3.5 w-3.5" />
               <span className="absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#840d5c] px-1 text-[9px] font-bold leading-none text-white">
                 {orders.length}
@@ -165,7 +165,7 @@ export default function Orders() {
                 </span>
               </div>
               <div className="mt-1.5 hidden items-center justify-center md:mt-2 md:flex md:justify-between">
-                <p className="text-lg font-black text-[#2f1a26] md:text-2xl">{statusCounts[status]}</p>
+                <p className="text-lg font-black text-[#2f1126] md:text-2xl">{statusCounts[status]}</p>
                 <span className={`hidden rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider md:inline-flex ${getStatusBadgeClass(status)}`}>
                   {status}
                 </span>

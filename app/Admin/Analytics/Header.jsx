@@ -51,13 +51,13 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
     for (let i = 1; i <= daysInMonth; i++) days.push(i);
 
     return (
-      <div className="p-4 bg-white rounded-lg border border-[#E9E4E0]">
-        <div className="text-center mb-4 text-xs font-bold text-[#4A3C44]">
+      <div className="p-4 bg-white rounded-lg border border-[#e8bfd5]">
+        <div className="text-center mb-4 text-xs font-bold text-[#5c2a46]">
           {date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </div>
         <div className="grid grid-cols-7 gap-2 text-center text-[10px]">
           {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
-            <div key={d} className="font-bold text-[#A1959C] h-6 flex items-center justify-center">{d}</div>
+            <div key={d} className="font-bold text-[#a0708b] h-6 flex items-center justify-center">{d}</div>
           ))}
           {days.map((day, idx) => {
             if (day === null) return <div key={`empty-${idx}`} className="h-6" />;
@@ -89,10 +89,10 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
                 }}
                 className={`h-6 text-xs font-medium rounded transition ${
                   isStartDate || isEndDate
-                    ? 'bg-[#3D0A21] text-white'
+                    ? 'bg-[#840d5c] text-white'
                     : isInRange
-                    ? 'bg-[#F3B7CD]/40 text-[#2B1B24]'
-                    : 'text-[#4A3C44] hover:bg-[#FAF6F4]'
+                    ? 'bg-[#f3ddea] text-[#2f1126]'
+                    : 'text-[#5c2a46] hover:bg-[#f8eef4]'
                 }`}
               >
                 {day}
@@ -107,8 +107,8 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
   return (
     <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-[#2B1B24]">Sales Analytics</h1>
-        <p className="text-xs text-[#7A6B73] mt-0.5">Track your business performance and sales insights</p>
+        <h1 className="text-3xl font-bold tracking-tight text-[#2f1126]">Sales Analytics</h1>
+        <p className="text-xs text-[#8a5f79] mt-0.5">Track your business performance and sales insights</p>
       </div>
       
       {/* 1. Added relative class here so mobile context handles layout gracefully */}
@@ -125,12 +125,12 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
                 }
                 setCalendarOpen(!calendarOpen);
               }}
-              className="flex items-center gap-2 rounded-xl border border-[#E9E4E0] bg-white px-3 py-2 text-xs font-medium text-[#4A3C44] shadow-sm transition hover:bg-[#FAF6F4]"
+              className="flex items-center gap-2 rounded-xl border border-[#e8bfd5] bg-white px-3 py-2 text-xs font-medium text-[#5c2a46] shadow-sm transition hover:bg-[#f8eef4]"
             >
-              <Calendar className="w-4 h-4 text-[#7A6B73]" />
+              <Calendar className="w-4 h-4 text-[#8a5f79]" />
               <span className="hidden sm:inline">{formatDateDisplay()}</span>
               <span className="sm:hidden">Date</span>
-              <ChevronDown className={`w-4 h-4 text-[#A1959C] transition ${calendarOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-4 h-4 text-[#a0708b] transition ${calendarOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {calendarOpen && (
@@ -140,14 +140,14 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
                   onClick={() => setCalendarOpen(false)}
                 />
 
-                <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 sm:absolute sm:top-full sm:left-auto sm:right-0 sm:translate-x-0 sm:translate-y-0 mt-0 sm:mt-2 z-50 bg-white rounded-2xl shadow-xl border border-[#E9E4E0] p-6 w-[calc(100vw-2rem)] max-w-85 sm:w-96">
+                <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 sm:absolute sm:top-full sm:left-auto sm:right-0 sm:translate-x-0 sm:translate-y-0 mt-0 sm:mt-2 z-50 bg-white rounded-2xl shadow-xl border border-[#e8bfd5] p-6 w-[calc(100vw-2rem)] max-w-85 sm:w-96">
                   <div className="mb-4">
-                    <p className="text-xs text-[#7A6B73] mb-3">Select date range and choose which date to edit</p>
+                    <p className="text-xs text-[#8a5f79] mb-3">Select date range and choose which date to edit</p>
 
-                    <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-[#E9E4E0] bg-[#FAF6F4] px-2 py-1.5">
+                    <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-[#e8bfd5] bg-[#f8eef4] px-2 py-1.5">
                       <button
                         onClick={() => moveMonth(-1)}
-                        className="rounded-md p-1 text-[#7A6B73] hover:bg-white"
+                        className="rounded-md p-1 text-[#8a5f79] hover:bg-white"
                         aria-label="Previous month"
                       >
                         <ChevronLeft className="h-4 w-4" />
@@ -156,7 +156,7 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
                         <select
                           value={viewMonth.getMonth()}
                           onChange={handleMonthSelect}
-                          className="rounded-md border border-[#E9E4E0] bg-white px-2 py-1 text-[11px] font-medium text-[#4A3C44]"
+                          className="rounded-md border border-[#e8bfd5] bg-white px-2 py-1 text-[11px] font-medium text-[#5c2a46]"
                         >
                           {Array.from({ length: 12 }, (_, month) => (
                             <option key={month} value={month}>
@@ -167,7 +167,7 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
                         <select
                           value={viewMonth.getFullYear()}
                           onChange={handleYearSelect}
-                          className="rounded-md border border-[#E9E4E0] bg-white px-2 py-1 text-[11px] font-medium text-[#4A3C44]"
+                          className="rounded-md border border-[#e8bfd5] bg-white px-2 py-1 text-[11px] font-medium text-[#5c2a46]"
                         >
                           {yearOptions.map((year) => (
                             <option key={year} value={year}>{year}</option>
@@ -176,7 +176,7 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
                       </div>
                       <button
                         onClick={() => moveMonth(1)}
-                        className="rounded-md p-1 text-[#7A6B73] hover:bg-white"
+                        className="rounded-md p-1 text-[#8a5f79] hover:bg-white"
                         aria-label="Next month"
                       >
                         <ChevronRight className="h-4 w-4" />
@@ -184,16 +184,16 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
                     </div>
                     {renderCalendarMonth(viewMonth)}
                   </div>
-                  <div className="flex gap-2 justify-end border-t border-[#E9E4E0] pt-4">
+                  <div className="flex gap-2 justify-end border-t border-[#e8bfd5] pt-4">
                     <button
                       onClick={() => setCalendarOpen(false)}
-                      className="px-3 py-1.5 text-xs font-medium text-[#7A6B73] hover:bg-[#FAF6F4] rounded-lg transition"
+                      className="px-3 py-1.5 text-xs font-medium text-[#8a5f79] hover:bg-[#f8eef4] rounded-lg transition"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleApplyDates}
-                      className="px-3 py-1.5 text-xs font-medium bg-[#3D0A21] text-white rounded-lg hover:bg-[#521330] transition"
+                      className="px-3 py-1.5 text-xs font-medium bg-[#840d5c] text-white rounded-lg hover:bg-[#6d0b4b] transition"
                     >
                       Apply
                     </button>
@@ -205,14 +205,14 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
         )}
         <button
           onClick={() => setPreviewOpen(true)}
-          className="flex items-center gap-2 rounded-xl border border-[#E9E4E0] bg-white px-3 py-2 text-xs font-medium text-[#3D0A21] shadow-sm transition-colors hover:bg-[#FAF6F4]"
+          className="flex items-center gap-2 rounded-xl border border-[#e8bfd5] bg-white px-3 py-2 text-xs font-medium text-[#840d5c] shadow-sm transition-colors hover:bg-[#f8eef4]"
         >
           <Eye className="w-4 h-4" />
           <span className="hidden sm:inline">Preview</span>
         </button>
         <button
           onClick={onExport}
-          className="flex items-center gap-2 rounded-xl bg-[#3D0A21] px-3 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#521330]"
+          className="flex items-center gap-2 rounded-xl bg-[#840d5c] px-3 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#6d0b4b]"
         >
           <Download className="w-4 h-4" />
           <span className="hidden sm:inline">Export Report</span>
@@ -220,16 +220,16 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
       </div>
 
       {previewOpen && reportPreview && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#2B0516]/45 p-3 sm:items-center sm:p-4">
-          <div className="my-3 flex max-h-[calc(100vh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-[#E9E4E0] bg-white p-4 shadow-2xl sm:my-0 sm:max-h-[calc(100vh-2rem)] sm:p-6">
-            <div className="flex items-start justify-between gap-4 border-b border-[#E9E4E0] pb-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#4f0838]/45 p-3 sm:items-center sm:p-4">
+          <div className="my-3 flex max-h-[calc(100vh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-[#e8bfd5] bg-white p-4 shadow-2xl sm:my-0 sm:max-h-[calc(100vh-2rem)] sm:p-6">
+            <div className="flex items-start justify-between gap-4 border-b border-[#e8bfd5] pb-4">
               <div>
-                <h2 className="text-xl font-bold text-[#2B1B24]">Sales Report Preview</h2>
-                <p className="mt-1 text-xs text-[#7A6B73]">{reportPreview.period}</p>
+                <h2 className="text-xl font-bold text-[#2f1126]">Sales Report Preview</h2>
+                <p className="mt-1 text-xs text-[#8a5f79]">{reportPreview.period}</p>
               </div>
               <button
                 onClick={() => setPreviewOpen(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#E9E4E0] text-[#7A6B73] hover:bg-[#FAF6F4]"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#e8bfd5] text-[#8a5f79] hover:bg-[#f8eef4]"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -238,24 +238,24 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
             <div className="mt-5 overflow-y-auto pr-1">
               <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
                 {reportPreview.metrics.map((metric) => (
-                  <div key={metric.title} className="w-40 shrink-0 rounded-xl border border-[#E9E4E0] bg-[#FAF6F4] p-3 sm:w-auto sm:rounded-2xl sm:p-4">
-                    <p className="truncate text-[9px] font-bold uppercase tracking-[0.16em] text-[#7A6B73] sm:text-[10px] sm:tracking-[0.24em]">{metric.title}</p>
-                    <p className="mt-1 truncate text-base font-bold text-[#2B1B24] sm:mt-2 sm:text-xl">{metric.value}</p>
-                    <p className="mt-1 text-[9px] font-semibold text-emerald-600 sm:text-[10px]">{metric.percentage}</p>
+                  <div key={metric.title} className="w-40 shrink-0 rounded-xl border border-[#e8bfd5] bg-[#f8eef4] p-3 sm:w-auto sm:rounded-2xl sm:p-4">
+                    <p className="truncate text-[9px] font-bold uppercase tracking-[0.16em] text-[#8a5f79] sm:text-[10px] sm:tracking-[0.24em]">{metric.title}</p>
+                    <p className="mt-1 truncate text-base font-bold text-[#2f1126] sm:mt-2 sm:text-xl">{metric.value}</p>
+                    <p className="mt-1 text-[9px] font-semibold text-[#840d5c] sm:text-[10px]">{metric.percentage}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-5 rounded-2xl border border-[#E9E4E0] p-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#7A6B73]">Category Breakdown</p>
+              <div className="mt-5 rounded-2xl border border-[#e8bfd5] p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#8a5f79]">Category Breakdown</p>
                 <div className="mt-3 space-y-2">
                   {reportPreview.channels.map((channel) => (
                     <div key={channel.name} className="flex items-center justify-between gap-3 text-sm">
                       <div className="flex min-w-0 items-center gap-2">
                         <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: channel.color }} />
-                        <span className="truncate text-[#2B1B24]">{channel.name}</span>
+                        <span className="truncate text-[#2f1126]">{channel.name}</span>
                       </div>
-                      <span className="shrink-0 font-semibold text-[#4A3C44]">₹{channel.value.toLocaleString()} ({channel.percentage})</span>
+                      <span className="shrink-0 font-semibold text-[#5c2a46]">₹{channel.value.toLocaleString()} ({channel.percentage})</span>
                     </div>
                   ))}
                 </div>

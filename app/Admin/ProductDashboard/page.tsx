@@ -1053,19 +1053,19 @@ export default function ProductManagementDashboard() {
           <span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">
             Global Admin
           </span>
-          <h1 className="text-2xl font-black text-[#5b153b]">Product Management</h1>
+          <h1 className="text-2xl font-black text-[#840d5c]">Product Management</h1>
         </div>
         <div className="flex w-full flex-nowrap items-center gap-3 overflow-x-auto pb-1 text-xs xl:w-auto xl:justify-end">
           <div className="flex shrink-0 items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 shadow-sm">
             <span className="text-neutral-400">Total Skus:</span>
-            <span className="rounded-full bg-[#3d0d26]/10 px-2.5 py-0.5 text-[10px] font-extrabold text-[#3d0d26]">
+            <span className="rounded-full bg-[#840d5c]/10 px-2.5 py-0.5 text-[10px] font-extrabold text-[#840d5c]">
               {totalSkus}
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-2.5 shadow-sm">
             <span className="text-neutral-400">Low Stock Alerts:</span>
-            <span className="font-extrabold text-amber-600">{lowStockCount} Low Stocks</span>
-            <span className="text-amber-500 text-xs">⚠️</span>
+            <span className="font-extrabold text-[#840d5c]">{lowStockCount} Low Stocks</span>
+            <span className="text-[#a33c82] text-xs">⚠️</span>
           </div>
         </div>
       </div>
@@ -1086,7 +1086,7 @@ export default function ProductManagementDashboard() {
             <select
               value={activeCategory}
               onChange={(e) => setActiveCategory(e.target.value)}
-              className="w-full text-xs font-semibold bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2.5 outline-none focus:border-[#5b153b]"
+              className="w-full text-xs font-semibold bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2.5 outline-none focus:border-[#840d5c]"
             >
               {categories.map((c) => (
                 <option key={c}>{c}</option>
@@ -1101,7 +1101,7 @@ export default function ProductManagementDashboard() {
             <select
               value={activeStyle}
               onChange={(e) => setActiveStyle(e.target.value)}
-              className="w-full text-xs font-semibold bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2.5 outline-none focus:border-[#5b153b]"
+              className="w-full text-xs font-semibold bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2.5 outline-none focus:border-[#840d5c]"
             >
               {styles.map((s) => (
                 <option key={s}>{s}</option>
@@ -1121,7 +1121,7 @@ export default function ProductManagementDashboard() {
                 max={maxPriceLimit}
                 value={maxPriceFilter}
                 onChange={(e) => setMaxPriceFilter(Number(e.target.value))}
-                className="w-full h-1 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-[#5b153b]"
+                className="w-full h-1 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-[#840d5c]"
               />
               <span className="text-[9px] font-bold text-neutral-400">₹{maxPriceFilter}</span>
             </div>
@@ -1134,7 +1134,7 @@ export default function ProductManagementDashboard() {
             <select
               value={stockLevel}
               onChange={(e) => setStockLevel(e.target.value)}
-              className="w-full text-xs font-semibold bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2.5 outline-none focus:border-[#5b153b]"
+              className="w-full text-xs font-semibold bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2.5 outline-none focus:border-[#840d5c]"
             >
               {['All', 'In Stock', 'Low Stock', 'Out of Stock'].map((s) => (
                 <option key={s}>{s}</option>
@@ -1190,7 +1190,7 @@ export default function ProductManagementDashboard() {
               </button>
               <button
                 onClick={() => setIsAddModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#3d0d26] px-3 py-2 text-xs font-semibold text-white hover:bg-[#5b153b] lg:hidden"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#840d5c] px-3 py-2 text-xs font-semibold text-white hover:bg-[#840d5c] lg:hidden"
               >
                 <Plus className="h-3.5 w-3.5" /> Add Product
               </button>
@@ -1204,13 +1204,13 @@ export default function ProductManagementDashboard() {
               </button>
               <button
                 onClick={() => setIsAddModalOpen(true)}
-                className="hidden items-center gap-2 rounded-xl bg-[#3d0d26] px-3 py-2 text-xs font-semibold text-white hover:bg-[#5b153b] lg:inline-flex"
+                className="hidden items-center gap-2 rounded-xl bg-[#840d5c] px-3 py-2 text-xs font-semibold text-white hover:bg-[#840d5c] lg:inline-flex"
               >
                 <Plus className="h-3.5 w-3.5" /> Add Product
               </button>
               <button
                 onClick={handleArchiveSelected}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700 lg:w-auto lg:border lg:border-rose-200 lg:bg-transparent lg:text-rose-600 lg:hover:bg-rose-50"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#840d5c] px-3 py-2 text-xs font-semibold text-white hover:bg-[#6d0b4b] lg:w-auto lg:border lg:border-[#e8bfd5] lg:bg-transparent lg:text-[#840d5c] lg:hover:bg-[#f7e8f1]"
               >
                 <Trash2 className="h-3.5 w-3.5" /> Delete Selected
               </button>
@@ -1224,7 +1224,7 @@ export default function ProductManagementDashboard() {
                 <div className="flex items-start gap-3">
                   <input
                     type="checkbox"
-                    className="mt-1 rounded border-neutral-300 text-[#5b153b]"
+                    className="mt-1 rounded border-neutral-300 text-[#840d5c]"
                     checked={selectedProducts.includes(p.id)}
                     onChange={() => handleSelectRow(p.id)}
                   />
@@ -1276,7 +1276,7 @@ export default function ProductManagementDashboard() {
                   <th className="w-12 py-4 px-4">
                     <input
                       type="checkbox"
-                      className="rounded border-neutral-300 text-[#5b153b]"
+                      className="rounded border-neutral-300 text-[#840d5c]"
                       onChange={handleSelectAll}
                       checked={paginatedProducts.length > 0 && selectedProducts.length === paginatedProducts.length}
                     />
@@ -1303,7 +1303,7 @@ export default function ProductManagementDashboard() {
                     <td className="py-4 px-4 align-middle">
                       <input
                         type="checkbox"
-                        className="rounded border-neutral-300 text-[#5b153b]"
+                        className="rounded border-neutral-300 text-[#840d5c]"
                         checked={selectedProducts.includes(p.id)}
                         onChange={() => handleSelectRow(p.id)}
                       />
@@ -1355,7 +1355,7 @@ export default function ProductManagementDashboard() {
                           onClick={() => handleDeleteProduct(p.id)}
                           title="Delete product"
                           aria-label="Delete product"
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#e8bfd5] text-[#840d5c] hover:bg-[#f7e8f1]"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -1394,7 +1394,7 @@ export default function ProductManagementDashboard() {
                 >
                   Previous
                 </button>
-                <span className="min-w-22 text-center font-bold text-[#5b153b]">
+                <span className="min-w-22 text-center font-bold text-[#840d5c]">
                   Page {currentPageSafe} / {totalPages}
                 </span>
                 <button
@@ -1422,7 +1422,7 @@ export default function ProductManagementDashboard() {
             <div className="fixed inset-x-0 bottom-0 z-50 max-h-[82vh] rounded-t-3xl border border-neutral-200 bg-white p-4 shadow-2xl lg:hidden">
               <div className="mx-auto mb-4 h-1.5 w-16 rounded-full bg-neutral-200" />
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-sm font-black uppercase tracking-wider text-[#5b153b]">Filters</h3>
+                <h3 className="text-sm font-black uppercase tracking-wider text-[#840d5c]">Filters</h3>
                 <button
                   type="button"
                   onClick={() => setIsFilterSheetOpen(false)}
@@ -1437,7 +1437,7 @@ export default function ProductManagementDashboard() {
                   <select
                     value={activeCategory}
                     onChange={(e) => setActiveCategory(e.target.value)}
-                    className="w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-[#5b153b]"
+                    className="w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-[#840d5c]"
                   >
                     {categories.map((c) => (
                       <option key={c}>{c}</option>
@@ -1450,7 +1450,7 @@ export default function ProductManagementDashboard() {
                   <select
                     value={activeStyle}
                     onChange={(e) => setActiveStyle(e.target.value)}
-                    className="w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-[#5b153b]"
+                    className="w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-[#840d5c]"
                   >
                     {styles.map((s) => (
                       <option key={s}>{s}</option>
@@ -1468,7 +1468,7 @@ export default function ProductManagementDashboard() {
                       max={maxPriceLimit}
                       value={maxPriceFilter}
                       onChange={(e) => setMaxPriceFilter(Number(e.target.value))}
-                      className="h-1 w-full cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-[#5b153b]"
+                      className="h-1 w-full cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-[#840d5c]"
                     />
                     <span className="text-[9px] font-bold text-neutral-400">₹{maxPriceFilter}</span>
                   </div>
@@ -1479,7 +1479,7 @@ export default function ProductManagementDashboard() {
                   <select
                     value={stockLevel}
                     onChange={(e) => setStockLevel(e.target.value)}
-                    className="w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-[#5b153b]"
+                    className="w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-[#840d5c]"
                   >
                     {['All', 'In Stock', 'Low Stock', 'Out of Stock'].map((s) => (
                       <option key={s}>{s}</option>
@@ -1513,7 +1513,7 @@ export default function ProductManagementDashboard() {
                 <button
                   type="button"
                   onClick={() => setIsFilterSheetOpen(false)}
-                  className="flex-1 rounded-xl bg-[#3d0d26] px-3 py-2 text-xs font-semibold text-white"
+                  className="flex-1 rounded-xl bg-[#840d5c] px-3 py-2 text-xs font-semibold text-white"
                 >
                   Apply
                 </button>
@@ -1535,7 +1535,7 @@ export default function ProductManagementDashboard() {
               <div className="my-8 w-full max-w-md rounded-3xl border border-neutral-200 bg-white p-6 shadow-2xl">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h3 className="text-base font-black text-[#5b153b]">Confirm Delete</h3>
+                    <h3 className="text-base font-black text-[#840d5c]">Confirm Delete</h3>
                     <p className="mt-2 text-sm text-neutral-600">
                       {deleteModal.mode === 'bulk'
                         ? `Delete ${deleteModal.count} selected product${deleteModal.count === 1 ? '' : 's'}?`
@@ -1568,7 +1568,7 @@ export default function ProductManagementDashboard() {
                     type="button"
                     onClick={confirmDelete}
                     disabled={isDeleting}
-                    className="flex-1 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex-1 rounded-xl bg-[#840d5c] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#6d0b4b] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isDeleting ? 'Deleting...' : 'Delete'}
                   </button>
@@ -1593,7 +1593,7 @@ export default function ProductManagementDashboard() {
                 className="my-8 w-full max-w-2xl rounded-3xl border border-neutral-200 bg-white p-6 shadow-2xl sm:p-7"
               >
                 <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-base font-black text-[#5b153b]">Import Products (Excel)</h3>
+                  <h3 className="text-base font-black text-[#840d5c]">Import Products (Excel)</h3>
                   <button
                     type="button"
                     onClick={closeImportModal}
@@ -1614,7 +1614,7 @@ export default function ProductManagementDashboard() {
                       type="button"
                       onClick={handleDownloadImportTemplate}
                       disabled={hasDownloadedImportTemplate}
-                      className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#3d0d26] px-3 py-2 text-xs font-semibold text-white hover:bg-[#5b153b] disabled:cursor-not-allowed disabled:opacity-60"
+                      className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#840d5c] px-3 py-2 text-xs font-semibold text-white hover:bg-[#840d5c] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Download className="h-3.5 w-3.5" />
                       {hasDownloadedImportTemplate ? 'Template Downloaded' : 'Download XLS Template'}
@@ -1682,7 +1682,7 @@ export default function ProductManagementDashboard() {
                         <button
                           type="button"
                           onClick={handleClearImportImages}
-                          className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                          className="inline-flex items-center gap-1 rounded-xl border border-[#e8bfd5] bg-[#f7e8f1] px-3 py-2 text-xs font-semibold text-[#6d0b4b] hover:bg-[#edd4e3]"
                         >
                           <Trash2 className="h-3.5 w-3.5" /> Clear
                         </button>
@@ -1695,7 +1695,7 @@ export default function ProductManagementDashboard() {
                       onDrop={handleFolderDrop}
                       className={`mt-2 rounded-xl border border-dashed p-3 text-xs ${
                         isFolderDragActive
-                          ? 'border-[#5b153b] bg-[#5b153b]/5 text-[#5b153b]'
+                          ? 'border-[#840d5c] bg-[#840d5c]/5 text-[#840d5c]'
                           : 'border-neutral-300 bg-neutral-50 text-neutral-600'
                       }`}
                     >
@@ -1752,7 +1752,7 @@ export default function ProductManagementDashboard() {
                         Imported: {importResult.createdCount} | Failed: {importResult.failedCount}
                       </p>
                       {!!importResult.errors?.length && (
-                        <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] text-rose-600">
+                        <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] text-[#840d5c]">
                           {importResult.errors.slice(0, 8).map((error) => (
                             <li key={error}>{error}</li>
                           ))}
@@ -1764,7 +1764,7 @@ export default function ProductManagementDashboard() {
                   <button
                     type="submit"
                     disabled={isImporting || !hasDownloadedImportTemplate || !importExcelFile}
-                    className="w-full rounded-xl bg-[#3d0d26] py-3 text-xs font-extrabold text-white hover:bg-[#5b153b] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="w-full rounded-xl bg-[#840d5c] py-3 text-xs font-extrabold text-white hover:bg-[#840d5c] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isImporting ? 'Importing...' : 'Import Product Data'}
                   </button>
@@ -1786,7 +1786,7 @@ export default function ProductManagementDashboard() {
             <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4">
               <form onSubmit={handleAddProductDetail} className="my-8 max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-3xl border border-neutral-200 bg-white p-6 shadow-2xl sm:p-7">
                 <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-base font-black text-[#5b153b]">New Product Wizard</h3>
+                  <h3 className="text-base font-black text-[#840d5c]">New Product Wizard</h3>
                   <button
                     type="button"
                     onClick={closeAddModal}
@@ -1804,7 +1804,7 @@ export default function ProductManagementDashboard() {
                       placeholder="Enter short title..."
                       value={newProductDetail.name}
                       onChange={(e) => setNewProductDetail({ ...newProductDetail, name: e.target.value })}
-                      className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs outline-none focus:border-[#5b153b]"
+                      className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs outline-none focus:border-[#840d5c]"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -1926,7 +1926,7 @@ export default function ProductManagementDashboard() {
                       <button
                         type="button"
                         onClick={handleClearAddProductImages}
-                        className="mt-2 inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                        className="mt-2 inline-flex items-center gap-1 rounded-xl border border-[#e8bfd5] bg-[#f7e8f1] px-3 py-2 text-xs font-semibold text-[#6d0b4b] hover:bg-[#edd4e3]"
                       >
                         <Trash2 className="h-3.5 w-3.5" /> Clear
                       </button>
@@ -1943,7 +1943,7 @@ export default function ProductManagementDashboard() {
                       onDrop={handleAddFolderDrop}
                       className={`mt-2 rounded-xl border border-dashed p-3 text-xs ${
                         isAddFolderDragActive
-                          ? 'border-[#5b153b] bg-[#5b153b]/5 text-[#5b153b]'
+                          ? 'border-[#840d5c] bg-[#840d5c]/5 text-[#840d5c]'
                           : 'border-neutral-300 bg-neutral-50 text-neutral-600'
                       }`}
                     >
@@ -1986,7 +1986,7 @@ export default function ProductManagementDashboard() {
                   <button
                     type="submit"
                     disabled={isUploadingImages}
-                    className="mt-4 w-full rounded-xl bg-[#3d0d26] py-3 text-xs font-extrabold text-white hover:bg-[#5b153b] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="mt-4 w-full rounded-xl bg-[#840d5c] py-3 text-xs font-extrabold text-white hover:bg-[#840d5c] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isUploadingImages ? 'Uploading Images + Creating SKU...' : 'Create and Launch SKU'}
                   </button>
@@ -2008,7 +2008,7 @@ export default function ProductManagementDashboard() {
             <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4">
               <form onSubmit={handleUpdateProductDetail} className="my-8 max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-3xl border border-neutral-200 bg-white p-6 shadow-2xl sm:p-7">
                 <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-base font-black text-[#5b153b]">Edit Product</h3>
+                  <h3 className="text-base font-black text-[#840d5c]">Edit Product</h3>
                   <button
                     type="button"
                     onClick={closeEditModal}
@@ -2168,7 +2168,7 @@ export default function ProductManagementDashboard() {
                       <button
                         type="button"
                         onClick={handleClearEditProductImages}
-                        className="mt-2 inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                        className="mt-2 inline-flex items-center gap-1 rounded-xl border border-[#e8bfd5] bg-[#f7e8f1] px-3 py-2 text-xs font-semibold text-[#6d0b4b] hover:bg-[#edd4e3]"
                       >
                         <Trash2 className="h-3.5 w-3.5" /> Clear
                       </button>
@@ -2185,7 +2185,7 @@ export default function ProductManagementDashboard() {
                       onDrop={handleEditFolderDrop}
                       className={`mt-2 rounded-xl border border-dashed p-3 text-xs ${
                         isEditFolderDragActive
-                          ? 'border-[#5b153b] bg-[#5b153b]/5 text-[#5b153b]'
+                          ? 'border-[#840d5c] bg-[#840d5c]/5 text-[#840d5c]'
                           : 'border-neutral-300 bg-neutral-50 text-neutral-600'
                       }`}
                     >
@@ -2228,7 +2228,7 @@ export default function ProductManagementDashboard() {
 
                   <button
                     type="submit"
-                    className="mt-4 w-full rounded-xl bg-[#3d0d26] py-3 text-xs font-extrabold text-white hover:bg-[#5b153b]"
+                    className="mt-4 w-full rounded-xl bg-[#840d5c] py-3 text-xs font-extrabold text-white hover:bg-[#840d5c]"
                   >
                     Save Product Changes
                   </button>
