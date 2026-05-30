@@ -21,6 +21,7 @@ export async function GET(request: Request) {
     where: { userId: user.id },
     orderBy: { createdAt: 'desc' },
     include: {
+      address: true,
       orderItems: {
         include: {
           product: true,
@@ -28,6 +29,26 @@ export async function GET(request: Request) {
       }
     }
   });
-  
-  return NextResponse.json(orders);
+
+  const normalizedOrders = orders.map((order) => {
+    const relationAddress = order.address
+      ? [
+          order.address.name,
+          order.address.street,
+          order.address.city,
+          order.address.state,
+          order.address.zip,
+          order.address.country,
+        ]
+          .filter(Boolean)
+          .join(', ')
+      : null;
+
+    return {
+      ...order,
+      address: order.shippingAddress || relationAddress || null,
+    };
+  });
+
+  return NextResponse.json(normalizedOrders);
 }

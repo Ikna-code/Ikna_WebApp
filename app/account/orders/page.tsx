@@ -50,6 +50,23 @@ const OrdersPage = () => {
                 { status: 'Order Delivered', completed: order.status === 'DELIVERED', active: order.status === 'DELIVERED', date: order.deliveredAt ? new Date(order.deliveredAt).toLocaleString() : 'Expected Soon' },
               ];
 
+              const resolvedAddress =
+                (typeof order.address === 'string' && order.address.trim()) ||
+                (typeof order.shippingAddress === 'string' && order.shippingAddress.trim()) ||
+                (order.address && typeof order.address === 'object'
+                  ? [
+                      order.address.name,
+                      order.address.street,
+                      order.address.city,
+                      order.address.state,
+                      order.address.zip,
+                      order.address.country,
+                    ]
+                      .filter(Boolean)
+                      .join(', ')
+                  : '') ||
+                'Address not available';
+
               return (
                 <div key={order.id} className={`bg-white rounded-2xl sm:rounded-[2rem] shadow-sm border transition-all duration-300 overflow-hidden ${isOpen ? 'border-[#840d5c]/30 ring-1 ring-[#840d5c]/10' : 'border-[#840d5c]/5'}`}>
                   
@@ -144,7 +161,7 @@ const OrdersPage = () => {
                               <MapPin size={15} />
                               <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Shipping Address</span>
                             </div>
-                            <p className="text-xs text-[#321327]/70 leading-relaxed break-words">{order.address}</p>
+                            <p className="text-xs text-[#321327]/70 leading-relaxed break-words">{resolvedAddress}</p>
                           </div>
                           
                           <div className="flex justify-between items-end border-t border-[#840d5c]/10 pt-4 px-1">

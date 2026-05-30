@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Search, ChevronDown, Check, Clock3, Package, Truck, CheckCircle2, RotateCcw, LucideIcon } from 'lucide-react';
+import { useStore } from '@/store/useStore';
 
 interface Order {
   id: string;
@@ -9,16 +10,30 @@ interface Order {
   customer: string;
   items: string;
   total: number;
-  status: 'Processing' | 'In Transit' | 'Packed' | 'Delivered';
+  status: 'Processing' | 'In Transit' | 'Packed' | 'Delivered' | 'Cancelled';
 }
 
-const ORDER_STATUSES: Order['status'][] = ['Processing', 'Packed', 'In Transit', 'Delivered'];
+type BackendOrder = {
+  id: string;
+  status?: string;
+  totalAmount?: number | string;
+  createdAt?: string;
+  user?: {
+    email?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+  };
+  orderItems?: Array<{ id: string }>;
+};
+
+const ORDER_STATUSES: Array<Exclude<Order['status'], 'Cancelled'>> = ['Processing', 'Packed', 'In Transit', 'Delivered'];
 
 const statusBadgeClassMap: Record<Order['status'], string> = {
   Processing: 'bg-amber-100 text-amber-800 border-amber-200',
   Packed: 'bg-violet-100 text-violet-800 border-violet-200',
   'In Transit': 'bg-sky-100 text-sky-800 border-sky-200',
   Delivered: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  Cancelled: 'bg-neutral-100 text-neutral-700 border-neutral-200',
 };
 
 function getStatusBadgeClass(status: Order['status']) {
@@ -30,48 +45,69 @@ const statusIconMap: Record<Order['status'], LucideIcon> = {
   Packed: Package,
   'In Transit': Truck,
   Delivered: CheckCircle2,
+  Cancelled: RotateCcw,
 };
 
-const initialOrders: Order[] = [
-  {
-    id: 'IKNA-1042',
-    date: '29 May 2026',
-    customer: 'Aarthi Nair',
-    items: '3 Items',
-    total: 4290,
-    status: 'Processing',
-  },
-  {
-    id: 'IKNA-1038',
-    date: '28 May 2026',
-    customer: 'Ritika Shah',
-    items: '1 Item',
-    total: 1640,
-    status: 'Packed',
-  },
-  {
-    id: 'IKNA-1033',
-    date: '27 May 2026',
-    customer: 'Megha Verma',
-    items: '2 Items',
-    total: 2980,
-    status: 'In Transit',
-  },
-  {
-    id: 'IKNA-1027',
-    date: '26 May 2026',
-    customer: 'Nisha Rao',
-    items: '4 Items',
-    total: 5120,
-    status: 'Delivered',
-  },
-];
+const backendToUiStatusMap: Record<string, Order['status']> = {
+  PENDING: 'Processing',
+  PAID: 'Packed',
+  SHIPPED: 'In Transit',
+  DELIVERED: 'Delivered',
+  CANCELLED: 'Cancelled',
+};
+
+const uiToBackendStatusMap: Record<Exclude<Order['status'], 'Cancelled'>, string> = {
+  Processing: 'PENDING',
+  Packed: 'PAID',
+  'In Transit': 'SHIPPED',
+  Delivered: 'DELIVERED',
+};
+
+function formatCustomerName(order: BackendOrder) {
+  const first = order.user?.firstName?.trim();
+  const last = order.user?.lastName?.trim();
+  const fullName = [first, last].filter(Boolean).join(' ').trim();
+  if (fullName) return fullName;
+  return order.user?.email || 'Unknown customer';
+}
+
+function mapOrderToUi(order: BackendOrder): Order {
+  const backendStatus = String(order.status || 'PENDING').toUpperCase();
+  const uiStatus = backendToUiStatusMap[backendStatus] || 'Processing';
+  const total = Number(order.totalAmount ?? 0);
+  const count = order.orderItems?.length ?? 0;
+
+  return {
+    id: order.id,
+    date: order.createdAt
+      ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+      : 'Date unavailable',
+    customer: formatCustomerName(order),
+    items: `${count} Item${count === 1 ? '' : 's'}`,
+    total: Number.isFinite(total) ? total : 0,
+    status: uiStatus,
+  };
+}
 
 export default function Orders() {
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const storeOrders = useStore((s) => s.orders) as BackendOrder[];
+  const isOrdersInitialized = useStore((s) => s.isOrdersInitialized);
+  const fetchAdminOrders = useStore((s) => s.fetchAdminOrders);
+  const updateOrderStatus = useStore((s) => s.updateOrderStatus);
+
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatusOrder, setSelectedStatusOrder] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'All' | Order['status']>('All');
+
+  useEffect(() => {
+    const hasAdminShape = (storeOrders || []).some((order) => !!order?.user);
+    if (!isOrdersInitialized || !hasAdminShape) {
+      void fetchAdminOrders(true);
+    }
+  }, [fetchAdminOrders, isOrdersInitialized, storeOrders]);
+
+  const orders = useMemo(() => (storeOrders || []).map(mapOrderToUi), [storeOrders]);
 
   const statusCounts = ORDER_STATUSES.reduce(
     (acc, status) => {
@@ -86,12 +122,18 @@ export default function Orders() {
     } as Record<Order['status'], number>
   );
 
-  const handleUpdateStatus = (orderId: string, newStatus: Order['status']) => {
-    setOrders((currentOrders) =>
-      currentOrders.map((order) =>
-        order.id === orderId ? { ...order, status: newStatus } : order
-      )
-    );
+  const handleUpdateStatus = async (orderId: string, newStatus: Exclude<Order['status'], 'Cancelled'>) => {
+    const backendStatus = uiToBackendStatusMap[newStatus];
+    if (!backendStatus) return;
+
+    try {
+      setIsUpdating(orderId);
+      await updateOrderStatus(orderId, backendStatus);
+    } catch (error) {
+      console.error('Failed to update order status:', error);
+    } finally {
+      setIsUpdating(null);
+    }
     setSelectedStatusOrder(null);
   };
 
@@ -238,7 +280,8 @@ export default function Orders() {
                   {ORDER_STATUSES.map((status) => (
                     <button
                       key={status}
-                      onClick={() => handleUpdateStatus(o.id, status as Order['status'])}
+                      onClick={() => handleUpdateStatus(o.id, status)}
+                      disabled={isUpdating === o.id}
                       className="flex w-full items-center justify-between px-4 py-2 text-left text-xs font-medium transition hover:bg-neutral-50"
                     >
                       {status}
@@ -295,7 +338,8 @@ export default function Orders() {
                       {ORDER_STATUSES.map((status) => (
                         <button
                           key={status}
-                          onClick={() => handleUpdateStatus(o.id, status as Order['status'])}
+                          onClick={() => handleUpdateStatus(o.id, status)}
+                          disabled={isUpdating === o.id}
                           className="w-full text-left px-4 py-2 hover:bg-neutral-50 text-xs transition flex items-center justify-between font-medium"
                         >
                           {status}

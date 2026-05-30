@@ -18,11 +18,13 @@ export interface CartSlice {
   error: string | null;
   fetchCart: (userId: string, force?: boolean) => Promise<void>;
   fetchOrders: () => Promise<void>;
+  fetchAdminOrders: (force?: boolean) => Promise<void>;
   addItemToCart: (userId: string, productId: string, selectedSize: string, quantity?: number, category?: string) => Promise<void>;
   updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
   removeItem: (cartItemId: string) => Promise<void>;
   checkout: (userId: string, couponCode?: string | null) => Promise<any>;
   finalizePayment: (orderId: string, txId: string, provider: string) => Promise<any>;
+  updateOrderStatus: (orderId: string, status: string) => Promise<any>;
 }
 
 export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
@@ -43,6 +45,18 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
       set({ orders: data, isOrdersInitialized: true });
     } catch (error) {
       console.error('Error fetching orders:', error);
+    }
+  },
+
+  fetchAdminOrders: async (force = false) => {
+    if (!force && get().isOrdersInitialized && get().orders.length > 0) return;
+    try {
+      const response = await fetch('/api/admin/orders');
+      if (!response.ok) throw new Error('Failed to fetch admin orders');
+      const data = await response.json();
+      set({ orders: data, isOrdersInitialized: true });
+    } catch (error) {
+      console.error('Error fetching admin orders:', error);
     }
   },
 
@@ -135,5 +149,27 @@ removeItem: async (cartItemId: string) => {
 
   finalizePayment: async (orderId, txId, provider) => {
     return await confirmPayment(orderId, txId, provider);
-  }
+  },
+
+  updateOrderStatus: async (orderId, status) => {
+    const response = await fetch(`/api/admin/orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to update order status' }));
+      throw new Error(errorData.error || 'Failed to update order status');
+    }
+
+    const updatedOrder = await response.json();
+    set((state) => ({
+      orders: state.orders.map((order) =>
+        order.id === updatedOrder.id ? updatedOrder : order
+      ),
+    }));
+
+    return updatedOrder;
+  },
 });

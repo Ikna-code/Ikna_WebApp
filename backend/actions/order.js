@@ -208,6 +208,7 @@ export async function createOrder(userId, couponCode = null, options = {}) {
     const {
       clearCart = true,
       orderStatus = "PENDING",
+      addressId = null,
     } = options;
 
     const result = await db.$transaction(async (tx) => {
@@ -218,6 +219,31 @@ export async function createOrder(userId, couponCode = null, options = {}) {
       });
 
       if (cartItems.length === 0) throw new Error("Cart is empty");
+
+      // Resolve shipping address from selected address (if provided) or fallback to default/latest address.
+      const shippingAddressRecord = addressId
+        ? await tx.address.findFirst({
+            where: { id: addressId, userId },
+          })
+        : await tx.address.findFirst({
+            where: { userId },
+            orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+          });
+
+      if (!shippingAddressRecord) {
+        throw new Error("Please add a shipping address before checkout");
+      }
+
+      const shippingAddress = [
+        shippingAddressRecord.name,
+        shippingAddressRecord.street,
+        shippingAddressRecord.city,
+        shippingAddressRecord.state,
+        shippingAddressRecord.zip,
+        shippingAddressRecord.country,
+      ]
+        .filter(Boolean)
+        .join(', ');
 
       // 2. Step A: Compute Combo Offer variations
       const comboDiscounts = await calculateComboDiscounts(tx, cartItems);
@@ -300,6 +326,8 @@ export async function createOrder(userId, couponCode = null, options = {}) {
       const order = await tx.order.create({
         data: {
           userId,
+          addressId: shippingAddressRecord.id,
+          shippingAddress,
           totalAmount: workingSubtotal,
           status: orderStatus,
           discountAmount: totalDiscountAccumulator,
