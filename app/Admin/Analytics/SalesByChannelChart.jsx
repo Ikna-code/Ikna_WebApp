@@ -2,11 +2,11 @@ import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 const defaultData = [
-  { name: 'Website', value: 69283, percentage: '54%', color: '#5C0632' },
-  { name: 'Mobile App', value: 30742, percentage: '24%', color: '#E0537A' },
-  { name: 'Instagram Shop', value: 15385, percentage: '12%', color: '#FBB3CB' },
-  { name: 'Marketplace', value: 10240, percentage: '8%', color: '#AC88CD' },
-  { name: 'Others', value: 2800, percentage: '2%', color: '#F7C844' },
+  { name: 'T-Shirt Bras', value: 69283, percentage: '54%', color: '#5C0632' },
+  { name: 'Push-Up Bras', value: 30742, percentage: '24%', color: '#E0537A' },
+  { name: 'Non-Padded Bras', value: 15385, percentage: '12%', color: '#FBB3CB' },
+  { name: 'Panty', value: 10240, percentage: '8%', color: '#AC88CD' },
+  { name: 'Shapewear', value: 2800, percentage: '2%', color: '#F7C844' },
 ];
 
 export default function SalesByChannelChart({ timePeriod = 'week', data = defaultData, totalLabel }) {
@@ -14,7 +14,7 @@ export default function SalesByChannelChart({ timePeriod = 'week', data = defaul
 
   return (
     <div className="bg-white p-6 rounded-3xl border border-[#E9E4E0] shadow-sm flex flex-col h-90">
-      <h2 className="text-base font-bold text-[#2B1B24] mb-4">Sales by Channel ({timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)})</h2>
+      <h2 className="text-base font-bold text-[#2B1B24] mb-4">Sales by Category ({timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)})</h2>
       
       <div className="flex flex-row items-center justify-between h-full gap-2">
         <div className="relative w-1/2 h-full min-h-35">

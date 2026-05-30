@@ -80,21 +80,22 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
   };
 
   return (
-    <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-[#2B1B24]">Sales Analytics</h1>
         <p className="text-xs text-[#7A6B73] mt-0.5">Track your business performance and sales insights</p>
       </div>
       
       {/* 1. Added relative class here so mobile context handles layout gracefully */}
-      <div className="flex items-center gap-3 self-end sm:self-center flex-wrap relative w-full sm:w-auto justify-end">
+      <div className="relative flex w-full flex-nowrap items-center justify-end gap-2 overflow-x-auto sm:w-auto sm:gap-3 sm:self-center sm:overflow-visible">
         <div className="relative">
           <button
             onClick={() => setCalendarOpen(!calendarOpen)}
-            className="bg-white px-3 py-2 rounded-xl flex items-center gap-2 border border-[#E9E4E0] shadow-sm text-xs font-medium text-[#4A3C44] hover:bg-[#FAF6F4] transition"
+            className="flex items-center gap-2 rounded-xl border border-[#E9E4E0] bg-white px-3 py-2 text-xs font-medium text-[#4A3C44] shadow-sm transition hover:bg-[#FAF6F4]"
           >
             <Calendar className="w-4 h-4 text-[#7A6B73]" />
-            <span>{formatDateDisplay()}</span>
+            <span className="hidden sm:inline">{formatDateDisplay()}</span>
+            <span className="sm:hidden">Date</span>
             <ChevronDown className={`w-4 h-4 text-[#A1959C] transition ${calendarOpen ? 'rotate-180' : ''}`} />
           </button>
           
@@ -132,23 +133,23 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
         </div>
         <button
           onClick={() => setPreviewOpen(true)}
-          className="bg-white text-[#3D0A21] px-4 py-2 rounded-xl flex items-center gap-2 text-xs font-medium border border-[#E9E4E0] hover:bg-[#FAF6F4] transition-colors shadow-sm"
+          className="flex items-center gap-2 rounded-xl border border-[#E9E4E0] bg-white px-3 py-2 text-xs font-medium text-[#3D0A21] shadow-sm transition-colors hover:bg-[#FAF6F4]"
         >
           <Eye className="w-4 h-4" />
-          <span>Preview</span>
+          <span className="hidden sm:inline">Preview</span>
         </button>
         <button
           onClick={onExport}
-          className="bg-[#3D0A21] text-white px-4 py-2 rounded-xl flex items-center gap-2 text-xs font-medium hover:bg-[#521330] transition-colors shadow-sm"
+          className="flex items-center gap-2 rounded-xl bg-[#3D0A21] px-3 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#521330]"
         >
           <Download className="w-4 h-4" />
-          <span>Export Report</span>
+          <span className="hidden sm:inline">Export Report</span>
         </button>
       </div>
 
       {previewOpen && reportPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2B0516]/45 p-4">
-          <div className="w-full max-w-2xl rounded-3xl border border-[#E9E4E0] bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#2B0516]/45 p-3 sm:items-center sm:p-4">
+          <div className="my-3 flex max-h-[calc(100vh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-[#E9E4E0] bg-white p-4 shadow-2xl sm:my-0 sm:max-h-[calc(100vh-2rem)] sm:p-6">
             <div className="flex items-start justify-between gap-4 border-b border-[#E9E4E0] pb-4">
               <div>
                 <h2 className="text-xl font-bold text-[#2B1B24]">Sales Report Preview</h2>
@@ -162,28 +163,30 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
               </button>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {reportPreview.metrics.map((metric) => (
-                <div key={metric.title} className="rounded-2xl border border-[#E9E4E0] bg-[#FAF6F4] p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#7A6B73]">{metric.title}</p>
-                  <p className="mt-2 text-xl font-bold text-[#2B1B24]">{metric.value}</p>
-                  <p className="mt-1 text-[10px] font-semibold text-emerald-600">{metric.percentage}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-[#E9E4E0] p-4">
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#7A6B73]">Channel Breakdown</p>
-              <div className="mt-3 space-y-2">
-                {reportPreview.channels.map((channel) => (
-                  <div key={channel.name} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: channel.color }} />
-                      <span className="text-[#2B1B24]">{channel.name}</span>
-                    </div>
-                    <span className="font-semibold text-[#4A3C44]">₹{channel.value.toLocaleString()} ({channel.percentage})</span>
+            <div className="mt-5 overflow-y-auto pr-1">
+              <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
+                {reportPreview.metrics.map((metric) => (
+                  <div key={metric.title} className="w-40 shrink-0 rounded-xl border border-[#E9E4E0] bg-[#FAF6F4] p-3 sm:w-auto sm:rounded-2xl sm:p-4">
+                    <p className="truncate text-[9px] font-bold uppercase tracking-[0.16em] text-[#7A6B73] sm:text-[10px] sm:tracking-[0.24em]">{metric.title}</p>
+                    <p className="mt-1 truncate text-base font-bold text-[#2B1B24] sm:mt-2 sm:text-xl">{metric.value}</p>
+                    <p className="mt-1 text-[9px] font-semibold text-emerald-600 sm:text-[10px]">{metric.percentage}</p>
                   </div>
                 ))}
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-[#E9E4E0] p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#7A6B73]">Category Breakdown</p>
+                <div className="mt-3 space-y-2">
+                  {reportPreview.channels.map((channel) => (
+                    <div key={channel.name} className="flex items-center justify-between gap-3 text-sm">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: channel.color }} />
+                        <span className="truncate text-[#2B1B24]">{channel.name}</span>
+                      </div>
+                      <span className="shrink-0 font-semibold text-[#4A3C44]">₹{channel.value.toLocaleString()} ({channel.percentage})</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

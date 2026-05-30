@@ -5,6 +5,7 @@ import {
   Search,
   Filter,
   Sliders,
+  Download,
   Upload,
   Trash2,
   Pencil,
@@ -12,6 +13,7 @@ import {
   Plus,
   X,
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { createClient } from '@/backend/lib/supabaseClient';
 import { IMAGE_BASE_URL } from '@/public/constants/constants';
 
@@ -67,26 +69,72 @@ interface DeleteModalState {
   count: number;
 }
 
+interface ImportResult {
+  createdCount: number;
+  failedCount: number;
+  errors?: string[];
+}
+
+interface ImportImagePreviewItem {
+  key: string;
+  file: File;
+  url: string;
+  relativePath: string;
+}
+
+const IMPORT_TEMPLATE_HEADERS = [
+  'id',
+  'name',
+  'price',
+  'description',
+  'image',
+  'category',
+  'stock',
+  'createdAt',
+  'tag',
+  'rating',
+  'sizes',
+];
+
 const STOCK_THRESHOLD = 20;
 
 const parseSku = (value: string) => {
-  const normalized = String(value || '').replace(/\D/g, '');
-  const numeric = Number(normalized);
-  return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+  const normalized = String(value || '').trim();
+  if (!normalized) return null;
+
+  if (/^\d+$/.test(normalized)) {
+    const numeric = Number.parseInt(normalized, 10);
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+  }
+
+  return null;
+};
+
+const normalizeSkuNumber = (value: number) => {
+  if (value < 200000) {
+    return 200000 + value;
+  }
+
+  return value;
+};
+
+const extractDigits = (value: string) => {
+  const matched = String(value || '').match(/\d+/g);
+  return matched ? matched.join('') : '';
 };
 
 const getProductSku = (product: DbProduct, fallbackIndex: number) => {
   const primaryPath = product.images?.find((img) => img.is_primary)?.image_path || product.image || '';
   const folderName = primaryPath.split('/')[0] || '';
-  const parsedFromPath = parseSku(folderName);
+  const parsedFromPath = parseSku(extractDigits(folderName));
 
   if (parsedFromPath) {
-    return String(parsedFromPath);
+    return String(normalizeSkuNumber(parsedFromPath));
   }
 
-  const parsedFromId = parseSku(product.id);
+  const parsedFromId = parseSku(extractDigits(product.id));
   if (parsedFromId) {
-    return String(parsedFromId).slice(-6);
+    return String(normalizeSkuNumber(parsedFromId));
   }
 
   return String(200001 + fallbackIndex);
@@ -121,6 +169,18 @@ export default function ProductManagementDashboard() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [isFolderDragActive, setIsFolderDragActive] = useState(false);
+  const [isAddFolderDragActive, setIsAddFolderDragActive] = useState(false);
+  const [isEditFolderDragActive, setIsEditFolderDragActive] = useState(false);
+  const [hasDownloadedImportTemplate, setHasDownloadedImportTemplate] = useState(false);
+  const [importExcelFile, setImportExcelFile] = useState<File | null>(null);
+  const [importImageFiles, setImportImageFiles] = useState<File[]>([]);
+  const [importImagePreviewItems, setImportImagePreviewItems] = useState<ImportImagePreviewItem[]>([]);
+  const [addProductImagePreviewItems, setAddProductImagePreviewItems] = useState<ImportImagePreviewItem[]>([]);
+  const [editProductImagePreviewItems, setEditProductImagePreviewItems] = useState<ImportImagePreviewItem[]>([]);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [editingProductId, setEditingProductId] = useState('');
   const [editingProductSku, setEditingProductSku] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -223,16 +283,49 @@ export default function ProductManagementDashboard() {
   const categories = ['All', ...Array.from(new Set(productDetails.map((p) => p.category)))];
   const styles = ['All', ...Array.from(new Set(productDetails.map((p) => p.color).filter(Boolean)))];
 
+  const getRootFolderNameFromFiles = (files: File[]) => {
+    const firstWithPath = files.find((file) => {
+      const withPath = file as File & { _relativePath?: string; webkitRelativePath?: string };
+      return Boolean(withPath._relativePath || withPath.webkitRelativePath);
+    });
+
+    if (!firstWithPath) return '';
+
+    const withPath = firstWithPath as File & { _relativePath?: string; webkitRelativePath?: string };
+    const relativePath = (withPath._relativePath || withPath.webkitRelativePath || '').replace(/\\/g, '/');
+    const parts = relativePath.split('/').filter(Boolean);
+    return parts.length > 1 ? parts[0] : '';
+  };
+
   const uploadImagesForSku = async (sku: string, files: File[]) => {
     if (!files.length) return [] as string[];
 
     const supabase = createClient();
     const uploadedPaths: string[] = [];
 
+    const sanitizePathSegment = (value: string) =>
+      String(value || '')
+        .trim()
+        .replace(/[^a-zA-Z0-9._-]/g, '_');
+
+    const rootFolder = sanitizePathSegment(getRootFolderNameFromFiles(files));
+
     for (let index = 0; index < files.length; index += 1) {
       const file = files[index];
-      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const storagePath = `${sku}/${Date.now()}-${index}-${safeName}`;
+      const withPath = file as File & { webkitRelativePath?: string; _relativePath?: string };
+      const relativePath = withPath._relativePath || withPath.webkitRelativePath || file.name;
+      const normalizedRelative = relativePath.replace(/\\/g, '/').split('/').filter(Boolean);
+      const trimmedRelativeParts =
+        rootFolder && normalizedRelative[0] === getRootFolderNameFromFiles(files)
+          ? normalizedRelative.slice(1)
+          : normalizedRelative;
+      const safeParts = trimmedRelativeParts.map((part) => sanitizePathSegment(part));
+      const safeFileName = safeParts[safeParts.length - 1] || sanitizePathSegment(file.name);
+      const safeDirs = safeParts.slice(0, -1).join('/');
+      const basePath = `product_photos/${rootFolder || sku}`;
+      const storagePath = safeDirs
+        ? `${basePath}/${safeDirs}/${Date.now()}-${index}-${safeFileName}`
+        : `${basePath}/${Date.now()}-${index}-${safeFileName}`;
 
       const { error } = await supabase.storage.from('products').upload(storagePath, file, {
         cacheControl: '3600',
@@ -351,7 +444,7 @@ export default function ProductManagementDashboard() {
         image: '',
         rating: '',
       });
-      setProductImages([]);
+      handleClearAddProductImages();
       setIsAddModalOpen(false);
       await fetchProducts();
     } catch {
@@ -520,7 +613,7 @@ export default function ProductManagementDashboard() {
       image: product.image,
       rating: product.rating != null ? String(product.rating) : '',
     });
-    setEditProductImages([]);
+    handleClearEditProductImages();
     setIsEditModalOpen(true);
   };
 
@@ -560,7 +653,7 @@ export default function ProductManagementDashboard() {
       setIsEditModalOpen(false);
       setEditingProductId('');
       setEditingProductSku('');
-      setEditProductImages([]);
+      handleClearEditProductImages();
       await fetchProducts();
     } catch {
       setErrorMessage('Failed to update product.');
@@ -573,6 +666,384 @@ export default function ProductManagementDashboard() {
     setStockLevel('All');
     setSearchQuery('');
     setMaxPriceFilter(maxPriceLimit);
+  };
+
+  const handleImportProducts = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!importExcelFile) {
+      setErrorMessage('Please choose an Excel file first.');
+      return;
+    }
+
+    setErrorMessage('');
+    setImportResult(null);
+    setIsImporting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('excelFile', importExcelFile);
+      importImagePreviewItems.forEach((item) => {
+        formData.append('images', item.file, item.relativePath);
+      });
+
+      const response = await fetch('/api/admin/products/import', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to import products.');
+      }
+
+      setImportResult({
+        createdCount: data.createdCount || 0,
+        failedCount: data.failedCount || 0,
+        errors: Array.isArray(data.errors) ? data.errors : [],
+      });
+
+      await fetchProducts();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to import products.');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleDownloadImportTemplate = () => {
+    const workbook = XLSX.utils.book_new();
+
+    const productsSheet = XLSX.utils.json_to_sheet(
+      [
+        {
+          id: '',
+          name: 'Lace Comfort Bra',
+          price: 1299,
+          description: 'Soft lace support bra with adjustable straps',
+          image: 'bra_black_1.jpg,bra_black_2.jpg',
+          category: 'Bras',
+          stock: 25,
+          createdAt: '',
+          tag: 'Black',
+          rating: 4.5,
+          sizes: '32B,34B,36C',
+        },
+      ],
+      { header: IMPORT_TEMPLATE_HEADERS }
+    );
+
+    const instructionsSheet = XLSX.utils.aoa_to_sheet([
+      ['How to use this template'],
+      ['1. Fill each row with product data.'],
+      ['2. Keep headers unchanged.'],
+      ['3. Leave id and createdAt blank for new products.'],
+      ['4. Use comma separated values for sizes.'],
+      ['5. In image column, put comma-separated image file names OR a direct image URL/path.'],
+      ['6. Upload the same filled file in this modal.'],
+      ['7. Attach matching image files with exact names used in image column.'],
+    ]);
+
+    XLSX.utils.book_append_sheet(workbook, productsSheet, 'Products');
+    XLSX.utils.book_append_sheet(workbook, instructionsSheet, 'Instructions');
+
+    XLSX.writeFile(workbook, 'product-import-template.xls', {
+      bookType: 'biff8',
+    });
+
+    setHasDownloadedImportTemplate(true);
+  };
+
+  const openImportModal = () => {
+    setIsImportModalOpen(true);
+    setHasDownloadedImportTemplate(false);
+    setImportExcelFile(null);
+    setImportImagePreviewItems((current) => {
+      current.forEach((item) => URL.revokeObjectURL(item.url));
+      return [];
+    });
+    setImportImageFiles([]);
+    setImportResult(null);
+    setErrorMessage('');
+  };
+
+  const appendImportFolderFiles = (items: Array<{ file: File; relativePath: string }>) => {
+    if (!items.length) return;
+
+    setImportImagePreviewItems((current) => {
+      const existing = new Set(current.map((item) => item.key));
+      const incoming = items
+        .map(({ file, relativePath }) => ({
+          key: `${relativePath}-${file.size}-${file.lastModified}`,
+          file,
+          relativePath,
+        }))
+        .filter((item) => !existing.has(item.key));
+
+      const incomingWithUrls = incoming.map((item) => ({
+        ...item,
+        url: URL.createObjectURL(item.file),
+      }));
+
+      const next = [...current, ...incomingWithUrls];
+      setImportImageFiles(next.map((item) => item.file));
+      return next;
+    });
+  };
+
+  const appendAddProductFolderFiles = (items: Array<{ file: File; relativePath: string }>) => {
+    if (!items.length) return;
+
+    setAddProductImagePreviewItems((current) => {
+      const existing = new Set(current.map((item) => item.key));
+      const incoming = items
+        .map(({ file, relativePath }) => {
+          (file as File & { _relativePath?: string })._relativePath = relativePath;
+          return {
+            key: `${relativePath}-${file.size}-${file.lastModified}`,
+            file,
+            relativePath,
+          };
+        })
+        .filter((item) => !existing.has(item.key));
+
+      const incomingWithUrls = incoming.map((item) => ({
+        ...item,
+        url: URL.createObjectURL(item.file),
+      }));
+
+      const next = [...current, ...incomingWithUrls];
+      setProductImages(next.map((item) => item.file));
+      return next;
+    });
+  };
+
+  const appendEditProductFolderFiles = (items: Array<{ file: File; relativePath: string }>) => {
+    if (!items.length) return;
+
+    setEditProductImagePreviewItems((current) => {
+      const existing = new Set(current.map((item) => item.key));
+      const incoming = items
+        .map(({ file, relativePath }) => {
+          (file as File & { _relativePath?: string })._relativePath = relativePath;
+          return {
+            key: `${relativePath}-${file.size}-${file.lastModified}`,
+            file,
+            relativePath,
+          };
+        })
+        .filter((item) => !existing.has(item.key));
+
+      const incomingWithUrls = incoming.map((item) => ({
+        ...item,
+        url: URL.createObjectURL(item.file),
+      }));
+
+      const next = [...current, ...incomingWithUrls];
+      setEditProductImages(next.map((item) => item.file));
+      return next;
+    });
+  };
+
+  const handleAddImportFolder = (files: FileList | null) => {
+    if (!files?.length) return;
+
+    const items = Array.from(files).map((file) => {
+      const withPath = file as File & { webkitRelativePath?: string };
+      return {
+        file,
+        relativePath: withPath.webkitRelativePath || file.name,
+      };
+    });
+
+    appendImportFolderFiles(items);
+  };
+
+  const readDirectoryEntries = async (reader: any): Promise<any[]> => {
+    const allEntries: any[] = [];
+
+    const readBatch = (): Promise<any[]> =>
+      new Promise((resolve) => {
+        reader.readEntries((entries: any[]) => resolve(entries));
+      });
+
+    while (true) {
+      const batch = await readBatch();
+      if (!batch.length) break;
+      allEntries.push(...batch);
+    }
+
+    return allEntries;
+  };
+
+  const walkDroppedEntry = async (
+    entry: any,
+    parentPath = ''
+  ): Promise<Array<{ file: File; relativePath: string }>> => {
+    if (!entry) return [];
+
+    if (entry.isFile) {
+      const file = await new Promise<File>((resolve, reject) => {
+        entry.file(resolve, reject);
+      });
+
+      return [
+        {
+          file,
+          relativePath: `${parentPath}${entry.name}`,
+        },
+      ];
+    }
+
+    if (entry.isDirectory) {
+      const reader = entry.createReader();
+      const entries = await readDirectoryEntries(reader);
+      let files: Array<{ file: File; relativePath: string }> = [];
+
+      for (const child of entries) {
+        const childFiles = await walkDroppedEntry(child, `${parentPath}${entry.name}/`);
+        files = files.concat(childFiles);
+      }
+
+      return files;
+    }
+
+    return [];
+  };
+
+  const extractDroppedFiles = async (
+    event: React.DragEvent<HTMLDivElement>
+  ): Promise<Array<{ file: File; relativePath: string }>> => {
+    const items = event.dataTransfer?.items;
+    if (items?.length) {
+      let dropped: Array<{ file: File; relativePath: string }> = [];
+      for (let index = 0; index < items.length; index += 1) {
+        const item = items[index] as DataTransferItem & {
+          webkitGetAsEntry?: () => any;
+        };
+        const entry = item.webkitGetAsEntry?.();
+        if (!entry) continue;
+
+        const files = await walkDroppedEntry(entry, '');
+        dropped = dropped.concat(files);
+      }
+
+      if (dropped.length) return dropped;
+    }
+
+    return Array.from(event.dataTransfer.files || []).map((file) => {
+      const withPath = file as File & { webkitRelativePath?: string };
+      return {
+        file,
+        relativePath: withPath.webkitRelativePath || file.name,
+      };
+    });
+  };
+
+  const handleFolderDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsFolderDragActive(true);
+  };
+
+  const handleFolderDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsFolderDragActive(false);
+  };
+
+  const handleFolderDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsFolderDragActive(false);
+
+    const droppedItems = await extractDroppedFiles(event);
+    appendImportFolderFiles(droppedItems);
+  };
+
+  const handleAddFolderDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsAddFolderDragActive(false);
+
+    const droppedItems = await extractDroppedFiles(event);
+    appendAddProductFolderFiles(droppedItems);
+  };
+
+  const handleEditFolderDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsEditFolderDragActive(false);
+
+    const droppedItems = await extractDroppedFiles(event);
+    appendEditProductFolderFiles(droppedItems);
+  };
+
+  const handleRemoveImportImage = (itemToRemove: ImportImagePreviewItem) => {
+    setImportImagePreviewItems((current) => {
+      const next = current.filter((item) => item.key !== itemToRemove.key);
+      URL.revokeObjectURL(itemToRemove.url);
+      setImportImageFiles(next.map((item) => item.file));
+      return next;
+    });
+  };
+
+  const handleRemoveAddProductImage = (itemToRemove: ImportImagePreviewItem) => {
+    setAddProductImagePreviewItems((current) => {
+      const next = current.filter((item) => item.key !== itemToRemove.key);
+      URL.revokeObjectURL(itemToRemove.url);
+      setProductImages(next.map((item) => item.file));
+      return next;
+    });
+  };
+
+  const handleClearAddProductImages = () => {
+    setAddProductImagePreviewItems((current) => {
+      current.forEach((item) => URL.revokeObjectURL(item.url));
+      return [];
+    });
+    setProductImages([]);
+  };
+
+  const handleRemoveEditProductImage = (itemToRemove: ImportImagePreviewItem) => {
+    setEditProductImagePreviewItems((current) => {
+      const next = current.filter((item) => item.key !== itemToRemove.key);
+      URL.revokeObjectURL(itemToRemove.url);
+      setEditProductImages(next.map((item) => item.file));
+      return next;
+    });
+  };
+
+  const handleClearEditProductImages = () => {
+    setEditProductImagePreviewItems((current) => {
+      current.forEach((item) => URL.revokeObjectURL(item.url));
+      return [];
+    });
+    setEditProductImages([]);
+  };
+
+  const handleClearImportImages = () => {
+    setImportImagePreviewItems((current) => {
+      current.forEach((item) => URL.revokeObjectURL(item.url));
+      return [];
+    });
+    setImportImageFiles([]);
+  };
+
+  const closeImportModal = () => {
+    if (isImporting) return;
+    setImportImagePreviewItems((current) => {
+      current.forEach((item) => URL.revokeObjectURL(item.url));
+      return [];
+    });
+    setImportImageFiles([]);
+    setIsImportModalOpen(false);
+  };
+
+  const closeAddModal = () => {
+    if (isUploadingImages) return;
+    handleClearAddProductImages();
+    setIsAddModalOpen(false);
+  };
+
+  const closeEditModal = () => {
+    handleClearEditProductImages();
+    setIsEditModalOpen(false);
   };
 
   return (
@@ -725,6 +1196,12 @@ export default function ProductManagementDashboard() {
               </button>
             </div>
             <div className="flex w-full flex-wrap items-center gap-2 md:justify-end lg:w-auto">
+              <button
+                onClick={openImportModal}
+                className="inline-flex items-center gap-2 rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
+              >
+                <Upload className="h-3.5 w-3.5" /> Import Excel
+              </button>
               <button
                 onClick={() => setIsAddModalOpen(true)}
                 className="hidden items-center gap-2 rounded-xl bg-[#3d0d26] px-3 py-2 text-xs font-semibold text-white hover:bg-[#5b153b] lg:inline-flex"
@@ -1101,13 +1578,209 @@ export default function ProductManagementDashboard() {
           </>
         )}
 
+        {/* Import Products Modal */}
+        {isImportModalOpen && (
+          <>
+            <button
+              type="button"
+              aria-label="Close import products modal"
+              onClick={closeImportModal}
+              className="fixed inset-0 z-40 bg-neutral-900/50"
+            />
+            <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4">
+              <form
+                onSubmit={handleImportProducts}
+                className="my-8 w-full max-w-2xl rounded-3xl border border-neutral-200 bg-white p-6 shadow-2xl sm:p-7"
+              >
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-base font-black text-[#5b153b]">Import Products (Excel)</h3>
+                  <button
+                    type="button"
+                    onClick={closeImportModal}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-300 text-neutral-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-700">
+                    <p className="font-semibold text-neutral-800">Step 1: Download Template</p>
+                    <p className="mt-1 text-[11px] text-neutral-600">
+                      Download the XLS template with Product-schema headings, fill that same file,
+                      then upload the filled file here.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleDownloadImportTemplate}
+                      disabled={hasDownloadedImportTemplate}
+                      className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#3d0d26] px-3 py-2 text-xs font-semibold text-white hover:bg-[#5b153b] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      {hasDownloadedImportTemplate ? 'Template Downloaded' : 'Download XLS Template'}
+                    </button>
+                  </div>
+
+                  {hasDownloadedImportTemplate && (
+                    <div>
+                    <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-neutral-400">
+                      EXCEL FILE
+                    </label>
+                    <input
+                      id="import-excel-input"
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      required
+                      onChange={(event) => setImportExcelFile(event.target.files?.[0] || null)}
+                      className="sr-only"
+                    />
+
+                    <label
+                      htmlFor="import-excel-input"
+                      className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+                    >
+                      <Upload className="h-3.5 w-3.5" /> Choose XLS File
+                    </label>
+
+                    <p className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
+                      {importExcelFile ? importExcelFile.name : 'Upload The downloaded XLS file'}
+                    </p>
+
+                    <p className="mt-1 text-[10px] text-neutral-500">
+                      Expected columns: id, name, price, description, image, category, stock, createdAt, tag, rating, sizes.
+                    </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-neutral-400">
+                      IMAGE FOLDER
+                    </label>
+
+                    <input
+                      id="import-folder-input"
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      {...({ webkitdirectory: '', directory: '' } as any)}
+                      onChange={(event) => {
+                        handleAddImportFolder(event.target.files);
+                        event.target.value = '';
+                      }}
+                      className="sr-only"
+                    />
+
+                    <div className="flex items-center gap-2">
+                      <label
+                        htmlFor="import-folder-input"
+                        className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Add Folder
+                      </label>
+
+                      {importImageFiles.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleClearImportImages}
+                          className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Clear
+                        </button>
+                      )}
+                    </div>
+
+                    <div
+                      onDragOver={handleFolderDragOver}
+                      onDragLeave={handleFolderDragLeave}
+                      onDrop={handleFolderDrop}
+                      className={`mt-2 rounded-xl border border-dashed p-3 text-xs ${
+                        isFolderDragActive
+                          ? 'border-[#5b153b] bg-[#5b153b]/5 text-[#5b153b]'
+                          : 'border-neutral-300 bg-neutral-50 text-neutral-600'
+                      }`}
+                    >
+                      Drag and drop your image folder here.
+                    </div>
+
+                    <p className="mt-1 text-[10px] text-neutral-500">
+                      {importImageFiles.length} image{importImageFiles.length === 1 ? '' : 's'} selected from folder.
+                    </p>
+
+                    {!!importImagePreviewItems.length && (
+                      <p className="mt-1 text-[10px] text-neutral-500">
+                        Folder: {importImagePreviewItems[0].relativePath.split('/')[0] || 'Selected folder'}
+                      </p>
+                    )}
+
+                    <p className="mt-1 text-[10px] text-neutral-500">
+                      Uploaded images are stored in Supabase bucket <span className="font-bold">products</span>
+                      inside folder <span className="font-bold">product_photos</span>.
+                      If Product ID is provided in XLS, images are stored inside that product folder.
+                    </p>
+
+                    {importImagePreviewItems.length > 0 && (
+                      <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                        {importImagePreviewItems.map((item, index) => (
+                          <div key={item.key} className="overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
+                            <img
+                              src={item.url}
+                              alt={item.file.name || `Selected image ${index + 1}`}
+                              className="h-16 w-full object-cover"
+                            />
+                            <div className="flex items-center justify-between gap-1 px-1.5 py-1">
+                              <p className="truncate text-[9px] text-neutral-500" title={item.relativePath}>
+                                {item.relativePath}
+                              </p>
+                              <button
+                                type="button"
+                                aria-label="Remove image"
+                                onClick={() => handleRemoveImportImage(item)}
+                                className="inline-flex h-4 w-4 items-center justify-center rounded border border-neutral-300 text-neutral-500 hover:bg-neutral-100"
+                              >
+                                <X className="h-2.5 w-2.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {importResult && (
+                    <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-xs">
+                      <p className="font-semibold text-neutral-700">
+                        Imported: {importResult.createdCount} | Failed: {importResult.failedCount}
+                      </p>
+                      {!!importResult.errors?.length && (
+                        <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] text-rose-600">
+                          {importResult.errors.slice(0, 8).map((error) => (
+                            <li key={error}>{error}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isImporting || !hasDownloadedImportTemplate || !importExcelFile}
+                    className="w-full rounded-xl bg-[#3d0d26] py-3 text-xs font-extrabold text-white hover:bg-[#5b153b] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isImporting ? 'Importing...' : 'Import Product Data'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </>
+        )}
+
         {/* Add Product Modal */}
         {isAddModalOpen && (
           <>
             <button
               type="button"
               aria-label="Close add product modal"
-              onClick={() => setIsAddModalOpen(false)}
+              onClick={closeAddModal}
               className="fixed inset-0 z-40 bg-neutral-900/50"
             />
             <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4">
@@ -1116,7 +1789,7 @@ export default function ProductManagementDashboard() {
                   <h3 className="text-base font-black text-[#5b153b]">New Product Wizard</h3>
                   <button
                     type="button"
-                    onClick={() => setIsAddModalOpen(false)}
+                    onClick={closeAddModal}
                     className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-300 text-neutral-600"
                   >
                     <X className="h-4 w-4" />
@@ -1229,17 +1902,86 @@ export default function ProductManagementDashboard() {
                     </div>
                   </div>
                   <div>
-                    <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">PRODUCT IMAGES (MULTIPLE)</label>
+                    <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">PRODUCT IMAGE FOLDER</label>
                     <input
                       type="file"
                       multiple
                       accept="image/*"
-                      onChange={(e) => setProductImages(Array.from(e.target.files || []))}
+                      {...({ webkitdirectory: '', directory: '' } as any)}
+                      onChange={(e) => {
+                        appendAddProductFolderFiles(
+                          Array.from(e.target.files || []).map((file) => {
+                            const withPath = file as File & { webkitRelativePath?: string };
+                            return {
+                              file,
+                              relativePath: withPath.webkitRelativePath || file.name,
+                            };
+                          })
+                        );
+                        e.target.value = '';
+                      }}
                       className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-xs"
                     />
+                    {addProductImagePreviewItems.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAddProductImages}
+                        className="mt-2 inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Clear
+                      </button>
+                    )}
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsAddFolderDragActive(true);
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        setIsAddFolderDragActive(false);
+                      }}
+                      onDrop={handleAddFolderDrop}
+                      className={`mt-2 rounded-xl border border-dashed p-3 text-xs ${
+                        isAddFolderDragActive
+                          ? 'border-[#5b153b] bg-[#5b153b]/5 text-[#5b153b]'
+                          : 'border-neutral-300 bg-neutral-50 text-neutral-600'
+                      }`}
+                    >
+                      Drag and drop image folder here.
+                    </div>
                     <p className="mt-1 text-[10px] text-neutral-500">
-                      Files will be uploaded to Supabase bucket <span className="font-bold">products</span> under folder <span className="font-bold">{nextSku}</span>.
+                      {productImages.length} image{productImages.length === 1 ? '' : 's'} selected.
                     </p>
+                    <p className="mt-1 text-[10px] text-neutral-500">
+                      Files will be uploaded to Supabase bucket <span className="font-bold">products</span> under folder <span className="font-bold">product_photos/{getRootFolderNameFromFiles(productImages) || 'foldername'}</span>.
+                    </p>
+
+                    {addProductImagePreviewItems.length > 0 && (
+                      <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                        {addProductImagePreviewItems.map((item, index) => (
+                          <div key={item.key} className="overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
+                            <img
+                              src={item.url}
+                              alt={item.file.name || `Selected image ${index + 1}`}
+                              className="h-16 w-full object-cover"
+                            />
+                            <div className="flex items-center justify-between gap-1 px-1.5 py-1">
+                              <p className="truncate text-[9px] text-neutral-500" title={item.relativePath}>
+                                {item.relativePath}
+                              </p>
+                              <button
+                                type="button"
+                                aria-label="Remove image"
+                                onClick={() => handleRemoveAddProductImage(item)}
+                                className="inline-flex h-4 w-4 items-center justify-center rounded border border-neutral-300 text-neutral-500 hover:bg-neutral-100"
+                              >
+                                <X className="h-2.5 w-2.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <button
                     type="submit"
@@ -1260,7 +2002,7 @@ export default function ProductManagementDashboard() {
             <button
               type="button"
               aria-label="Close edit product modal"
-              onClick={() => setIsEditModalOpen(false)}
+              onClick={closeEditModal}
               className="fixed inset-0 z-40 bg-neutral-900/50"
             />
             <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4">
@@ -1269,7 +2011,7 @@ export default function ProductManagementDashboard() {
                   <h3 className="text-base font-black text-[#5b153b]">Edit Product</h3>
                   <button
                     type="button"
-                    onClick={() => setIsEditModalOpen(false)}
+                    onClick={closeEditModal}
                     className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-300 text-neutral-600"
                   >
                     <X className="h-4 w-4" />
@@ -1402,14 +2144,86 @@ export default function ProductManagementDashboard() {
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">REPLACE PRODUCT IMAGES</label>
+                    <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">REPLACE PRODUCT IMAGE FOLDER</label>
                     <input
                       type="file"
                       multiple
                       accept="image/*"
-                      onChange={(e) => setEditProductImages(Array.from(e.target.files || []))}
+                      {...({ webkitdirectory: '', directory: '' } as any)}
+                      onChange={(e) => {
+                        appendEditProductFolderFiles(
+                          Array.from(e.target.files || []).map((file) => {
+                            const withPath = file as File & { webkitRelativePath?: string };
+                            return {
+                              file,
+                              relativePath: withPath.webkitRelativePath || file.name,
+                            };
+                          })
+                        );
+                        e.target.value = '';
+                      }}
                       className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-xs"
                     />
+                    {editProductImagePreviewItems.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearEditProductImages}
+                        className="mt-2 inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Clear
+                      </button>
+                    )}
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsEditFolderDragActive(true);
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        setIsEditFolderDragActive(false);
+                      }}
+                      onDrop={handleEditFolderDrop}
+                      className={`mt-2 rounded-xl border border-dashed p-3 text-xs ${
+                        isEditFolderDragActive
+                          ? 'border-[#5b153b] bg-[#5b153b]/5 text-[#5b153b]'
+                          : 'border-neutral-300 bg-neutral-50 text-neutral-600'
+                      }`}
+                    >
+                      Drag and drop image folder here.
+                    </div>
+                    <p className="mt-1 text-[10px] text-neutral-500">
+                      {editProductImages.length} image{editProductImages.length === 1 ? '' : 's'} selected.
+                    </p>
+                    <p className="mt-1 text-[10px] text-neutral-500">
+                      Files will be uploaded to Supabase bucket <span className="font-bold">products</span> under folder <span className="font-bold">product_photos/{getRootFolderNameFromFiles(editProductImages) || 'foldername'}</span>.
+                    </p>
+
+                    {editProductImagePreviewItems.length > 0 && (
+                      <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                        {editProductImagePreviewItems.map((item, index) => (
+                          <div key={item.key} className="overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
+                            <img
+                              src={item.url}
+                              alt={item.file.name || `Selected image ${index + 1}`}
+                              className="h-16 w-full object-cover"
+                            />
+                            <div className="flex items-center justify-between gap-1 px-1.5 py-1">
+                              <p className="truncate text-[9px] text-neutral-500" title={item.relativePath}>
+                                {item.relativePath}
+                              </p>
+                              <button
+                                type="button"
+                                aria-label="Remove image"
+                                onClick={() => handleRemoveEditProductImage(item)}
+                                className="inline-flex h-4 w-4 items-center justify-center rounded border border-neutral-300 text-neutral-500 hover:bg-neutral-100"
+                              >
+                                <X className="h-2.5 w-2.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <button
