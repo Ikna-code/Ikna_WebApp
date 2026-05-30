@@ -343,6 +343,18 @@ background:
   }
 }
 
+/* Remove focus outline on recharts SVG elements */
+.recharts-wrapper:focus,
+.recharts-wrapper svg:focus,
+.recharts-surface:focus,
+.recharts-wrapper *:focus {
+  outline: none !important;
+}
+
+.recharts-sector:focus,
+.recharts-sector:focus-visible {
+  outline: none !important;
+}
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);

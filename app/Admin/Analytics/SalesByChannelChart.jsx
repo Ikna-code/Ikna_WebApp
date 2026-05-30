@@ -1,53 +1,153 @@
-import React from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import React from "react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+} from "recharts";
+
+const formatTimePeriodLabel = (period) => {
+  if (period === "custom") return "Custom";
+  if (period === "7d") return "7D";
+  if (period === "30d") return "30D";
+  if (period === "90d") return "90D";
+  return "1Y";
+};
 
 const defaultData = [
-  { name: 'T-Shirt Bras', value: 69283, percentage: '54%', color: '#5C0632' },
-  { name: 'Push-Up Bras', value: 30742, percentage: '24%', color: '#E0537A' },
-  { name: 'Non-Padded Bras', value: 15385, percentage: '12%', color: '#FBB3CB' },
-  { name: 'Panty', value: 10240, percentage: '8%', color: '#AC88CD' },
-  { name: 'Shapewear', value: 2800, percentage: '2%', color: '#F7C844' },
+  {
+    name: "T-Shirt Bras",
+    value: 69283,
+    percentage: "54%",
+    color: "#5C0632",
+  },
+  {
+    name: "Push-Up Bras",
+    value: 30742,
+    percentage: "24%",
+    color: "#E0537A",
+  },
+  {
+    name: "Non-Padded Bras",
+    value: 15385,
+    percentage: "12%",
+    color: "#FBB3CB",
+  },
+  {
+    name: "Panty",
+    value: 10240,
+    percentage: "8%",
+    color: "#AC88CD",
+  },
+  {
+    name: "Shapewear",
+    value: 2800,
+    percentage: "2%",
+    color: "#F7C844",
+  },
 ];
 
-export default function SalesByChannelChart({ timePeriod = 'week', data = defaultData, totalLabel }) {
-  const totalValue = totalLabel || `₹${data.reduce((sum, item) => sum + item.value, 0).toLocaleString()}`;
+export default function SalesByCategoryChart({
+  timePeriod = "30d",
+  data = defaultData,
+  totalLabel,
+}) {
+  const totalValue =
+    totalLabel ||
+    `₹${data
+      .reduce((sum, item) => sum + item.value, 0)
+      .toLocaleString()}`;
+
+  const hasData = data.length > 0;
 
   return (
-    <div className="bg-white p-6 rounded-3xl border border-[#E9E4E0] shadow-sm flex flex-col h-90">
-      <h2 className="text-base font-bold text-[#2B1B24] mb-4">Sales by Category ({timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)})</h2>
-      
-      <div className="flex flex-row items-center justify-between h-full gap-2">
-        <div className="relative w-1/2 h-full min-h-35">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={data} cx="50%" cy="50%" innerRadius={42} outerRadius={60} paddingAngle={2} dataKey="value">
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-[10px] text-[#A1959C] uppercase tracking-wider font-semibold">Total</span>
-            <span className="text-xs font-extrabold text-[#2B1B24] tracking-tight">{totalValue}</span>
+    <div className="bg-white rounded-3xl border border-[#E9E4E0] shadow-sm p-6 h-[500px] flex flex-col">
+      {/* Header */}
+      <h2 className="text-base font-bold text-[#2B1B24] mb-4 shrink-0">
+        Sales by Category ({formatTimePeriodLabel(timePeriod)})
+      </h2>
+
+      {hasData ? (
+        <div className="flex flex-col items-center flex-1 overflow-hidden">
+          {/* Donut Chart */}
+          <div className="relative h-[220px] w-[220px] shrink-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={data}
+                  dataKey="value"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={65}
+                  outerRadius={100}
+                  paddingAngle={2}
+                  stroke="none"
+                >
+                  {data.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.color}
+                    />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+
+            {/* Center Label */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="text-sm font-semibold uppercase tracking-wider text-[#A1959C]">
+                Total
+              </span>
+
+              <span className="text-3xl font-extrabold text-[#2B1B24]">
+                {totalValue}
+              </span>
+            </div>
+          </div>
+
+          {/* Legend */}
+          <div className="w-full mt-6 flex-1 overflow-y-auto pr-1">
+            <div className="space-y-3">
+              {data.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <span
+                      className="w-4 h-4 rounded-full shrink-0"
+                      style={{
+                        backgroundColor: item.color,
+                      }}
+                    />
+
+                    <span
+                      className="truncate text-sm font-medium text-[#4A3C44]"
+                      title={item.name}
+                    >
+                      {item.name}
+                    </span>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <p className="font-bold text-[#2B1B24] text-base leading-none">
+                      {item.percentage}
+                    </p>
+
+                    <p className="text-xs text-[#A1959C] mt-1">
+                      ₹{item.value.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-
-        <div className="w-1/2 space-y-2.5 text-xs">
-          {data.map((item, idx) => (
-            <div key={idx} className="flex items-start justify-between gap-1">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                <span className="text-[#4A3C44] font-medium truncate text-[11px]">{item.name}</span>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="font-bold text-[#2B1B24] text-[11px] leading-none">{item.percentage}</p>
-                <p className="text-[9px] text-[#A1959C] mt-0.5">₹{item.value.toLocaleString()}</p>
-              </div>
-            </div>
-          ))}
+      ) : (
+        <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-[#E9E4E0] text-sm font-medium text-[#7A6B73]">
+          No results found
         </div>
-      </div>
+      )}
     </div>
   );
 }

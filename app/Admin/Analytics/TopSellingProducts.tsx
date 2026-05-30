@@ -12,7 +12,6 @@ export default function TopSellingProducts() {
     <div className="bg-white p-6 rounded-3xl border border-[#E9E4E0] shadow-sm flex flex-col justify-between h-[360px]">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-base font-bold text-[#2B1B24]">Top Selling Products</h2>
-        <button className="text-xs font-bold text-[#A8436D] hover:underline">View all</button>
       </div>
 
       <div className="space-y-3.5 flex-1 flex flex-col justify-center">

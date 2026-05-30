@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Calendar, Download, ChevronDown, Eye, X } from 'lucide-react';
+import { Calendar, Download, ChevronDown, ChevronLeft, ChevronRight, Eye, X } from 'lucide-react';
 
-export default function Header({ startDate, endDate, onDateChange, onExport, reportPreview }) {
+export default function Header({ startDate, endDate, onDateChange, onExport, reportPreview, showDateFilter = true }) {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [tempStart, setTempStart] = useState(startDate);
   const [tempEnd, setTempEnd] = useState(endDate);
+  const [activeRangeEdge, setActiveRangeEdge] = useState('start');
+  const [viewMonth, setViewMonth] = useState(new Date(startDate.getFullYear(), startDate.getMonth(), 1));
 
   const formatDateDisplay = () => {
     const options = { month: 'short', day: 'numeric' };
@@ -20,6 +22,22 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
       setCalendarOpen(false);
     }
   };
+
+  const moveMonth = (offset) => {
+    setViewMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
+  };
+
+  const handleMonthSelect = (event) => {
+    const selectedMonth = Number(event.target.value);
+    setViewMonth((current) => new Date(current.getFullYear(), selectedMonth, 1));
+  };
+
+  const handleYearSelect = (event) => {
+    const selectedYear = Number(event.target.value);
+    setViewMonth((current) => new Date(selectedYear, current.getMonth(), 1));
+  };
+
+  const yearOptions = Array.from({ length: 21 }, (_, index) => 2020 + index);
 
   const getDaysInMonth = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   const getFirstDayOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
@@ -52,14 +70,21 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
               <button
                 key={day}
                 onClick={() => {
-                  if (isStartDate) {
-                    setTempStart(dayDate);
-                  } else if (isEndDate) {
-                    setTempEnd(dayDate);
-                  } else if (dayDate < tempStart) {
-                    setTempStart(dayDate);
+                  if (activeRangeEdge === 'start') {
+                    if (dayDate <= tempEnd) {
+                      setTempStart(dayDate);
+                    } else {
+                      setTempStart(dayDate);
+                      setTempEnd(dayDate);
+                    }
+                    setActiveRangeEdge('end');
                   } else {
-                    setTempEnd(dayDate);
+                    if (dayDate >= tempStart) {
+                      setTempEnd(dayDate);
+                    } else {
+                      setTempStart(dayDate);
+                    }
+                    setActiveRangeEdge('start');
                   }
                 }}
                 className={`h-6 text-xs font-medium rounded transition ${
@@ -88,49 +113,96 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
       
       {/* 1. Added relative class here so mobile context handles layout gracefully */}
       <div className="relative flex w-full flex-nowrap items-center justify-end gap-2 overflow-x-auto sm:w-auto sm:gap-3 sm:self-center sm:overflow-visible">
-        <div className="relative">
-          <button
-            onClick={() => setCalendarOpen(!calendarOpen)}
-            className="flex items-center gap-2 rounded-xl border border-[#E9E4E0] bg-white px-3 py-2 text-xs font-medium text-[#4A3C44] shadow-sm transition hover:bg-[#FAF6F4]"
-          >
-            <Calendar className="w-4 h-4 text-[#7A6B73]" />
-            <span className="hidden sm:inline">{formatDateDisplay()}</span>
-            <span className="sm:hidden">Date</span>
-            <ChevronDown className={`w-4 h-4 text-[#A1959C] transition ${calendarOpen ? 'rotate-180' : ''}`} />
-          </button>
-          
-          {calendarOpen && (
-            <>
-              {/* 2. Backdrop overlay to capture external mobile clicks and frame layout nicely */}
-              <div 
-                className="fixed inset-0 bg-black/10 z-40 sm:hidden" 
-                onClick={() => setCalendarOpen(false)}
-              />
-              
-              {/* 3. Updated positioning strategy */}
-              <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 sm:absolute sm:top-full sm:left-auto sm:right-0 sm:translate-x-0 sm:translate-y-0 mt-0 sm:mt-2 z-50 bg-white rounded-2xl shadow-xl border border-[#E9E4E0] p-6 w-[calc(100vw-2rem)] max-w-85 sm:w-80">
-                <div className="mb-4">
-                  <p className="text-xs text-[#7A6B73] mb-3">Select date range (click dates to toggle start/end)</p>
-                  {renderCalendarMonth(tempStart)}
+        {showDateFilter && (
+          <div className="relative">
+            <button
+              onClick={() => {
+                if (!calendarOpen) {
+                  setTempStart(startDate);
+                  setTempEnd(endDate);
+                  setActiveRangeEdge('start');
+                  setViewMonth(new Date(startDate.getFullYear(), startDate.getMonth(), 1));
+                }
+                setCalendarOpen(!calendarOpen);
+              }}
+              className="flex items-center gap-2 rounded-xl border border-[#E9E4E0] bg-white px-3 py-2 text-xs font-medium text-[#4A3C44] shadow-sm transition hover:bg-[#FAF6F4]"
+            >
+              <Calendar className="w-4 h-4 text-[#7A6B73]" />
+              <span className="hidden sm:inline">{formatDateDisplay()}</span>
+              <span className="sm:hidden">Date</span>
+              <ChevronDown className={`w-4 h-4 text-[#A1959C] transition ${calendarOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {calendarOpen && (
+              <>
+                <div 
+                  className="fixed inset-0 bg-black/10 z-40 sm:hidden" 
+                  onClick={() => setCalendarOpen(false)}
+                />
+
+                <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 sm:absolute sm:top-full sm:left-auto sm:right-0 sm:translate-x-0 sm:translate-y-0 mt-0 sm:mt-2 z-50 bg-white rounded-2xl shadow-xl border border-[#E9E4E0] p-6 w-[calc(100vw-2rem)] max-w-85 sm:w-96">
+                  <div className="mb-4">
+                    <p className="text-xs text-[#7A6B73] mb-3">Select date range and choose which date to edit</p>
+
+                    <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-[#E9E4E0] bg-[#FAF6F4] px-2 py-1.5">
+                      <button
+                        onClick={() => moveMonth(-1)}
+                        className="rounded-md p-1 text-[#7A6B73] hover:bg-white"
+                        aria-label="Previous month"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={viewMonth.getMonth()}
+                          onChange={handleMonthSelect}
+                          className="rounded-md border border-[#E9E4E0] bg-white px-2 py-1 text-[11px] font-medium text-[#4A3C44]"
+                        >
+                          {Array.from({ length: 12 }, (_, month) => (
+                            <option key={month} value={month}>
+                              {new Date(2026, month, 1).toLocaleDateString('en-US', { month: 'short' })}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={viewMonth.getFullYear()}
+                          onChange={handleYearSelect}
+                          className="rounded-md border border-[#E9E4E0] bg-white px-2 py-1 text-[11px] font-medium text-[#4A3C44]"
+                        >
+                          {yearOptions.map((year) => (
+                            <option key={year} value={year}>{year}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        onClick={() => moveMonth(1)}
+                        className="rounded-md p-1 text-[#7A6B73] hover:bg-white"
+                        aria-label="Next month"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                    {renderCalendarMonth(viewMonth)}
+                  </div>
+                  <div className="flex gap-2 justify-end border-t border-[#E9E4E0] pt-4">
+                    <button
+                      onClick={() => setCalendarOpen(false)}
+                      className="px-3 py-1.5 text-xs font-medium text-[#7A6B73] hover:bg-[#FAF6F4] rounded-lg transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleApplyDates}
+                      className="px-3 py-1.5 text-xs font-medium bg-[#3D0A21] text-white rounded-lg hover:bg-[#521330] transition"
+                    >
+                      Apply
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-2 justify-end border-t border-[#E9E4E0] pt-4">
-                  <button
-                    onClick={() => setCalendarOpen(false)}
-                    className="px-3 py-1.5 text-xs font-medium text-[#7A6B73] hover:bg-[#FAF6F4] rounded-lg transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleApplyDates}
-                    className="px-3 py-1.5 text-xs font-medium bg-[#3D0A21] text-white rounded-lg hover:bg-[#521330] transition"
-                  >
-                    Apply
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+              </>
+            )}
+          </div>
+        )}
         <button
           onClick={() => setPreviewOpen(true)}
           className="flex items-center gap-2 rounded-xl border border-[#E9E4E0] bg-white px-3 py-2 text-xs font-medium text-[#3D0A21] shadow-sm transition-colors hover:bg-[#FAF6F4]"

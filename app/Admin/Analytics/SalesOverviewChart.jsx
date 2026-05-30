@@ -1,89 +1,138 @@
 'use client';
-import React from 'react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import React, { useEffect, useRef, useState } from 'react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const chartDataByPeriod = {
-  today: [
-    { label: '00:00', current: 1800 },
-    { label: '04:00', current: 4200 },
-    { label: '08:00', current: 9600 },
-    { label: '12:00', current: 15400 },
-    { label: '16:00', current: 20100 },
-    { label: '20:00', current: 28400 },
-    { label: 'Now', current: 31200 },
-  ],
-  week: [
-    { label: 'Mon', current: 14200 },
-    { label: 'Tue', current: 18700 },
-    { label: 'Wed', current: 21400 },
-    { label: 'Thu', current: 28600 },
-    { label: 'Fri', current: 19800 },
-    { label: 'Sat', current: 15600 },
-    { label: 'Sun', current: 10100 },
-  ],
-  month: [
-    { label: 'W1', current: 85400 },
-    { label: 'W2', current: 96400 },
-    { label: 'W3', current: 103200 },
-    { label: 'W4', current: 112800 },
-  ],
-  year: [
-    { label: 'Jan', current: 322000 },
-    { label: 'Feb', current: 348000 },
-    { label: 'Mar', current: 371000 },
-    { label: 'Apr', current: 402000 },
-    { label: 'May', current: 438000 },
-    { label: 'Jun', current: 421000 },
-    { label: 'Jul', current: 447000 },
-    { label: 'Aug', current: 462000 },
-    { label: 'Sep', current: 478000 },
-    { label: 'Oct', current: 501000 },
-    { label: 'Nov', current: 536000 },
-    { label: 'Dec', current: 574000 },
-  ],
+const formatTimePeriodLabel = (period) => {
+  if (period === 'custom') return 'Custom';
+  if (period === '7d') return '7D';
+  if (period === '30d') return '30D';
+  if (period === '90d') return '90D';
+  return '1Y';
 };
 
-const periodLabels = {
-  today: { current: 'Today' },
-  week: { current: 'This Week' },
-  month: { current: 'This Month' },
-  year: { current: 'This Year' },
-};
+const CustomTooltip = ({ active, payload }) => {
+  if (!active || !payload || !payload.length) return null;
 
-export default function SalesOverviewChart({ timePeriod = 'week' }) {
-  const safePeriod = chartDataByPeriod[timePeriod] ? timePeriod : 'week';
-  const data = chartDataByPeriod[safePeriod];
-  const labels = periodLabels[safePeriod];
-
+  const point = payload[0].payload;
   return (
-    <div className="bg-white p-6 rounded-3xl border border-[#E9E4E0] shadow-sm flex flex-col justify-between h-90">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-bold text-[#2B1B24]">Sales Overview ({safePeriod.charAt(0).toUpperCase() + safePeriod.slice(1)})</h2>
-        <div className="flex items-center gap-4 text-xs font-medium">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#3D0A21]" />
-            <span className="text-[#4A3C44]">{labels.current}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex-1 w-full text-[10px] font-medium">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="colorThisWeek" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3D0A21" stopOpacity={0.2}/>
-                <stop offset="95%" stopColor="#3D0A21" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F0EAE6" vertical={false} />
-            <XAxis dataKey="label" stroke="#A1959C" tickLine={false} axisLine={false} />
-            <YAxis stroke="#A1959C" tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v/1000}K`} />
-            <Tooltip formatter={(value) => [`₹${value.toLocaleString()}`, '']} />
-            <Area type="monotone" dataKey="current" stroke="#3D0A21" strokeWidth={3} fillOpacity={1} fill="url(#colorThisWeek)" activeDot={{ r: 6 }} />
-          </AreaChart>
-        </ResponsiveContainer>
+    <div className="rounded-xl border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur-md">
+      <p className="mb-1 text-xs font-semibold text-slate-500">{point.label}</p>
+      <div className="flex items-center gap-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-[#840d5c]" />
+        <p className="text-sm font-bold text-slate-900">₹{payload[0].value.toLocaleString('en-IN')}</p>
       </div>
     </div>
   );
+};
+
+function SalesOverviewChart({ timePeriod = 'week', data, legendLabel }) {
+  const safeData = Array.isArray(data) ? data : [];
+  const hasData = safeData.length > 0;
+  const chartHeight = 320;
+
+  const containerRef = useRef(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return undefined;
+
+    const updateWidth = () => {
+      const nextWidth = Math.round(element.getBoundingClientRect().width);
+      setContainerWidth((current) => (current !== nextWidth ? nextWidth : current));
+    };
+
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, []);
+
+  const maxValue = safeData.reduce((max, point) => Math.max(max, point.current || 0), 0);
+  const xTickFontSize = containerWidth < 420 ? 9 : containerWidth < 768 ? 10 : 11;
+  const xTickAngle = safeData.length > 14 ? -45 : 0;
+  const xTickHeight = safeData.length > 14 ? 72 : 36;
+  const yTickCount = containerWidth < 640 ? 4 : 6;
+
+  const xTargetTicks = containerWidth < 420 ? 4 : containerWidth < 768 ? 6 : containerWidth < 1024 ? 8 : 12;
+  const xTickInterval = Math.max(0, Math.ceil(safeData.length / Math.max(xTargetTicks, 1)) - 1);
+
+  const yTickFormatter = (value) => {
+    if (value === 0) return '₹0';
+    if (maxValue >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`;
+    if (maxValue >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
+    if (maxValue >= 1000) return `₹${(value / 1000).toFixed(0)}K`;
+    return `₹${value}`;
+  };
+
+  return (
+    <div className="flex flex-col justify-between rounded-2xl border border-slate-100 bg-white shadow-sm  h-[500px]">
+      <div className="mb-6 flex items-center justify-between p-6 pb-0">
+        <div>
+          <h2 className="mt-0.5 text-lg font-bold text-slate-800">Sales Overview ({formatTimePeriodLabel(timePeriod)})</h2>
+        </div>
+        <div className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-1.5 text-xs font-medium">
+          <span className="h-2 w-2 rounded-full bg-[#840d5c]" />
+          <span className="text-slate-600">{legendLabel}</span>
+        </div>
+      </div>
+
+      {hasData ? (
+        <div ref={containerRef} className="w-full">
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <AreaChart data={safeData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorPremiumMagenta" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#840d5c" stopOpacity={0.1} />
+                  <stop offset="95%" stopColor="#840d5c" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis
+                dataKey="label"
+                stroke="#94a3b8"
+                tickLine={false}
+                axisLine={false}
+                interval={xTickInterval}
+                tick={{ fontSize: xTickFontSize, fill: '#64748b' }}
+                angle={xTickAngle}
+                textAnchor={xTickAngle ? 'end' : 'middle'}
+                minTickGap={0}
+                height={xTickHeight}
+                dy={8}
+              />
+              <YAxis
+                stroke="#94a3b8"
+                tickLine={false}
+                axisLine={false}
+                tickCount={yTickCount}
+                tickFormatter={yTickFormatter}
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                width={56}
+              />
+              <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1, strokeDasharray: '4 4' }} />
+              <Area
+                type="monotone"
+                dataKey="current"
+                stroke="#840d5c"
+                strokeWidth={2}
+                fillOpacity={1}
+                fill="url(#colorPremiumMagenta)"
+                dot={{ r: 2, strokeWidth: 0, fill: '#840d5c' }}
+                activeDot={{ r: 5, stroke: '#ffffff', strokeWidth: 2, fill: '#840d5c' }}
+                isAnimationActive={false}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 text-sm font-medium text-slate-400">
+          No statistical data available for this range
+        </div>
+      )}
+    </div>
+  );
 }
+
+export default React.memo(SalesOverviewChart);

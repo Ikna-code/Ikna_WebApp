@@ -27,32 +27,46 @@ export default function MetricCardsGroup({ timePeriod = 'week', onTimePeriodChan
     { title: 'Avg. Order Value', value: '₹2,371', percentage: '8.2%', icon: Users, iconBg: 'bg-[#FFF1F3]', iconColor: 'text-[#E5536D]' },
     { title: 'Units Sold', value: '1,248', percentage: '15.3%', icon: Box, iconBg: 'bg-[#FFF6EE]', iconColor: 'text-[#D66C2D]' },
   ];
+  const hasMetrics = metricItems.length > 0;
+  const periodOptions = [
+    { value: '7d', label: '7D' },
+    { value: '30d', label: '30D' },
+    { value: '90d', label: '90D' },
+    { value: '1y', label: '1Y' },
+    { value: 'custom', label: 'Custom' },
+  ];
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 items-start">
       {/* Time-range Filters */}
       <div className="xl:col-span-1 flex xl:flex-col gap-1.5 p-1.5 bg-white rounded-2xl border border-[#E9E4E0] shadow-sm self-stretch justify-between">
-        {['today', 'week', 'month', 'year'].map((period) => (
+        {periodOptions.map((period) => (
           <button
-            key={period}
-            onClick={() => onTimePeriodChange(period)}
+            key={period.value}
+            onClick={() => onTimePeriodChange(period.value)}
             className={`flex-1 py-2 text-center text-xs font-semibold rounded-xl transition-all ${
-              timePeriod === period
+              timePeriod === period.value
                 ? 'bg-[#3D0A21] text-white shadow-sm'
                 : 'text-[#7A6B73] hover:bg-[#FAF6F4]'
             }`}
           >
-            {period.charAt(0).toUpperCase() + period.slice(1)}
+            {period.label}
           </button>
         ))}
       </div>
 
       {/* Grid Indicators */}
-      <div className="xl:col-span-4 flex w-full flex-nowrap gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-5">
-        {metricItems.map((item) => (
-          <MetricCard key={item.title} {...item} />
-        ))}
-      </div>
+      {hasMetrics ? (
+        <div className="xl:col-span-4 flex w-full flex-nowrap gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-5">
+          {metricItems.map((item) => (
+            <MetricCard key={item.title} {...item} />
+          ))}
+        </div>
+      ) : (
+        <div className="xl:col-span-4 flex h-full min-h-24 items-center justify-center rounded-2xl border border-dashed border-[#E9E4E0] bg-white px-4 py-6 text-sm font-medium text-[#7A6B73] shadow-sm">
+          No results found
+        </div>
+      )}
     </div>
   );
 }

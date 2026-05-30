@@ -1,5 +1,5 @@
 import { StateCreator } from "zustand";
-import { getAllProducts, getProductWithImages } from "@/backend/actions/products";
+import { getAllProductsWithPrimaryImage, getProductWithImages } from "@/backend/actions/products";
 import { toggleWishlistAction, getWishlist } from "@/backend/actions/order";
 import { createReview, getReviews, deleteReview } from "@/backend/actions/review";
 
@@ -35,9 +35,13 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
 
   loadProducts: async () => {
     if (get().isProductsInitialized) return;
-    set({ isLoading: true });
-    const products = await getAllProducts();
-    set({ products, isLoading: false, isProductsInitialized: true });
+    set({ isLoading: true, error: null });
+    try {
+      const products = await getAllProductsWithPrimaryImage();
+      set({ products: Array.isArray(products) ? products : [], isLoading: false, isProductsInitialized: true });
+    } catch (e: any) {
+      set({ error: e?.message || "Failed to load products", isLoading: false });
+    }
   },
 
   fetchProductDetails: async (productId: string, force = false) => {

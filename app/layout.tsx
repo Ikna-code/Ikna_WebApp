@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
@@ -23,6 +23,14 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+// CRITICAL FIX: Explicit viewport export to kill window pinch-to-zoom completely across mobile browsers
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false, // Disables multi-touch global page zoom
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -105,7 +113,11 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased overflow-x-hidden`}
     >
-      <body className="min-h-full flex flex-col overflow-x-hidden" >
+      {/* CRITICAL STYLING FIX: 
+        Added 'overscroll-behavior-x-none' and structural touches to ensure that if a gesture spills 
+        outside the chart container, the rest of your web app pages don't shift sideways.
+      */}
+      <body className="min-h-full flex flex-col overflow-x-hidden overscroll-x-none selection:bg-[#840d5c]/20">
         <AppInitializer />
         {children}
         {GA4_ID && (
