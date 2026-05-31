@@ -120,15 +120,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
             Engineered for Comfort, Designed for You
           </p>
 
-          <p className="text-sm text-[#321327]/70 font-medium">
-            {filteredAndSortedProducts.length} Product
-            {filteredAndSortedProducts.length !== 1
-              ? "s"
-              : ""}{" "}
-            Found
-            {mainCategoryName &&
-              ` in "${mainCategoryName}"`}
-          </p>
+
         </header>
 
         {/* FILTERS */}

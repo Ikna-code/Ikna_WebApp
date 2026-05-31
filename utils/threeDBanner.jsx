@@ -9,26 +9,9 @@ const PerspectiveGallery = ({ products, children }) => {
   const [isWhiteSectionActive, setIsWhiteSectionActive] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Amplified spread values to strictly separate the cards away from the center
-  const [maxFarSpread, setMaxFarSpread] = useState(550);
-  const [maxNearSpread, setMaxNearSpread] = useState(280);
-
   useEffect(() => {
     const update = () => {
-      if (window.innerWidth < 768) {
-        setIsMobile(true);
-        // FIXED FOR 100% VISIBILITY:
-        // Center card is 96px wide (positioned at center 0).
-        // Inner cards are 64px wide. To have 0% overlap, they must sit exactly next to the center.
-        // Center edge is at 48px (96/2). Inner card center needs to be at 48px + 32px (64/2) = 80px.
-        // Far cards are 48px wide. Their center needs to sit at 80px + 32px + 24px = 136px.
-        setMaxFarSpread(136); 
-        setMaxNearSpread(80);  
-      } else {
-        setIsMobile(false);
-        setMaxFarSpread(550);
-        setMaxNearSpread(280);
-      }
+      setIsMobile(window.innerWidth < 768);
     };
     update();
     window.addEventListener('resize', update);
@@ -50,15 +33,21 @@ const PerspectiveGallery = ({ products, children }) => {
 
   const cardAnimationEnd = 0.7;
   
-  const spreadXFar = useTransform(smoothProgress, [0, cardAnimationEnd], [0, maxFarSpread]);
-  const spreadXNear = useTransform(smoothProgress, [0, cardAnimationEnd], [0, maxNearSpread]);
+  // PERCENTAGE-BASED RELATIVE TRACKING: Ensures flawless 1% overlap bounds across all screen widths
+  // Near cards move out by 74% of their width. Far cards move out by 148%.
+  const spreadNearPercent = useTransform(smoothProgress, [0, cardAnimationEnd], [0, 74]);
+  const spreadFarPercent = useTransform(smoothProgress, [0, cardAnimationEnd], [0, 148]);
   
-  // FIXED FOR 100% VISIBILITY: Flattened rotation on mobile (0deg) so images face completely flat 
-  const rotateSideFar = useTransform(smoothProgress, [0, cardAnimationEnd], [0, isMobile ? 0 : 45]);
-  const rotateSideNear = useTransform(smoothProgress, [0, cardAnimationEnd], [0, isMobile ? 0 : 25]);
+  // Turn numerical progression into clean CSS percentage strings for Framer Motion
+  const xLeftFar = useTransform(spreadFarPercent, v => `-${v}%`);
+  const xLeftNear = useTransform(spreadNearPercent, v => `-${v}%`);
+  const xRightNear = useTransform(spreadNearPercent, v => `${v}%`);
+  const xRightFar = useTransform(spreadFarPercent, v => `${v}%`);
   
-  // FIXED FOR 100% VISIBILITY: Standardized depth layers on mobile so layers don't cross into each other via perspective
-  const centerDepth = useTransform(smoothProgress, [0, cardAnimationEnd], [100, isMobile ? 100 : 350]);
+  // Uniform perspective step scaling
+  const scaleSideFar = useTransform(smoothProgress, [0, cardAnimationEnd], [1, 0.80]);
+  const scaleSideNear = useTransform(smoothProgress, [0, cardAnimationEnd], [1, 0.90]);
+  const scaleCenter = useTransform(smoothProgress, [0, cardAnimationEnd], [1, isMobile ? 1 : 1.05]);
 
   const whiteSectionY = useTransform(smoothProgress, [0.7, 1], ["100vh", "0vh"]);
 
@@ -82,48 +71,53 @@ const PerspectiveGallery = ({ products, children }) => {
           style={{ opacity: useTransform(smoothProgress, [0.7, 0.85], [1, 0]) }}
           className="relative z-10 text-center mb-4 md:mb-10"
         >
-          <h1 className="text-6xl md:text-[9rem] font-serif text-[#F9F3F5] leading-none">Elevate</h1>
+          <h1 className="text-5xl md:text-[7rem] font-serif text-[#F9F3F5] leading-none">Elevate</h1>
           <p className="text-[#ffbec6] tracking-[1.2em] uppercase text-[9px] md:text-xs font-bold mt-4">The New Dimension</p>
         </motion.div>
 
-        {/* 3D Stage */}
-        <div 
-          className="relative w-full h-[280px] md:h-[450px] flex items-center justify-center" 
-          style={{ perspective: '1200px', transformStyle: 'preserve-3d' }}
-        >
+        {/* Dynamic Staging Stage Wrapper */}
+        <div className="relative w-full h-[280px] md:h-[450px] flex items-center justify-center mx-auto max-w-7xl">
           
-          {/* FAR LEFT */}
+          {/* FAR LEFT (Underneath layer) */}
           <motion.div 
-            style={{ x: useTransform(spreadXFar, v => -v), translateZ: isMobile ? -20 : -120, rotateY: rotateSideFar }}
-            className="absolute w-12 h-24 md:w-44 md:h-64 rounded-xl overflow-hidden shadow-2xl border border-white/10"
+            style={{ 
+              x: xLeftFar,
+              scale: scaleSideFar 
+            }}
+            className="absolute w-24 h-44 md:w-56 md:h-96 rounded-2xl overflow-hidden shadow-2xl border border-white/10 z-10"
           >
             <img src={'/images/sample images/brown_modal.jpeg'} className="w-full h-full object-cover" alt="" />
           </motion.div>
 
-          {/* INNER LEFT */}
+          {/* INNER LEFT (Middle layer) */}
           <motion.div 
-            style={{ x: useTransform(spreadXNear, v => -v), translateZ: isMobile ? -10 : 20, rotateY: rotateSideNear }}
-            className="absolute w-16 h-32 md:w-52 md:h-72 rounded-xl overflow-hidden shadow-2xl border border-white/20 z-20"
+            style={{ 
+              x: xLeftNear,
+              scale: scaleSideNear
+            }}
+            className="absolute w-24 h-44 md:w-56 md:h-96 rounded-2xl overflow-hidden shadow-2xl border border-white/20 z-20"
           >
             <img src={`${IMAGE_BASE_URL}/${products[1]?.image}`} className="w-full h-full object-cover" alt="" />
           </motion.div>
 
-          {/* CENTER */}
+          {/* CENTER CARD (Top priority layer) */}
           <motion.div 
             style={{ 
-              translateZ: centerDepth, 
-              scale: useTransform(smoothProgress, [0, 0.7], [1, isMobile ? 1 : 115]) 
+              scale: scaleCenter
             }}
-            className="relative group w-24 h-44 md:w-64 md:h-96 rounded-2xl overflow-hidden border-2 border-[#ffbec6]/40 shadow-2xl z-40"
+            className="relative group w-24 h-44 md:w-56 md:h-96 rounded-2xl overflow-hidden border-2 border-[#ffbec6]/40 shadow-2xl z-30"
           >
             <img src={'/images/sample images/Elevate_Center.png'} className="w-full h-full object-cover" alt="" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#43012a] via-[#321327]/40 to-transparent" />
           </motion.div>
 
-          {/* INNER RIGHT */}
+          {/* INNER RIGHT (Middle layer) */}
           <motion.div 
-            style={{ x: spreadXNear, translateZ: isMobile ? -10 : 20, rotateY: useTransform(rotateSideNear, v => -v) }}
-            className="absolute w-16 h-32 md:w-52 md:h-72 rounded-xl overflow-hidden shadow-2xl border border-white/20 z-20"
+            style={{ 
+              x: xRightNear,
+              scale: scaleSideNear
+            }}
+            className="absolute w-24 h-44 md:w-56 md:h-96 rounded-2xl overflow-hidden shadow-2xl border border-white/20 z-20"
           >
             <img 
               src={`${IMAGE_BASE_URL}/${products[2]?.image}`} 
@@ -132,11 +126,13 @@ const PerspectiveGallery = ({ products, children }) => {
             />
           </motion.div>
 
-          {/* FAR RIGHT */}
+          {/* FAR RIGHT (Underneath layer) */}
           <motion.div 
-            style={{ x: spreadXFar, translateZ: isMobile ? -20 : -120, rotateY: useTransform(transform => -transform) }}
-            style={{ x: spreadXFar, translateZ: isMobile ? -20 : -120, rotateY: useTransform(rotateSideFar, v => -v) }}
-            className="absolute w-12 h-24 md:w-44 md:h-64 rounded-xl overflow-hidden shadow-2xl border border-white/10"
+            style={{ 
+              x: xRightFar,
+              scale: scaleSideFar
+            }}
+            className="absolute w-24 h-44 md:w-56 md:h-96 rounded-2xl overflow-hidden shadow-2xl border border-white/10 z-10"
           >
             <img src={'/images/sample images/IMG_1502.jpeg'} className="w-full h-full object-cover" alt="" />
           </motion.div>
