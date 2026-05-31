@@ -5,6 +5,7 @@ import { createReview, getReviews, deleteReview } from "@/backend/actions/review
 
 // Deduplicate concurrent detail requests (e.g., React Strict Mode double-invocation)
 const productDetailInFlight = new Map<string, Promise<any>>();
+const FULL_DETAIL_FLAG = "__fullImageCollection";
 
 export interface ProductSlice {
   products: any[];
@@ -38,7 +39,61 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const products = await getAllProductsWithPrimaryImage();
-      set({ products: Array.isArray(products) ? products : [], isLoading: false, isProductsInitialized: true });
+      const baseProducts = Array.isArray(products) ? products : [];
+
+      // First paint can use base cards, then hydrate full image collections into store.
+      const detailEntries = await Promise.all(
+        baseProducts
+          .map((p: any) => p?.id)
+          .filter(Boolean)
+          .map(async (productId: string) => {
+            const existingRequest = productDetailInFlight.get(productId);
+            if (existingRequest) {
+              const inFlightData = await existingRequest;
+              return [productId, inFlightData] as const;
+            }
+
+            const request = getProductWithImages(productId)
+              .catch(() => null)
+              .finally(() => {
+                productDetailInFlight.delete(productId);
+              });
+
+            productDetailInFlight.set(productId, request);
+
+            const data = await request;
+            return [productId, data] as const;
+          })
+      );
+
+      const fullDetailsById: Record<string, any> = {};
+      for (const [productId, data] of detailEntries) {
+        if (data) {
+          fullDetailsById[productId] = {
+            ...data,
+            [FULL_DETAIL_FLAG]: true,
+          };
+        }
+      }
+
+      const hydratedProducts = baseProducts.map((product: any) => {
+        const full = fullDetailsById[product?.id];
+        if (full) return full;
+        return {
+          ...product,
+          [FULL_DETAIL_FLAG]: false,
+        };
+      });
+
+      set((state) => ({
+        products: hydratedProducts,
+        productDetailsById: {
+          ...state.productDetailsById,
+          ...fullDetailsById,
+        },
+        isLoading: false,
+        isProductsInitialized: true,
+      }));
     } catch (e: any) {
       set({ error: e?.message || "Failed to load products", isLoading: false });
     }
@@ -56,9 +111,11 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
       return await existingRequest;
     }
 
-    // Reuse any fully hydrated product already present in the products list.
+    // Reuse only if we explicitly marked this product as fully hydrated.
     if (!force) {
-      const fromProducts = get().products.find((p: any) => p?.id === productId && Array.isArray(p?.product_images));
+      const fromProducts = get().products.find(
+        (p: any) => p?.id === productId && p?.[FULL_DETAIL_FLAG] === true
+      );
       if (fromProducts) {
         set((state) => ({
           productDetailsById: {
@@ -80,9 +137,20 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
         }
 
         set((state) => ({
+          products: state.products.map((product: any) =>
+            product?.id === productId
+              ? {
+                  ...data,
+                  [FULL_DETAIL_FLAG]: true,
+                }
+              : product
+          ),
           productDetailsById: {
             ...state.productDetailsById,
-            [productId]: data,
+            [productId]: {
+              ...data,
+              [FULL_DETAIL_FLAG]: true,
+            },
           },
           isLoading: false,
         }));
