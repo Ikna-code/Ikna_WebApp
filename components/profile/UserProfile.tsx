@@ -206,8 +206,17 @@ const UserProfile = () => {
                       }`}
                       title={item.label}
                     >
-                      <span className={`flex items-center justify-center ${isActive ? 'text-[#F9F3F5]' : 'text-[#840d5c]'}`}>
+                      <span className={`relative flex items-center justify-center ${isActive ? 'text-[#F9F3F5]' : 'text-[#840d5c]'}`}>
                         {item.icon}
+                        {item.count !== undefined && (
+                          <span
+                            className={`absolute -right-2.5 -top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold leading-none sm:hidden ${
+                              isActive ? 'bg-[#F9F3F5] text-[#321327]' : 'bg-[#840d5c] text-white'
+                            }`}
+                          >
+                            {item.count}
+                          </span>
+                        )}
                       </span>
 
                       <span className="text-[9px] font-bold tracking-wide uppercase sm:hidden">

@@ -97,38 +97,35 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
   },
 
   updateQuantity: async (cartItemId, quantity) => {
-    // Note: We don't set isLoading here to prevent the whole UI from flickering
+    // Optimistic update first so the UI responds instantly without losing product data.
+    // The server response only contains the bare cartItem row (no product relation),
+    // so we must NOT replace the item — only patch the quantity field.
+    set((state) => ({
+      cartItems: state.cartItems.map((item) =>
+        item.id === cartItemId ? { ...item, quantity } : item
+      ),
+    }));
     const res = await updateCartQuantity(cartItemId, quantity);
-    if (res?.success && res.item) {
-      set((state) => ({
-        cartItems: state.cartItems.map(item => 
-          item.id === cartItemId ? res.item : item
-        )
-      }));
+    if (!res?.success) {
+      console.error("updateQuantity failed:", res?.error);
     }
   },
 
 removeItem: async (cartItemId: string) => {
   try {
-    // 1. Manually define the expected response shape
-    interface DeleteResponse {
-      success: boolean;
-      error?: string;
-    }
-
-    // 2. Assign the result to a typed variable
-    // We cast to 'any' first to stop the "incompatible types" error
     const result = await removeFromCart(cartItemId);
-    const res = result as any as DeleteResponse;
+    const res = result as any as { success: boolean; error?: string };
 
     if (res && res.success) {
       set((state) => ({
         cartItems: state.cartItems.filter((item) => item.id !== cartItemId),
       }));
     } else {
-      set({ error: res?.error || "Failed to remove item" });
+      const msg = res?.error || "Failed to remove item";
+      set({ error: msg });
+      console.error("removeItem failed:", msg);
     }
-  } catch (err) {
+  } catch (err: any) {
     set({ error: "A network error occurred." });
     console.error("Cart Slice Error:", err);
   }

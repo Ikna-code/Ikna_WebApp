@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Script from "next/script";
 import { Trash2, Plus, Minus, ChevronLeft, ShoppingBag, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
-import { updateCartQuantity, removeFromCart, clearCart } from "@/backend/actions/order";
+import { clearCart } from "@/backend/actions/order";
 import { createRazorpayOrder } from "@/backend/actions/payment";
 import { verifyPayment } from "@/backend/actions/verify";
 import { useStore } from '@/store/useStore'; 
@@ -21,7 +21,9 @@ const CartPage = () => {
   const user = useStore((state) => state.user);
   const isAuthInitialized = useStore((state) => state.isAuthInitialized);
   const cartItems = useStore((state) => state.cartItems);
-  const fetchCart = useStore((state) => state.fetchCart); 
+  const fetchCart = useStore((state) => state.fetchCart);
+  const storeRemoveItem = useStore((state) => state.removeItem);
+  const storeUpdateQuantity = useStore((state) => state.updateQuantity);
 
   // 5. PAYMENT LOGIC
   const handlePayment = async () => {
@@ -66,7 +68,12 @@ const CartPage = () => {
       rzp.open();
     } catch (err) {
       console.error("Checkout error:", err);
-      alert("Could not initiate checkout.");
+      const message = err instanceof Error ? err.message : "";
+      if (message.toLowerCase().includes("shipping address")) {
+        alert("Shipping address not available. Please add an address before checkout.");
+      } else {
+        alert(message || "Could not initiate checkout.");
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -74,27 +81,12 @@ const CartPage = () => {
 
   // 6. UI ACTIONS: Linked directly to mutations + global state updates
   const updateQuantity = async (cartItemId: string, newQty: number) => {
-    const userId = user?.id;
     if (newQty < 1) return;
-    
-    const response = await updateCartQuantity(cartItemId, newQty);
-    
-    if (response.success && userId && fetchCart) {
-      await fetchCart(userId);
-    } else if (!response.success) {
-      alert("Could not update item quantity.");
-    }
+    await storeUpdateQuantity(cartItemId, newQty);
   };
 
   const removeItem = async (id: string) => {
-    const userId = user?.id;
-    const response = await removeFromCart(id) as { error?: string };
-    
-    if (!response?.error && userId && fetchCart) {
-      await fetchCart(userId);
-    } else if (response?.error) {
-      alert("Could not remove item from bag.");
-    }
+    await storeRemoveItem(id);
   };
 
   // 7. CALCULATIONS: Hardened case-insensitive fallbacks for prices

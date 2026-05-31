@@ -8,6 +8,7 @@ export interface AuthSlice {
   isLoading: boolean;
   error: string | null;
   fetchUser: () => Promise<void>;
+  forceRefetchUser: () => Promise<void>;
   clearUser: () => void;
 }
 
@@ -43,6 +44,13 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
     } catch (e: any) {
       set({ error: e.message || "Failed to fetch user", isLoading: false, isAuthInitialized: true });
     }
+  },
+
+  forceRefetchUser: async () => {
+    // Bypasses the isAuthInitialized guard for use after login/OTP.
+    set({ isAuthInitialized: false });
+    const slice = get() as AuthSlice;
+    await slice.fetchUser();
   },
 
   clearUser: () => set({ user: null, isAuthInitialized: false }),

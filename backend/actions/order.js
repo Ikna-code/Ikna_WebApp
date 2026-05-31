@@ -189,26 +189,43 @@ console.log("Parsed quantity:", qty);
 // });
 /**
  * Removes a specific item from the cart.
+ * Uses the Supabase admin client to bypass RLS / pooler limitations.
  */
 export async function removeFromCart(cartItemId) {
   try {
-    await db.cartItem.delete({
-      where: { id: cartItemId },
-    });
+    const { createSupabaseAdminClient } = await import("@/backend/lib/supabaseAdmin");
+    const admin = createSupabaseAdminClient();
+    const { error } = await admin
+      .from("cart_items")
+      .delete()
+      .eq("id", String(cartItemId));
+
+    if (error) {
+      console.error("Remove from cart error:", error);
+      return { success: false, error: error.message };
+    }
+
     revalidatePath("/cart");
     return { success: true };
   } catch (error) {
     console.error("Remove from cart error:", error);
-    return { success: false, error: "Failed to remove item" };
+    return { success: false, error: error?.message || "Failed to remove item" };
   }
 }
 
 export async function clearCart(userId) {
   try {
-    // Delete all cart items associated with the user
-    await db.cartItem.deleteMany({
-      where: { userId: userId },
-    });
+    const { createSupabaseAdminClient } = await import("@/backend/lib/supabaseAdmin");
+    const admin = createSupabaseAdminClient();
+    const { error } = await admin
+      .from("cart_items")
+      .delete()
+      .eq("userId", String(userId));
+
+    if (error) {
+      console.error("Clear cart error:", error);
+      return { success: false, error: error.message };
+    }
     return { success: true };
   } catch (error) {
     console.error('Failed to clear cart:', error);
