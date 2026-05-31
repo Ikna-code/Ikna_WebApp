@@ -4,10 +4,12 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircle2, ShoppingBag, ArrowRight } from 'lucide-react';
 import Header from '@/components/layout/Header';
+import { getShortOrderReference } from '@/lib/orderReference';
 
 const SuccessPage = () => {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId');
+  const shortOrderReference = getShortOrderReference(orderId);
 
   return (
     <div className="bg-[#FAF3F5] min-h-screen flex flex-col">
@@ -33,7 +35,7 @@ const SuccessPage = () => {
             {orderId && (
               <div className="bg-[#FAF3F5] py-3 px-6 rounded-2xl inline-block">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#840d5c]/60">
-                  Order ID: <span className="text-[#321327] ml-1">{orderId}</span>
+                  Order ID: <span className="text-[#321327] ml-1">{shortOrderReference ? `#${shortOrderReference}` : ""}</span>
                 </p>
               </div>
             )}
@@ -46,12 +48,7 @@ const SuccessPage = () => {
                 Continue Shopping <ArrowRight size={16} />
               </Link>
               
-              <Link 
-                href="/orders" 
-                className="text-[10px] font-bold uppercase tracking-widest text-[#321327]/40 hover:text-[#840d5c] transition-colors"
-              >
-                View My Orders
-              </Link>
+
             </div>
           </div>
         </div>
@@ -61,3 +58,4 @@ const SuccessPage = () => {
 };
 
 export default SuccessPage;
+

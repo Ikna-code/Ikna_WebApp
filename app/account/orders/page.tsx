@@ -6,6 +6,7 @@ import { Package, ChevronDown, CheckCircle2, MapPin, Loader2 } from 'lucide-reac
 import { IMAGE_BASE_URL } from '@/public/constants/constants';
 import ShipmentTracker from './ShipmentTracker';
 import { useStore } from '@/store/useStore';
+import { getShortOrderReference } from '@/lib/orderReference';
 
 const OrdersPage = () => {
   const orders = useStore((s) => s.orders);
@@ -50,6 +51,8 @@ const OrdersPage = () => {
                 { status: 'Order Delivered', completed: order.status === 'DELIVERED', active: order.status === 'DELIVERED', date: order.deliveredAt ? new Date(order.deliveredAt).toLocaleString() : 'Expected Soon' },
               ];
 
+              const shortOrderReference = getShortOrderReference(order.id);
+
               const resolvedAddress =
                 (typeof order.address === 'string' && order.address.trim()) ||
                 (typeof order.shippingAddress === 'string' && order.shippingAddress.trim()) ||
@@ -80,7 +83,7 @@ const OrdersPage = () => {
                         <Package size={20} className="sm:size-[24px]" />
                       </div>
                       <div className="min-w-0">
-                        <h3 className="font-bold text-[#321327] text-sm sm:text-base truncate">#{order.id}</h3>
+                        <h3 className="font-bold text-[#321327] text-sm sm:text-base truncate">#{shortOrderReference}</h3>
                         <div className="flex items-center gap-2 mt-0.5 sm:mt-0 flex-wrap">
                           <p className="text-xs text-[#321327]/50">{new Date(order.createdAt).toLocaleDateString()}</p>
                           {/* Mobile status display visible only on smaller screens */}
@@ -191,3 +194,4 @@ const OrdersPage = () => {
 };
 
 export default OrdersPage;
+

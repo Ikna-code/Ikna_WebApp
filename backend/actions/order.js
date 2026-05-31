@@ -6,6 +6,31 @@ import { supabase } from '../lib/supabaseClient';// 🛒 CART ACTIONS
 import { Prisma } from "@prisma/client";
 import { calculateComboDiscounts, validateCouponCode } from "./promotions";
 
+function generateShortOrderId(length = 6) {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let result = "";
+
+  for (let i = 0; i < length; i += 1) {
+    const randomIndex = Math.floor(Math.random() * alphabet.length);
+    result += alphabet[randomIndex];
+  }
+
+  return result;
+}
+
+async function createUniqueOrderId(tx) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const candidate = generateShortOrderId(6);
+    const exists = await tx.order.findUnique({ where: { id: candidate } });
+
+    if (!exists) {
+      return candidate;
+    }
+  }
+
+  throw new Error("Could not generate unique order ID");
+}
+
 /**
  * Adds a product to the user's cart. 
  * If the product already exists, it increments the quantity.
@@ -323,8 +348,11 @@ export async function createOrder(userId, couponCode = null, options = {}) {
       }
 
       // 5. Finalize the Database Records
+      const orderId = await createUniqueOrderId(tx);
+
       const order = await tx.order.create({
         data: {
+          id: orderId,
           userId,
           addressId: shippingAddressRecord.id,
           shippingAddress,

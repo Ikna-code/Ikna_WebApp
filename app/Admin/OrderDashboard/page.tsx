@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, ChevronDown, Check, Clock3, Package, Truck, CheckCircle2, RotateCcw, LucideIcon } from 'lucide-react';
+import { Search, ChevronDown, Check, Clock3, Package, Truck, CheckCircle2, RotateCcw, LucideIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 
 interface Order {
   id: string;
   date: string;
+  rawDate: string; // Kept to sort orders efficiently chronologically
   customer: string;
   items: string;
   total: number;
@@ -26,6 +27,7 @@ type BackendOrder = {
   orderItems?: Array<{ id: string }>;
 };
 
+const ITEMS_PER_PAGE = 15;
 const ORDER_STATUSES: Array<Exclude<Order['status'], 'Cancelled'>> = ['Processing', 'Packed', 'In Transit', 'Delivered'];
 
 const statusBadgeClassMap: Record<Order['status'], string> = {
@@ -79,6 +81,7 @@ function mapOrderToUi(order: BackendOrder): Order {
 
   return {
     id: order.id,
+    rawDate: order.createdAt || '',
     date: order.createdAt
       ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
       : 'Date unavailable',
@@ -99,6 +102,9 @@ export default function Orders() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatusOrder, setSelectedStatusOrder] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'All' | Order['status']>('All');
+  
+  // Pagination State Setup
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const hasAdminShape = (storeOrders || []).some((order) => !!order?.user);
@@ -107,7 +113,17 @@ export default function Orders() {
     }
   }, [fetchAdminOrders, isOrdersInitialized, storeOrders]);
 
-  const orders = useMemo(() => (storeOrders || []).map(mapOrderToUi), [storeOrders]);
+  // Reset pagination automatically when filters or search queries change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
+  // Map and sort items: latest orders (newest timestamps) at the very top
+  const orders = useMemo(() => {
+    return (storeOrders || [])
+      .map(mapOrderToUi)
+      .sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime());
+  }, [storeOrders]);
 
   const statusCounts = ORDER_STATUSES.reduce(
     (acc, status) => {
@@ -137,12 +153,24 @@ export default function Orders() {
     setSelectedStatusOrder(null);
   };
 
-  const filteredOrders = orders.filter(
-    (o) =>
-      (o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.customer.toLowerCase().includes(searchQuery.toLowerCase())) &&
-      (statusFilter === 'All' || o.status === statusFilter)
-  );
+  // Base list containing all filtered records
+  const filteredOrders = useMemo(() => {
+    return orders.filter(
+      (o) =>
+        (o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          o.customer.toLowerCase().includes(searchQuery.toLowerCase())) &&
+        (statusFilter === 'All' || o.status === statusFilter)
+    );
+  }, [orders, searchQuery, statusFilter]);
+
+  // Determine pagination bounds based on currently filtered records
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ITEMS_PER_PAGE));
+  
+  // Slice out only the 15 records scoped for the dynamic currentPage index
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredOrders.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredOrders, currentPage]);
 
   return (
     <div className="space-y-6">
@@ -166,7 +194,7 @@ export default function Orders() {
       </div>
 
       <div className="grid grid-cols-5 gap-2 md:grid-cols-4 md:gap-3">
-        {/* Mobile-Only 'All Orders' Card Button - Colored relevant to palette */}
+        {/* Mobile-Only 'All Orders' Card Button */}
         <button
           onClick={() => setStatusFilter('All')}
           className={`rounded-2xl border p-2 text-center shadow-sm transition md:hidden ${
@@ -246,7 +274,7 @@ export default function Orders() {
 
       {/* Mobile Card Grid View */}
       <div className="grid grid-cols-2 gap-3 md:hidden">
-        {filteredOrders.map((o) => (
+        {paginatedOrders.map((o) => (
           <div key={o.id} className="rounded-3xl border border-neutral-200 bg-white p-3 shadow-sm">
             <div className="flex items-start gap-3">
               <div>
@@ -315,7 +343,7 @@ export default function Orders() {
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100 text-neutral-600 font-medium">
-            {filteredOrders.map((o) => (
+            {paginatedOrders.map((o) => (
               <tr key={o.id} className="hover:bg-neutral-50 transition">
                 <td className="py-5 px-6 font-mono font-bold text-neutral-800">{o.id}</td>
                 <td className="py-4 px-4">{o.date}</td>
@@ -363,6 +391,48 @@ export default function Orders() {
           </tbody>
         </table>
       </div>
+
+      {/* New Reusable Pagination Control Footer */}
+      {filteredOrders.length > 0 && (
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-neutral-200 pt-4 sm:flex-row">
+          <p className="text-xs font-semibold text-neutral-500">
+            Showing <span className="font-bold text-neutral-800">{Math.min(filteredOrders.length, (currentPage - 1) * ITEMS_PER_PAGE + 1)}</span> to{' '}
+            <span className="font-bold text-neutral-800">{Math.min(filteredOrders.length, currentPage * ITEMS_PER_PAGE)}</span> of{' '}
+            <span className="font-bold text-neutral-800">{filteredOrders.length}</span> entries
+          </p>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-600 transition hover:bg-neutral-50 hover:border-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`inline-flex h-8 min-w-8 items-center justify-center rounded-xl px-2 text-xs font-bold transition ${
+                  currentPage === page
+                    ? 'bg-[#840d5c] text-white shadow-sm'
+                    : 'border border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 hover:border-neutral-300'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+
+            <button
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-600 transition hover:bg-neutral-50 hover:border-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
