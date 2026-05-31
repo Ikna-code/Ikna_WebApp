@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useStore } from "@/store/useStore";
 
 interface NavbarProps {
   isMobile?: boolean;
@@ -9,20 +10,24 @@ interface NavbarProps {
 
 export default function Navbar({ isMobile, onClose }: NavbarProps) {
   const pathname = usePathname();
+  const user = useStore((state) => state.user);
 
   const navLinks = [
-    { name: "Admin Dashboard", href: "/Admin" },
     { name: "HOME", href: "/" },
     { name: "SHOP", href: "/shop" },
     { name: "ABOUT IKNA", href: "/about-us" },
   ];
+
+  const visibleLinks = user?.role === "ADMIN"
+    ? [{ name: "ADMIN DASHBOARD", href: "/Admin" }, ...navLinks]
+    : navLinks;
 
   return (
     <nav className={isMobile 
       ? "flex flex-col space-y-6" 
       : "hidden md:flex items-center space-x-10"}
     >
-      {navLinks.map((link) => {
+      {visibleLinks.map((link) => {
         const isActive = pathname === link.href;
 
         return (

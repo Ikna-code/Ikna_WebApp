@@ -10,18 +10,15 @@ export async function ensureCurrentDbUser() {
     throw new Error('Unauthorized');
   }
 
-  const role = process.env.NODE_ENV === 'production' ? Role.USER : Role.ADMIN;
-
   return db.user.upsert({
     where: { id: user.id },
     create: {
       id: user.id,
       email: user.email ?? '',
-      role,
+      role: Role.USER,
     },
     update: {
       email: user.email ?? '',
-      role,
     },
   });
 }

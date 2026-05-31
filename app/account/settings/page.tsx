@@ -14,6 +14,7 @@ import { createClient } from '@/backend/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner'; 
 import { updateUserProfile } from '@/backend/actions/user';
+import { useStore } from '@/store/useStore';
 
 function getAppBaseUrl() {
   const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
@@ -34,6 +35,7 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser, onUpdate: () => vo
   const supabase = createClient();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const resetStoreState = useStore;
   
   // Initialize state with props
   const [formData, setFormData] = useState({
@@ -78,6 +80,20 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser, onUpdate: () => vo
       setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+
+      resetStoreState.setState({
+        user: null,
+        isAuthInitialized: false,
+        cartItems: [],
+        isCartInitialized: false,
+        cartUserId: null,
+        orders: [],
+        isOrdersInitialized: false,
+        wishlist: [],
+        isWishlistInitialized: false,
+        addresses: [],
+        isAddressesInitialized: false,
+      });
       
       toast.success("Signed out successfully");
       

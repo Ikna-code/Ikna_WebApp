@@ -1,7 +1,19 @@
 import type { ReactNode } from 'react';
+import { redirect } from 'next/navigation';
+import { Role } from '@prisma/client';
 import Sidebar from './Analytics/Sidebar';
+import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
 
-export default function AdminLayout({ children }: { children: ReactNode }) {
+export default async function AdminLayout({ children }: { children: ReactNode }) {
+  try {
+    const dbUser = await ensureCurrentDbUser();
+    if (dbUser.role !== Role.ADMIN) {
+      redirect('/');
+    }
+  } catch {
+    redirect('/');
+  }
+
   return (
     /* 
       CRITICAL HARDENING: 
