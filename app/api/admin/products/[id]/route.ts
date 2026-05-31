@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient, Role } from '@prisma/client';
 import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
+import { createSupabaseAdminClient } from '@/backend/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,21 @@ async function requireAdmin() {
   }
 
   return dbUser.id;
+}
+
+function toStoragePath(pathOrUrl: string) {
+  const value = String(pathOrUrl || '').trim();
+  if (!value) return '';
+
+  if (value.startsWith('http://') || value.startsWith('https://')) {
+    const marker = '/storage/v1/object/public/products/';
+    const markerIndex = value.indexOf(marker);
+    if (markerIndex >= 0) {
+      return value.slice(markerIndex + marker.length);
+    }
+  }
+
+  return value.replace(/^\/+/, '');
 }
 
 export async function PATCH(
@@ -30,6 +46,39 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
+    const removeImageIds: string[] = Array.isArray(body?.removeImageIds)
+      ? body.removeImageIds.filter((item: unknown) => typeof item === 'string' && item.length > 0)
+      : [];
+    const removeImagePaths: string[] = Array.isArray(body?.removeImagePaths)
+      ? body.removeImagePaths.filter((item: unknown) => typeof item === 'string' && item.length > 0)
+      : [];
+    const imagePaths: string[] = Array.isArray(body?.imagePaths)
+      ? body.imagePaths.filter((item: unknown) => typeof item === 'string' && item.length > 0)
+      : [];
+
+    const existingProduct = await prisma.product.findUnique({
+      where: { id },
+      include: {
+        images: {
+          select: {
+            id: true,
+            image_path: true,
+            is_primary: true,
+          },
+        },
+      },
+    });
+
+    if (!existingProduct) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    const removeIdSet = new Set(removeImageIds);
+    const removePathSet = new Set(removeImagePaths.map((path) => toStoragePath(path)));
+    const imagesToDelete = existingProduct.images.filter(
+      (image) => removeIdSet.has(image.id) || removePathSet.has(toStoragePath(image.image_path))
+    );
+
     const updateData: {
       name?: string;
       price?: number;
@@ -40,12 +89,6 @@ export async function PATCH(
       tag?: string | null;
       rating?: number | null;
       sizes?: string[];
-      images?: {
-        create: Array<{
-          image_path: string;
-          is_primary: boolean;
-        }>;
-      };
     } = {};
 
     if (typeof body?.name === 'string') updateData.name = body.name;
@@ -59,22 +102,48 @@ export async function PATCH(
     if (Array.isArray(body?.sizes)) {
       updateData.sizes = body.sizes.filter((item: unknown) => typeof item === 'string');
     }
-    if (Array.isArray(body?.imagePaths)) {
-      const imagePaths = body.imagePaths.filter((item: unknown) => typeof item === 'string' && item.length > 0);
+
+    const updatedProduct = await prisma.$transaction(async (tx) => {
+      if (imagesToDelete.length) {
+        await tx.productImage.deleteMany({
+          where: {
+            id: {
+              in: imagesToDelete.map((image) => image.id),
+            },
+          },
+        });
+      }
+
       if (imagePaths.length) {
-        updateData.images = {
-          create: imagePaths.map((path: string, index: number) => ({
+        await tx.productImage.createMany({
+          data: imagePaths.map((path: string, index: number) => ({
+            product_id: id,
             image_path: path,
             is_primary: index === 0,
           })),
-        };
+        });
+      }
+
+      return tx.product.update({
+        where: { id },
+        data: updateData,
+      });
+    });
+
+    if (imagesToDelete.length) {
+      try {
+        const supabase = createSupabaseAdminClient();
+        const storagePaths = imagesToDelete
+          .map((image) => toStoragePath(image.image_path))
+          .filter((path) => path.length > 0);
+
+        if (storagePaths.length) {
+          await supabase.storage.from('products').remove(storagePaths);
+        }
+      } catch {
+        // Storage cleanup failure should not block successful product updates.
       }
     }
-
-    const updatedProduct = await prisma.product.update({
-      where: { id },
-      data: updateData,
-    });
 
     return NextResponse.json(updatedProduct);
   } catch {

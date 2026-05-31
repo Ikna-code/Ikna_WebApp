@@ -32,6 +32,7 @@ interface ProductDetail {
   sizes: string[];
   rating: number | null;
   createdAt: string;
+  images: { id: string; image_path: string; is_primary: boolean | null }[];
 }
 
 interface DbProduct {
@@ -80,6 +81,12 @@ interface ImportImagePreviewItem {
   file: File;
   url: string;
   relativePath: string;
+}
+
+interface EditableExistingImage {
+  id: string;
+  imagePath: string;
+  isPrimary: boolean;
 }
 
 const IMPORT_TEMPLATE_HEADERS = [
@@ -202,6 +209,9 @@ export default function ProductManagementDashboard() {
     rating: '',
   });
   const [editProductImages, setEditProductImages] = useState<File[]>([]);
+  const [editExistingImages, setEditExistingImages] = useState<EditableExistingImage[]>([]);
+  const [removedEditImageIds, setRemovedEditImageIds] = useState<string[]>([]);
+  const [removedEditImagePaths, setRemovedEditImagePaths] = useState<string[]>([]);
 
   const getImageUrl = (pathOrUrl: string) => {
     if (!pathOrUrl) return '';
@@ -209,6 +219,29 @@ export default function ProductManagementDashboard() {
       return pathOrUrl;
     }
     return `${IMAGE_BASE_URL}${pathOrUrl}`;
+  };
+
+  const getBucketFolderFromPath = (pathOrUrl: string) => {
+    if (!pathOrUrl) return '';
+
+    const normalized = String(pathOrUrl).trim().replace(/\\/g, '/');
+    let storagePath = normalized;
+
+    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+      const marker = '/storage/v1/object/public/products/';
+      const markerIndex = storagePath.indexOf(marker);
+
+      if (markerIndex >= 0) {
+        storagePath = storagePath.slice(markerIndex + marker.length);
+      }
+    }
+
+    const parts = storagePath.split('/').filter(Boolean);
+    if (parts.length <= 1) {
+      return parts[0] || '';
+    }
+
+    return parts.slice(0, -1).join('/');
   };
 
   const fetchProducts = useCallback(async () => {
@@ -242,6 +275,7 @@ export default function ProductManagementDashboard() {
           sizes: product.sizes || [],
           rating: typeof product.rating === 'number' ? product.rating : null,
           createdAt: product.createdAt,
+          images: Array.isArray(product.images) ? product.images : [],
         };
       });
 
@@ -613,8 +647,58 @@ export default function ProductManagementDashboard() {
       image: product.image,
       rating: product.rating != null ? String(product.rating) : '',
     });
+
+    const normalizedExistingImages =
+      product.images.length > 0
+        ? product.images.map((image) => ({
+            id: image.id,
+            imagePath: image.image_path,
+            isPrimary: Boolean(image.is_primary),
+          }))
+        : product.image
+          ? [
+              {
+                id: '',
+                imagePath: product.image,
+                isPrimary: true,
+              },
+            ]
+          : [];
+
+    setEditExistingImages(normalizedExistingImages);
+    setRemovedEditImageIds([]);
+    setRemovedEditImagePaths([]);
     handleClearEditProductImages();
     setIsEditModalOpen(true);
+  };
+
+  const handleRemoveExistingEditImage = (image: EditableExistingImage) => {
+    setEditExistingImages((current) => {
+      const next = current.filter((item) => item.imagePath !== image.imagePath);
+
+      setEditProductDetail((previous) => {
+        if (previous.image.trim() !== image.imagePath) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          image: next[0]?.imagePath || '',
+        };
+      });
+
+      return next;
+    });
+
+    if (image.id) {
+      setRemovedEditImageIds((current) => (current.includes(image.id) ? current : [...current, image.id]));
+    }
+
+    if (image.imagePath) {
+      setRemovedEditImagePaths((current) =>
+        current.includes(image.imagePath) ? current : [...current, image.imagePath]
+      );
+    }
   };
 
   const handleUpdateProductDetail = async (e: React.FormEvent) => {
@@ -629,6 +713,23 @@ export default function ProductManagementDashboard() {
         .map((size) => size.trim())
         .filter(Boolean);
 
+      const currentPrimaryPath = editProductDetail.image.trim();
+      const removedPaths = new Set(removedEditImagePaths);
+      const primaryWasRemoved = Boolean(currentPrimaryPath && removedPaths.has(currentPrimaryPath));
+      const fallbackPrimaryFromExisting = editExistingImages.find(
+        (image) => image.isPrimary && !removedPaths.has(image.imagePath)
+      )?.imagePath;
+      const fallbackPathFromExisting = editExistingImages.find(
+        (image) => !removedPaths.has(image.imagePath)
+      )?.imagePath;
+
+      const resolvedPrimaryImage =
+        (!primaryWasRemoved && currentPrimaryPath) ||
+        uploadedPaths[0] ||
+        fallbackPrimaryFromExisting ||
+        fallbackPathFromExisting ||
+        null;
+
       const response = await fetch(`/api/admin/products/${editingProductId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -640,9 +741,11 @@ export default function ProductManagementDashboard() {
           sizes,
           category: editProductDetail.category.trim(),
           tag: editProductDetail.tag.trim(),
-          image: editProductDetail.image.trim() || uploadedPaths[0] || null,
+          image: resolvedPrimaryImage,
           rating: editProductDetail.rating ? Number(editProductDetail.rating) : null,
           imagePaths: uploadedPaths.length ? uploadedPaths : undefined,
+          removeImageIds: removedEditImageIds,
+          removeImagePaths: removedEditImagePaths,
         }),
       });
 
@@ -653,6 +756,9 @@ export default function ProductManagementDashboard() {
       setIsEditModalOpen(false);
       setEditingProductId('');
       setEditingProductSku('');
+      setEditExistingImages([]);
+      setRemovedEditImageIds([]);
+      setRemovedEditImagePaths([]);
       handleClearEditProductImages();
       await fetchProducts();
     } catch {
@@ -1043,6 +1149,9 @@ export default function ProductManagementDashboard() {
 
   const closeEditModal = () => {
     handleClearEditProductImages();
+    setEditExistingImages([]);
+    setRemovedEditImageIds([]);
+    setRemovedEditImagePaths([]);
     setIsEditModalOpen(false);
   };
 
@@ -2144,6 +2253,51 @@ export default function ProductManagementDashboard() {
                   </div>
 
                   <div>
+                    <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">LINKED SUPABASE IMAGES</label>
+                    {editExistingImages.length > 0 ? (
+                      <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+                        <p className="text-[10px] font-semibold text-neutral-600">
+                          Bucket path: products/{getBucketFolderFromPath(editExistingImages[0].imagePath) || 'product_photos'}
+                        </p>
+
+                        <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                          {editExistingImages.map((image, index) => (
+                            <div
+                              key={`${image.id || image.imagePath}-${index}`}
+                              className="overflow-hidden rounded-lg border border-neutral-200 bg-white"
+                            >
+                              <img
+                                src={getImageUrl(image.imagePath)}
+                                alt={`Linked product image ${index + 1}`}
+                                className="h-16 w-full object-cover"
+                              />
+                              <div className="space-y-1 px-1.5 py-1">
+                                <p className="truncate text-[9px] text-neutral-500" title={image.imagePath}>
+                                  {image.imagePath}
+                                </p>
+                                {image.isPrimary && (
+                                  <p className="text-[9px] font-semibold text-[#840d5c]">Primary image</p>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveExistingEditImage(image)}
+                                  className="inline-flex h-5 w-full items-center justify-center rounded border border-[#e8bfd5] text-[9px] font-semibold text-[#6d0b4b] hover:bg-[#f7e8f1]"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-[10px] text-neutral-500">
+                        No linked images found for this product.
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
                     <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">REPLACE PRODUCT IMAGE FOLDER</label>
                     <input
                       type="file"
@@ -2194,6 +2348,11 @@ export default function ProductManagementDashboard() {
                     <p className="mt-1 text-[10px] text-neutral-500">
                       {editProductImages.length} image{editProductImages.length === 1 ? '' : 's'} selected.
                     </p>
+                    {!!removedEditImagePaths.length && (
+                      <p className="mt-1 text-[10px] font-semibold text-[#840d5c]">
+                        {removedEditImagePaths.length} linked image{removedEditImagePaths.length === 1 ? '' : 's'} marked for removal.
+                      </p>
+                    )}
                     <p className="mt-1 text-[10px] text-neutral-500">
                       Files will be uploaded to Supabase bucket <span className="font-bold">products</span> under folder <span className="font-bold">product_photos/{getRootFolderNameFromFiles(editProductImages) || 'foldername'}</span>.
                     </p>
