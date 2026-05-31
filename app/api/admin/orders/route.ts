@@ -58,5 +58,9 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json(orders);
+  return NextResponse.json(orders, {
+    headers: {
+      'Cache-Control': 'private, max-age=30, stale-while-revalidate=120',
+    },
+  });
 }

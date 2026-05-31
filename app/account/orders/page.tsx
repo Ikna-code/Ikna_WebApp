@@ -3,10 +3,10 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import Header from '@/components/layout/Header';
 import { Package, ChevronDown, CheckCircle2, MapPin, Loader2 } from 'lucide-react';
-import { IMAGE_BASE_URL } from '@/public/constants/constants';
 import ShipmentTracker from './ShipmentTracker';
 import { useStore } from '@/store/useStore';
 import { getShortOrderReference } from '@/lib/orderReference';
+import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
 
 const OrdersPage = () => {
   const orders = useStore((s) => s.orders);
@@ -116,7 +116,7 @@ const OrdersPage = () => {
                               <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                                 <div className="relative w-10 h-14 sm:w-12 sm:h-16 bg-white rounded-lg overflow-hidden border border-[#840d5c]/5 flex-shrink-0">
                                   <Image 
-                                    src={`${IMAGE_BASE_URL}${item.product?.image}`} 
+                                    src={getOptimizedSupabaseImageUrl(item.product?.image, { width: 320, quality: 70 })} 
                                     alt={item.product?.name || "Product Image"} 
                                     fill 
                                     className="object-cover" 

@@ -9,8 +9,8 @@ import Header from '@/components/layout/Header';
 import { updateCartQuantity, removeFromCart, clearCart } from "@/backend/actions/order";
 import { createRazorpayOrder } from "@/backend/actions/payment";
 import { verifyPayment } from "@/backend/actions/verify";
-import { IMAGE_BASE_URL } from '@/public/constants/constants';
 import { useStore } from '@/store/useStore'; 
+import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
 
 const CartPage = () => {
   // 1. STATE MANAGEMENT
@@ -178,7 +178,7 @@ const CartPage = () => {
                       
                       {/* Image Container */}
                       <div className="relative w-full sm:w-28 h-48 sm:h-36 bg-[#FAF9FA] rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 border border-[#840d5c]/5">
-                        <Image src={`${IMAGE_BASE_URL}${fallbackImage}`} alt={fallbackName} fill className="object-cover" />
+                        <Image src={getOptimizedSupabaseImageUrl(fallbackImage, { width: 400, quality: 70 })} alt={fallbackName} fill className="object-cover" />
                       </div>
 
                       {/* Content Details */}

@@ -5,9 +5,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Heart, ShoppingBag, Trash2, Sparkles, Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
-import { IMAGE_BASE_URL } from '@/public/constants/constants';
 import { removeFromWishlist } from '@/backend/actions/order';
 import { useStore } from '@/store/useStore';
+import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
 
 const WishlistPage = () => {
   const user = useStore((s) => s.user);
@@ -111,7 +111,7 @@ const WishlistPage = () => {
                   {/* Image Container - Height grows with the flex-1 container */}
                   <div className="relative flex-1 w-full overflow-hidden bg-[#fcfafb]">
                     <Image 
-                      src={`${IMAGE_BASE_URL}${item.image}`} 
+                      src={getOptimizedSupabaseImageUrl(item.image, { width: 640, quality: 70 })} 
                       alt={item.name} 
                       fill 
                       className="object-contain p-2 md:p-4 group-hover:scale-105 transition-transform duration-1000" 

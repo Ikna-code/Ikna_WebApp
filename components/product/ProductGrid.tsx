@@ -7,8 +7,8 @@ import { FaHeart, FaRegHeart } from "react-icons/fa";
 import { PiShirtFolded } from "react-icons/pi";
 import { useRouter } from "next/navigation";
 
-import { IMAGE_BASE_URL } from "@/public/constants/constants";
 import { useStore } from "@/store/useStore";
+import { getOptimizedSupabaseImageUrl } from "@/lib/supabaseImage";
 
 // ================= PRODUCT CARD =================
 
@@ -227,31 +227,33 @@ export const ProductCard = ({
       </div>
 
       {/* IMAGE */}
-      <div
-        className="
-          relative
-          w-full
-h-[150px]
-sm:h-[220px]
-          overflow-hidden
-          bg-[#fcf8fa]
-        "
-      >
-        <Image
-          src={`${IMAGE_BASE_URL}/${product?.image}`}
-          alt={product.name}
-          fill
-          className="
-            object-cover
-            transition-transform
-            duration-500
-            group-hover:scale-105
-          "
-        />
+  <div
+  className="
+    relative
+    w-full
+    h-[150px]
+    sm:h-[220px]
+    overflow-hidden
+    bg-[#fcf8fa]
+  "
+>
+  <Image
+    src={getOptimizedSupabaseImageUrl(product?.image, { width: 640, quality: 70 })}
+    alt={product.name}
+    fill // 1. Added fill back so Next.js knows to occupy the parent container
+    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" // 2. Tells the browser how much space it takes up
+    className="
+      object-cover
+      w-full
+      h-full
+      transition-transform
+      duration-500
+      group-hover:scale-105
+    "
+  />
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />
-      </div>
-
+  <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />
+</div>
       {/* CONTENT */}
       <div className="flex flex-col flex-1 p-2.5 sm:p-3">
 

@@ -21,7 +21,7 @@ const Header = () => {
       <header className="w-full bg-[#F9F3F5] border-b border-[#840d5c]/10 sticky top-0 z-50">
         <div className="w-full bg-[#321327] py-2.5 px-4 text-center">
           <p className="text-[10px] md:text-xs tracking-[0.2em] font-medium uppercase text-[#F9F3F5]">
-            First time login? <span className="font-bold underline cursor-pointer hover:text-[#840d5c] transition-colors decoration-[#840d5c] underline-offset-4">Unlock ₹100 off your IKNA bra.</span>
+            First time login? <span className="font-bold underline cursor-pointer hover:text-[#840d5c] transition-colors decoration-[#840d5c] underline-offset-4">Unlock ₹100 on your IKNA bra.</span>
           </p>
         </div>
 

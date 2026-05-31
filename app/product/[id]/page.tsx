@@ -15,9 +15,9 @@ import {
 } from 'lucide-react';
 
 import ReviewSection from '@/app/reviews/page';
-import { IMAGE_BASE_URL } from '@/public/constants/constants';
 import { useStore } from '@/store/useStore';
 import Footer from '@/components/layout/Footer';
+import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
 
 /* ---------------- COMPONENT ---------------- */
 
@@ -206,28 +206,33 @@ const SingleProductPage = () => {
           <div className="flex flex-col lg:flex-row gap-8 bg-white p-4 lg:p-8 rounded-[3rem] shadow-sm border border-[#840d5c]/5 items-center lg:items-start overflow-hidden">
 
             {/* LEFT CONTAINER: THUMBNAILS Track */}
-            <div className="flex flex-row md:flex-col gap-3 overflow-x-auto md:overflow-y-auto no-scrollbar w-full md:w-24 lg:max-h-[550px] flex-shrink-0 py-0.5">
-              {productData?.product_images?.map(
-                (fileName: { image_path: string }, index: number) => (
-                  <button
-                    key={index}
-                    onClick={() => setActiveImgIdx(index)}
-                    className={`relative w-16 h-20 md:w-full md:h-28 flex-shrink-0 rounded-2xl overflow-hidden border-2 transition-all duration-300 ${
-                      activeImgIdx === index
-                        ? 'border-[#840d5c] shadow-md'
-                        : 'border-transparent opacity-40 hover:opacity-100'
-                    }`}
-                  >
-                    <Image
-                      src={`${IMAGE_BASE_URL}/${fileName.image_path}`}
-                      alt="thumb"
-                      fill
-                      className="object-cover"
-                    />
-                  </button>
-                )
-              )}
-            </div>
+<div className="flex flex-row md:flex-col gap-3 overflow-x-auto md:overflow-y-auto no-scrollbar w-full md:w-24 lg:max-h-[550px] flex-shrink-0 py-0.5">
+  {productData?.product_images?.map(
+    (fileName: { image_path: string }, index: number) => (
+      <button
+        key={index}
+        onClick={() => setActiveImgIdx(index)}
+        className={`relative w-16 h-20 md:w-full md:h-28 flex-shrink-0 rounded-2xl overflow-hidden border-2 transition-all duration-300 ${
+          activeImgIdx === index
+            ? 'border-[#840d5c] shadow-md'
+            : 'border-transparent opacity-40 hover:opacity-100'
+        }`}
+      >
+        <Image
+          src={getOptimizedSupabaseImageUrl(fileName.image_path, { width: 220, quality: 70 })}
+          alt="thumb"
+          fill // 1. Added fill so it stretches nicely inside the button container
+          sizes="(max-width: 768px) 64px, 96px" // 2. Added sizes since these are small thumbnails
+          className="
+            object-cover 
+            w-full 
+            h-full
+          "
+        />
+      </button>
+    )
+  )}
+</div>
 
             {/* MIDDLE CONTAINER: MAIN IMAGE CONTAINER */}
             <div className="relative flex-shrink-0 w-full md:w-[80%] lg:w-[500px] aspect-[4/5] lg:h-[550px] rounded-[2rem] overflow-hidden group bg-neutral-50/40">
@@ -259,7 +264,7 @@ const SingleProductPage = () => {
               </div>
 
               <Image
-                src={`${IMAGE_BASE_URL}/${productData?.product_images[activeImgIdx]?.image_path}`}
+                src={getOptimizedSupabaseImageUrl(productData?.product_images[activeImgIdx]?.image_path, { width: 1200, quality: 75 })}
                 alt="Product Main Image"
                 fill
                 priority
@@ -433,7 +438,7 @@ const SingleProductPage = () => {
                         className="relative w-14 h-18 md:w-16 md:h-20 rounded-xl overflow-hidden border-2 border-white bg-white shadow-sm flex-shrink-0"
                       >
                         <Image
-                          src={`${IMAGE_BASE_URL}/${productData?.product_images[0]?.image_path}`}
+                          src={getOptimizedSupabaseImageUrl(productData?.product_images[0]?.image_path, { width: 320, quality: 70 })}
                           alt="combo item"
                           fill
                           className="object-cover"
