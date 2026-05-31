@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, ChevronDown, Check, Clock3, Package, Truck, CheckCircle2, RotateCcw, LucideIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import Image from 'next/image';
+import { Search, ChevronDown, Check, Clock3, Package, Truck, CheckCircle2, RotateCcw, LucideIcon, ChevronLeft, ChevronRight, Eye, X } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
 
 interface Order {
   id: string;
@@ -12,6 +14,14 @@ interface Order {
   items: string;
   total: number;
   status: 'Processing' | 'In Transit' | 'Packed' | 'Delivered' | 'Cancelled';
+  orderItems: Array<{
+    id: string;
+    quantity: number;
+    price: number;
+    selectedSize?: string | null;
+    productName: string;
+    productImage: string;
+  }>;
 }
 
 type BackendOrder = {
@@ -24,7 +34,17 @@ type BackendOrder = {
     firstName?: string | null;
     lastName?: string | null;
   };
-  orderItems?: Array<{ id: string }>;
+  orderItems?: Array<{
+    id: string;
+    quantity?: number;
+    price?: number | string;
+    selectedSize?: string | null;
+    product?: {
+      id?: string;
+      name?: string;
+      image?: string | null;
+    };
+  }>;
 };
 
 const ITEMS_PER_PAGE = 15;
@@ -78,6 +98,14 @@ function mapOrderToUi(order: BackendOrder): Order {
   const uiStatus = backendToUiStatusMap[backendStatus] || 'Processing';
   const total = Number(order.totalAmount ?? 0);
   const count = order.orderItems?.length ?? 0;
+  const mappedItems = (order.orderItems || []).map((item) => ({
+    id: item.id,
+    quantity: Number(item.quantity ?? 1),
+    price: Number(item.price ?? 0),
+    selectedSize: item.selectedSize || null,
+    productName: item.product?.name || 'Product',
+    productImage: item.product?.image || '',
+  }));
 
   return {
     id: order.id,
@@ -89,6 +117,7 @@ function mapOrderToUi(order: BackendOrder): Order {
     items: `${count} Item${count === 1 ? '' : 's'}`,
     total: Number.isFinite(total) ? total : 0,
     status: uiStatus,
+    orderItems: mappedItems,
   };
 }
 
@@ -101,6 +130,7 @@ export default function Orders() {
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatusOrder, setSelectedStatusOrder] = useState<string | null>(null);
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'All' | Order['status']>('All');
   
   // Pagination State Setup
@@ -171,6 +201,11 @@ export default function Orders() {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredOrders.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredOrders, currentPage]);
+
+  const activeOrderDetails = useMemo(
+    () => orders.find((order) => order.id === selectedOrderDetails) || null,
+    [orders, selectedOrderDetails]
+  );
 
   return (
     <div className="space-y-6">
@@ -294,7 +329,16 @@ export default function Orders() {
               </div>
             </div>
 
-            <div className="relative mt-2">
+            <div className="relative mt-2 flex items-center gap-2">
+              <button
+                onClick={() => setSelectedOrderDetails(o.id)}
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-[#840d5c] transition hover:bg-[#840d5c]/5"
+                aria-label="View order details"
+                title="View order details"
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </button>
+
               <button
                 onClick={() => setSelectedStatusOrder(selectedStatusOrder === o.id ? null : o.id)}
                 className={`flex w-full items-center justify-between gap-2 rounded-xl border px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-wider ${getStatusBadgeClass(o.status)}`}
@@ -351,15 +395,26 @@ export default function Orders() {
                 <td className="py-4 px-4">{o.items}</td>
                 <td className="py-4 px-4 font-semibold text-neutral-900">₹{o.total}</td>
                 <td className="py-4 px-4 relative">
-                  <button
-                    onClick={() =>
-                      setSelectedStatusOrder(selectedStatusOrder === o.id ? null : o.id)
-                    }
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border font-semibold hover:bg-neutral-100 cursor-pointer text-[10px] ${getStatusBadgeClass(o.status)}`}
-                  >
-                    {o.status}
-                    <ChevronDown className="w-3 h-3 text-neutral-400" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setSelectedOrderDetails(o.id)}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-neutral-200 bg-white text-[#840d5c] transition hover:bg-[#840d5c]/5"
+                      aria-label="View order details"
+                      title="View order details"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        setSelectedStatusOrder(selectedStatusOrder === o.id ? null : o.id)
+                      }
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border font-semibold hover:bg-neutral-100 cursor-pointer text-[10px] ${getStatusBadgeClass(o.status)}`}
+                    >
+                      {o.status}
+                      <ChevronDown className="w-3 h-3 text-neutral-400" />
+                    </button>
+                  </div>
 
                   {selectedStatusOrder === o.id && (
                     <div className="absolute z-10 top-12 left-0 bg-white border border-neutral-200 rounded-xl shadow-lg w-36 py-2">
@@ -430,6 +485,61 @@ export default function Orders() {
             >
               <ChevronRight className="h-4 w-4" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {activeOrderDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+          <div className="w-full max-w-xl rounded-3xl border border-[#e8bfd5] bg-linear-to-br from-[#fff7fb] via-white to-[#f9f1f6] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#efd7e4] bg-white/70 px-5 py-4 sm:px-6">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">Order Details</p>
+                <h3 className="mt-1 text-sm font-bold text-neutral-800 sm:text-base">{activeOrderDetails.id}</h3>
+              </div>
+              <button
+                onClick={() => setSelectedOrderDetails(null)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-neutral-200 text-neutral-500 transition hover:bg-neutral-100"
+                aria-label="Close order details"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="max-h-[70vh] overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+              {activeOrderDetails.orderItems.length === 0 ? (
+                <p className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-6 text-center text-sm text-neutral-500">
+                  No items found for this order.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {activeOrderDetails.orderItems.map((item) => (
+                    <div key={item.id} className="flex items-center gap-3 rounded-2xl border border-[#efd7e4] bg-white/90 p-3 shadow-sm sm:gap-4 sm:p-4">
+                      <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 sm:h-20 sm:w-16">
+                        <Image
+                          src={getOptimizedSupabaseImageUrl(item.productImage, { width: 240, quality: 70 })}
+                          alt={item.productName}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 640px) 48px, 64px"
+                        />
+                      </div>
+
+                      <div className="min-w-0 grow">
+                        <p className="truncate text-sm font-bold text-neutral-800 sm:text-base">{item.productName}</p>
+                        <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+                          Qty: {item.quantity}{item.selectedSize ? ` | Size: ${item.selectedSize}` : ''}
+                        </p>
+                      </div>
+
+                      <p className="shrink-0 text-sm font-bold text-neutral-900 sm:text-base">
+                        ₹{item.price.toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

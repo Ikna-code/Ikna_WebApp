@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/backend/lib/supabaseClient';
-import { Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { sendAuthEventNotification } from '@/backend/actions/auth';
 
@@ -141,6 +141,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [resendAvailableAt, setResendAvailableAt] = useState(0);
@@ -479,13 +480,21 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       <div className="relative">
         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-[#321327]/40" size={16} />
         <input 
-          type="password" 
+          type={isPasswordVisible ? 'text' : 'password'} 
           placeholder="PASSWORD"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full bg-[#F9F3F5] border-none py-3 sm:py-4 pl-10 pr-4 text-[10px] tracking-[0.1em] outline-none"
+          className="w-full bg-[#F9F3F5] border-none py-3 sm:py-4 pl-10 pr-10 text-[10px] tracking-[0.1em] outline-none"
           required 
         />
+        <button
+          type="button"
+          onClick={() => setIsPasswordVisible((prev) => !prev)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#321327]/50 transition hover:text-[#840d5c]"
+          aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
+        >
+          {isPasswordVisible ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
       </div>
     )}
 
