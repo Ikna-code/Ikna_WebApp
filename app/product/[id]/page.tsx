@@ -327,7 +327,7 @@ const SingleProductPage = () => {
                     {product.name}
                   </h1>
 
-                  {categoryVariants.length > 1 && (
+                  {categoryVariants.length > 0 && (
                     <div className="pt-1.5">
                       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#321327]/50 mb-2">
                         Colors

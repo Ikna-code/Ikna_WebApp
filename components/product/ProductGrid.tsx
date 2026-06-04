@@ -322,7 +322,7 @@ export const ProductCard = ({
           </div>
         </div>
 
-        {swatches.length > 1 && (
+        {swatches.length > 0 && (
           <>
             <div className="mt-2.5 overflow-x-auto no-scrollbar md:hidden">
               <div className="flex items-center gap-2 min-w-max pr-1">
