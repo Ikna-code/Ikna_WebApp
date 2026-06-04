@@ -55,6 +55,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
       where: { id: orderId },
       data: { status: nextStatus },
       include: {
+        address: true,
         user: {
           select: {
             id: true,
@@ -69,6 +70,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
               select: {
                 id: true,
                 name: true,
+                image: true,
+                category: true,
+                price: true,
               },
             },
           },
@@ -76,7 +80,23 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
       },
     });
 
-    return NextResponse.json(updatedOrder);
+    const relationAddress = updatedOrder.address
+      ? [
+          updatedOrder.address.name,
+          updatedOrder.address.street,
+          updatedOrder.address.city,
+          updatedOrder.address.state,
+          updatedOrder.address.zip,
+          updatedOrder.address.country,
+        ]
+          .filter(Boolean)
+          .join(', ')
+      : null;
+
+    return NextResponse.json({
+      ...updatedOrder,
+      address: updatedOrder.shippingAddress || relationAddress || null,
+    });
   } catch {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 });
   }

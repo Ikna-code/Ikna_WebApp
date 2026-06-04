@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Header from '@/components/layout/Header';
 import { Package, ChevronDown, CheckCircle2, MapPin, Loader2 } from 'lucide-react';
@@ -11,7 +11,14 @@ import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
 const OrdersPage = () => {
   const orders = useStore((s) => s.orders);
   const isOrdersInitialized = useStore((s) => s.isOrdersInitialized);
+  const fetchOrders = useStore((s) => s.fetchOrders);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOrdersInitialized) {
+      void fetchOrders();
+    }
+  }, [isOrdersInitialized, fetchOrders]);
 
   const loading = !isOrdersInitialized;
 

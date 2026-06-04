@@ -52,7 +52,9 @@ export async function GET(request: Request) {
 
   return NextResponse.json(normalizedOrders, {
     headers: {
-      'Cache-Control': 'private, max-age=30, stale-while-revalidate=120',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
     },
   });
 }

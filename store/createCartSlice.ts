@@ -39,19 +39,21 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
   fetchOrders: async () => {
     if (get().isOrdersInitialized) return;
     try {
-      const response = await fetch('/api/orders');
+      const response = await fetch('/api/orders', { cache: 'no-store' });
       if (!response.ok) throw new Error('Failed to fetch orders');
       const data = await response.json();
       set({ orders: data, isOrdersInitialized: true });
     } catch (error) {
       console.error('Error fetching orders:', error);
+      // Avoid permanent spinner states in consumer pages.
+      set({ orders: [], isOrdersInitialized: true, error: 'Failed to fetch orders' });
     }
   },
 
   fetchAdminOrders: async (force = false) => {
     if (!force && get().isOrdersInitialized && get().orders.length > 0) return;
     try {
-      const response = await fetch('/api/admin/orders');
+      const response = await fetch('/api/admin/orders', { cache: 'no-store' });
       if (!response.ok) throw new Error('Failed to fetch admin orders');
       const data = await response.json();
       set({ orders: data, isOrdersInitialized: true });
@@ -163,7 +165,23 @@ removeItem: async (cartItemId: string) => {
     const updatedOrder = await response.json();
     set((state) => ({
       orders: state.orders.map((order) =>
-        order.id === updatedOrder.id ? updatedOrder : order
+        order.id === updatedOrder.id
+          ? {
+              ...order,
+              ...updatedOrder,
+              orderItems: (updatedOrder.orderItems || order.orderItems || []).map((item: any) => {
+                const existingItem = (order.orderItems || []).find((oldItem: any) => oldItem.id === item.id);
+                return {
+                  ...existingItem,
+                  ...item,
+                  product: {
+                    ...(existingItem?.product || {}),
+                    ...(item?.product || {}),
+                  },
+                };
+              }),
+            }
+          : order
       ),
     }));
 
