@@ -18,6 +18,8 @@ import {
   SunMedium,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useStore } from '@/store/useStore';
+import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
 
 import Portal from '@/components/ui/Portal';
 
@@ -108,109 +110,97 @@ const occasionOptions = [
   },
 ];
 
+// Fully synchronized structure containing your requested overrides
 const braRecommendations = {
   tshirt: {
     light: {
-      name: 'Barely there - Light padded, non-wired cotton bra',
-      desc: 'Seamless comfort for t-shirts and everyday wear.',
-      imgurl:'/images/match_bras/IMG_1301_cropped.jpeg'
+      everyday: { name: 'EVERYDAY WEAR COMFY BRA', desc: 'Soft breathable comfort for seamless t-shirt use.', imgurl: '/images/match_bras/IMG_9266.jpg' },
+      travel: { name: 'EVERYDAY WEAR COMFY BRA', desc: 'Seamless comfort for comfortable traveling.', imgurl: '/images/match_bras/IMG_9266.jpg' },
+      lounge: { name: 'EVERYDAY WEAR COMFY BRA', desc: 'Seamless comfort for relaxing around the house.', imgurl: '/images/match_bras/IMG_9266.jpg' }
     },
     medium: {
-      name: 'PADDED BRA',
-      desc: 'Smooth shape with balanced comfort and support.',
-      imgurl:'/images/match_bras/IMG_1101_cropped.jpeg'
+      everyday: { name: 'Barely there – Light padded, non-wired cotton bra', desc: 'Smooth shape with balanced comfort and support.', imgurl: '/images/match_bras/IMG_1301_cropped.jpeg' },
+      office: { name: 'Barely there – Light padded, non-wired cotton bra', desc: 'Smooth silhouette with professional support.', imgurl: '/images/match_bras/IMG_1301_cropped.jpeg' },
+      travel: { name: 'Barely there – Light padded, non-wired cotton bra', desc: 'Reliable shape and comfort for long commutes.', imgurl: '/images/match_bras/IMG_1301_cropped.jpeg' }
     },
     maximum: {
-      name: 'COMFY SUPPORTIVE MINIMIZER BRA',
-      desc: 'Extra support with minimized bounce for active days.',
-      imgurl:'/images/match_bras/IMG_9529.jpg'
-    },
+      everyday: { name: 'COMFY SUPPORTIVE MINIMIZER BRA', desc: 'Extra support with minimized bounce for active days.', imgurl: '/images/match_bras/IMG_9529.jpg' },
+      office: { name: 'COMFY SUPPORTIVE MINIMIZER BRA', desc: 'Maximum professional hold throughout long work hours.', imgurl: '/images/match_bras/IMG_9529.jpg' },
+      special: { name: 'COMFY SUPPORTIVE MINIMIZER BRA', desc: 'Flawless shaping and full security for special occasions.', imgurl: '/images/match_bras/IMG_9529.jpg' }
+    }
   },
   kurti: {
     light: {
-      name: 'EVERYDAY WEAR COMFY BRA',
-      desc: 'Soft breathable comfort for daily ethnic wear.',
-      imgurl:'/images/match_bras/IMG_9266.jpg'
+      everyday: { name: 'EVERYDAY WEAR COMFY BRA', desc: 'Soft breathable comfort for daily ethnic wear.', imgurl: '/images/match_bras/IMG_9266.jpg' },
+      lounge: { name: 'EVERYDAY WEAR COMFY BRA', desc: 'Relaxed softness for lounge routines.', imgurl: '/images/match_bras/IMG_9266.jpg' }
     },
     medium: {
-      name: 'SIDE NET COVERAGE BRA',
-      desc: 'Enhanced side coverage under kurtis and fitted outfits.',
-      imgurl:'/images/match_bras/IMG_1202_cropped.jpeg'
+      everyday: { name: 'SIDE NET COVERAGE BRA', desc: 'Enhanced side coverage under kurtis and fitted outfits.', imgurl: '/images/match_bras/IMG_1202_cropped.jpeg' },
+      office: { name: 'SIDE NET COVERAGE BRA', desc: 'All-day security with excellent side smoothing.', imgurl: '/images/match_bras/IMG_1202_cropped.jpeg' },
+      travel: { name: 'SIDE NET COVERAGE BRA', desc: 'Stay secure and worry-free while on the move.', imgurl: '/images/match_bras/IMG_1202_cropped.jpeg' }
     },
     maximum: {
-      name: 'COMFY SUPPORTIVE MINIMIZER BRA',
-      desc: 'Maximum comfort and support throughout the day.',
-      imgurl:'/images/match_bras/IMG_9529.jpg'
-    },
+      everyday: { name: 'COMFY SUPPORTIVE MINIMIZER BRA', desc: 'Maximum comfort and support throughout the day.', imgurl: '/images/match_bras/IMG_9529.jpg' },
+      office: { name: 'COMFY SUPPORTIVE MINIMIZER BRA', desc: 'Firm hold and confident support for long schedules.', imgurl: '/images/match_bras/IMG_9529.jpg' },
+      special: { name: 'COMFY SUPPORTIVE MINIMIZER BRA', desc: 'Clean, compact outline for formal ethnic styling.', imgurl: '/images/match_bras/IMG_9529.jpg' }
+    }
   },
   office: {
     light: {
-      name: 'PADDED BRA',
-      desc: 'Light support with a smooth office-ready silhouette.',
-      imgurl:'/images/match_bras/IMG_1101_cropped.jpeg'
+      office: { name: 'Barely there – Light padded, non-wired cotton bra', desc: 'Light support with a smooth office-ready silhouette.', imgurl: '/images/match_bras/IMG_1301_cropped.jpeg' },
+      travel: { name: 'Barely there – Light padded, non-wired cotton bra', desc: 'Subtle padding for a neat look during your trips.', imgurl: '/images/match_bras/IMG_1301_cropped.jpeg' }
     },
     medium: {
-      name: 'SIDE NET COVERAGE BRA',
-      desc: 'Secure support and side coverage during long work hours.',
-      imgurl:'/images/match_bras/IMG_1202_cropped.jpeg'
+      office: { name: 'PADDED BRA', desc: 'Secure support and structured shaping during long work hours.', imgurl: '/images/match_bras/IMG_1101_cropped.jpeg' },
+      travel: { name: 'PADDED BRA', desc: 'Ideal structured support for business travels.', imgurl: '/images/match_bras/IMG_1101_cropped.jpeg' }
     },
     maximum: {
-      name: 'COMFY SUPPORTIVE MINIMIZER BRA',
-      desc: 'Firm hold and support for all-day confidence.',
-      imgurl:'/images/match_bras/IMG_9529.jpg'
-    },
+      office: { name: 'COMFY SUPPORTIVE MINIMIZER BRA', desc: 'Firm hold and support for all-day confidence.', imgurl: '/images/match_bras/IMG_9529.jpg' },
+      special: { name: 'COMFY SUPPORTIVE MINIMIZER BRA', desc: 'Maximum control and posture boost for special events.', imgurl: '/images/match_bras/IMG_9529.jpg' }
+    }
   },
   sports: {
     light: {
-      name: 'EVERYDAY WEAR COMFY BRA',
-      desc: 'Flexible comfort for light movement and casual activity.',
-      imgurl:'/images/match_bras/IMG_9266.jpg'
+      everyday: { name: 'EVERYDAY WEAR COMFY BRA', desc: 'Flexible comfort for light movement and casual activity.', imgurl: '/images/match_bras/IMG_9266.jpg' },
+      lounge: { name: 'EVERYDAY WEAR COMFY BRA', desc: 'Breathable wire-free design optimized for indoor ease.', imgurl: '/images/match_bras/IMG_9266.jpg' }
     },
     medium: {
-      name: 'COMFY SUPPORTIVE MINIMIZER BRA',
-      desc: 'Balanced support for active routines.',
-      imgurl:'/images/match_bras/IMG_9529.jpg'  
+      workout: { name: 'COMFY SUPPORTIVE MINIMIZER BRA', desc: 'Balanced support for active workout routines.', imgurl: '/images/match_bras/IMG_9529.jpg' },
+      travel: { name: 'COMFY SUPPORTIVE MINIMIZER BRA', desc: 'Secure anti-bounce compression when traveling active.', imgurl: '/images/match_bras/IMG_9529.jpg' }
     },
     maximum: {
-      name: 'COMFY SUPPORTIVE MINIMIZER BRA',
-      desc: 'Maximum support for workouts and high activity.',
-      imgurl:'/images/match_bras/IMG_9529.jpg'
-    },
+      workout: { name: 'COMFY SUPPORTIVE MINIMIZER BRA', desc: 'Maximum support for intense workouts and high activity.', imgurl: '/images/match_bras/IMG_9529.jpg' }
+    }
   },
   party: {
     light: {
-      name: 'Barely There Bridgerton limited edition',
-      desc: 'Elegant styling with luxurious comfort.',
-      imgurl:'/images/match_bras/IMG_1503.jpeg'
+      party: { name: 'SIDE NET COVERAGE BRA', desc: 'Elegant styling with dependable side smoothing comfort.', imgurl: '/images/match_bras/IMG_1202_cropped.jpeg' },
+      special: { name: 'SIDE NET COVERAGE BRA', desc: 'Clean underarm silhouette suitable for exquisite special functions.', imgurl: '/images/match_bras/IMG_1202_cropped.jpeg' }
     },
     medium: {
-      name: 'PADDED BRA',
-      desc: 'Enhanced shape and stylish support for party outfits.',
-      imgurl:'/images/match_bras/IMG_1101_cropped.jpeg'
+      party: { name: 'Barely there – Light padded, non-wired cotton bra', desc: 'Enhanced shape and stylish support for party outfits.', imgurl: '/images/match_bras/IMG_1301_cropped.jpeg' },
+      special: { name: 'Barely there – Light padded, non-wired cotton bra', desc: 'Adds seamless definition under evening party fashion.', imgurl: '/images/match_bras/IMG_1301_cropped.jpeg' }
     },
     maximum: {
-      name: 'SIDE NET COVERAGE BRA',
-      desc: 'Secure fit and extra confidence under fitted wear.',
-      imgurl:'/images/match_bras/IMG_1202_cropped.jpeg'
-    },
+      party: { name: 'PADDED BRA', desc: 'Secure fit, ultimate bounce-control, and extra lift under fitted wear.', imgurl: '/images/match_bras/IMG_1101_cropped.jpeg' },
+      special: { name: 'PADDED BRA', desc: 'Firm, structural shaping perfect for evening hugging outfits.', imgurl: '/images/match_bras/IMG_1101_cropped.jpeg' }
+    }
   },
   lounge: {
     light: {
-      name: 'EVERYDAY WEAR COMFY BRA',
-      desc: 'Relaxed softness for lounging and home comfort.',
-      imgurl:'/images/match_bras/IMG_9266.jpg'
+      everyday: { name: 'EVERYDAY WEAR COMFY BRA', desc: 'Relaxed softness for lounging and home comfort.', imgurl: '/images/match_bras/IMG_9266.jpg' },
+      lounge: { name: 'EVERYDAY WEAR COMFY BRA', desc: 'Zero pressure feel engineered for sheer downtime comfort.', imgurl: '/images/match_bras/IMG_9266.jpg' },
+      travel: { name: 'EVERYDAY WEAR COMFY BRA', desc: 'Easy-going fabric setup for long relaxing transit.', imgurl: '/images/match_bras/IMG_9266.jpg' }
     },
     medium: {
-      name: 'Barely there - Light padded, non-wired cotton bra',
-      desc: 'Soft support with breathable comfort.',
-      imgurl:'/images/match_bras/IMG_1301_cropped.jpeg'
+      everyday: { name: 'Barely there - Light padded, non-wired cotton bra', desc: 'Soft support with breathable comfort.', imgurl: '/images/match_bras/IMG_1301_cropped.jpeg' },
+      lounge: { name: 'Barely there - Light padded, non-wired cotton bra', desc: 'Perfect lightweight structure to unwind comfortably.', imgurl: '/images/match_bras/IMG_1301_cropped.jpeg' }
     },
     maximum: {
-      name: 'SIDE NET COVERAGE BRA',
-      desc: 'Extra side support with full comfort.',
-      imgurl:'/images/match_bras/IMG_1202_cropped.jpeg'
-    },
-  },
+      everyday: { name: 'SIDE NET COVERAGE BRA', desc: 'Extra side support with full comfort.', imgurl: '/images/match_bras/IMG_1202_cropped.jpeg' },
+      special: { name: 'SIDE NET COVERAGE BRA', desc: 'Supportive coverage mixed with soft all-day leisure wear details.', imgurl: '/images/match_bras/IMG_1202_cropped.jpeg' }
+    }
+  }
 };
 
 export default function PerfectFitQuiz({ handleClose }) {
@@ -220,14 +210,82 @@ export default function PerfectFitQuiz({ handleClose }) {
   const [outfit, setOutfit] = useState('tshirt');
   const [comfort, setComfort] = useState('light');
   const [occasion, setOccasion] = useState('everyday');
+  const products = useStore((state) => state.products);
+  const loadProducts = useStore((state) => state.loadProducts);
+  const isProductsInitialized = useStore((state) => state.isProductsInitialized);
 
-  const recommendation =
-    braRecommendations[outfit]?.[comfort] || {
-      name: 'EVERYDAY WEAR COMFY BRA',
-      desc: 'Comfortable bra for everyday use.',
-    };
+  // Compute valid occasions based on current selections
+  const validOccasionsForSelection = useMemo(() => {
+    const directMatches = braRecommendations[outfit]?.[comfort];
+    return directMatches ? Object.keys(directMatches) : [];
+  }, [outfit, comfort]);
+
+  // Handle fallback context if the selected outfit changes validation availability
+  useEffect(() => {
+    if (validOccasionsForSelection.length > 0 && !validOccasionsForSelection.includes(occasion)) {
+      setOccasion(validOccasionsForSelection[0]);
+    }
+  }, [validOccasionsForSelection, occasion]);
+
+  const recommendation = useMemo(() => {
+    return (
+      braRecommendations[outfit]?.[comfort]?.[occasion] || {
+        name: 'EVERYDAY WEAR COMFY BRA',
+        desc: 'Comfortable bra for everyday use.',
+        imgurl: '/images/match_bras/IMG_9266.jpg'
+      }
+    );
+  }, [outfit, comfort, occasion]);
+
+  const youMayAlsoLike = useMemo(() => {
+    const suggestionName = String(recommendation?.name || '').toLowerCase().trim();
+
+    const storeProducts = (products || [])
+      .filter((product) => {
+        if (!product?.id) return false;
+        const productName = String(product?.name || '').toLowerCase().trim();
+        if (!productName) return false;
+        if (!suggestionName) return true;
+        return !productName.includes(suggestionName) && !suggestionName.includes(productName);
+      })
+      .slice(0, 3)
+      .map((product) => {
+        const productImage =
+          product?.image ||
+          product?.image_path ||
+          product?.product_images?.[0]?.image_path ||
+          '';
+
+        return {
+          id: product.id,
+          title: product?.name || 'Product',
+          imgurl: getOptimizedSupabaseImageUrl(productImage, { width: 320, quality: 70 }),
+          price: `₹${Number(product?.price || 0).toLocaleString()}`,
+          href: `/product/${product.id}`,
+        };
+      });
+
+    if (storeProducts.length > 0) return storeProducts;
+
+    return outfitOptions
+      .filter((item) => item.id !== outfit)
+      .slice(0, 3)
+      .map((item) => ({
+        id: item.id,
+        title: item.title.replace(/\s*\/\s*\n?/g, ' ').replace(/\n/g, ' ').trim(),
+        imgurl: item.icon,
+        price: '₹699',
+        href: '/shop',
+      }));
+  }, [outfit, products, recommendation]);
 
   const route = useRouter();
+
+  useEffect(() => {
+    if (!isProductsInitialized) {
+      loadProducts();
+    }
+  }, [isProductsInitialized, loadProducts]);
 
   useEffect(() => {
     if (isOpen) {
@@ -319,7 +377,6 @@ export default function PerfectFitQuiz({ handleClose }) {
       <div className="fixed inset-0 z-[999999] bg-black/50 backdrop-blur-sm overflow-y-auto p-4 sm:p-6 flex items-center justify-center">
         <div className="relative w-full max-w-[420px] h-[min(680px,85vh)] bg-white rounded-[30px] shadow-[0_10px_50px_rgba(0,0,0,0.18)] overflow-hidden flex flex-col">
           
-          {/* GLOBAL CLOSE BUTTON */}
           <button
             onClick={closeModal}
             className="absolute top-4 right-4 sm:top-5 sm:right-5 z-[999] text-[#404040] hover:opacity-80 transition-opacity"
@@ -330,9 +387,6 @@ export default function PerfectFitQuiz({ handleClose }) {
           {/* INTRO (STEP 0) */}
           {step === 0 && (
             <div className="relative w-full h-full flex flex-col justify-between overflow-hidden">
-              
-              {/* 1. SOLID FULL-SCREEN BACKDROP IMAGE CONTAINER */}
-              {/* This starts absolute top-left (0,0) and occupies the space behind all layout text elements */}
               <div className="absolute inset-x-0 top-0 bottom-[120px] sm:bottom-[130px] z-0 overflow-hidden">
                 <img
                   src="/images/AI_images/quiz-bg.png"
@@ -341,10 +395,7 @@ export default function PerfectFitQuiz({ handleClose }) {
                 />
               </div>
 
-              {/* 2. INTERACTIVE CONTENT LAYER */}
               <div className="relative z-10 flex flex-col justify-between p-5 sm:p-6 pt-6 sm:pt-8 h-full">
-                
-                {/* TOP BADGE */}
                 <div className="text-center mb-2 shrink-0">
                   <div className="inline-flex items-center gap-2 bg-[#ffe9f1] text-[#ea3f77] text-[10px] sm:text-[11px] font-semibold px-3 sm:px-4 py-1.5 rounded-full">
                     <Heart className="w-3 h-3 fill-[#ea3f77]" />
@@ -352,15 +403,12 @@ export default function PerfectFitQuiz({ handleClose }) {
                   </div>
                 </div>
 
-                {/* HEADER & TEXT CONTENT */}
                 <div className="relative flex-1 flex flex-col justify-start items-center text-center">
                   <h1 className="text-[32px] sm:text-[36px] leading-[1.1] font-serif text-[#1f1f1f] mt-5 shrink-0">
                     Find Your<br />Perfect Bra Fit
                   </h1>
-
                 </div>
 
-                {/* STICKY CTA BUTTONS */}
                 <div className="mt-4 w-full shrink-0 z-10">
                   <button
                     onClick={nextStep}
@@ -368,7 +416,6 @@ export default function PerfectFitQuiz({ handleClose }) {
                   >
                     Start Quiz
                   </button>
-                  
                   <button
                     onClick={closeModal}
                     className="w-full text-center mt-2.5 text-[#ea3f77] text-[13px] font-medium underline hover:text-[#e93369]"
@@ -376,7 +423,6 @@ export default function PerfectFitQuiz({ handleClose }) {
                     Skip Quiz
                   </button>
                 </div>
-
               </div>
             </div>
           )}
@@ -496,22 +542,31 @@ export default function PerfectFitQuiz({ handleClose }) {
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mt-5">
                       {occasionOptions.map((item) => {
                         const active = occasion === item.id;
+                        const isAvailable = validOccasionsForSelection.includes(item.id);
                         const Icon = item.icon;
+                        
                         return (
                           <button
                             key={item.id}
-                            onClick={() => setOccasion(item.id)}
+                            disabled={!isAvailable}
+                            onClick={() => isAvailable && setOccasion(item.id)}
                             className={`relative rounded-[18px] border h-[110px] sm:h-[120px] flex flex-col items-center justify-center transition-all duration-300 px-2 ${
-                              active ? 'border-[#ea3f77] bg-[#fff6f8]' : 'border-[#ebe7e7]'
+                              !isAvailable 
+                                ? 'opacity-40 bg-gray-50/50 border-gray-200 cursor-not-allowed select-none' 
+                                : active 
+                                ? 'border-[#ea3f77] bg-[#fff6f8]' 
+                                : 'border-[#ebe7e7] hover:bg-gray-50/50'
                             }`}
                           >
-                            {active && (
+                            {active && isAvailable && (
                               <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#ea3f77] flex items-center justify-center">
                                 <Check className="w-3 h-3 text-white" />
                               </div>
                             )}
-                            <Icon className="w-7 h-7 text-[#ea3f77]" />
-                            <span className="text-[12px] font-medium text-center mt-2 text-[#202020]">{item.title}</span>
+                            <Icon className={`w-7 h-7 ${!isAvailable ? 'text-gray-400' : 'text-[#ea3f77]'}`} />
+                            <span className={`text-[12px] font-medium text-center mt-2 ${!isAvailable ? 'text-gray-400' : 'text-[#202020]'}`}>
+                              {item.title}
+                            </span>
                           </button>
                         );
                       })}
@@ -588,7 +643,7 @@ export default function PerfectFitQuiz({ handleClose }) {
               <div className="flex-1 overflow-y-auto hide-scrollbar pr-0.5">
                 <h3 className="text-[#ea3f77] font-semibold text-[22px]">Why this bra?</h3>
                 <div className="space-y-2.5 mt-3">
-                  {['Perfect under T-shirts & fitted tops', 'Lightly padded for a smooth shape', 'Breathable fabric for all-day comfort', 'Invisible under everyday outfits'].map((item) => (
+                  {['Custom tailored for your specific clothing selection', 'Engineered profile for an optimized, seamless fit', 'Breathable materials for all-day reliability', 'Invisible transition lines under your fashion layers'].map((item) => (
                     <div key={item} className="flex items-start gap-2.5 text-[14px] leading-5 text-[#3b3b3b]">
                       <Check className="w-4 h-4 text-[#ea3f77] mt-0.5 shrink-0" />
                       <span>{item}</span>
@@ -598,14 +653,19 @@ export default function PerfectFitQuiz({ handleClose }) {
 
                 <p className="text-center text-[#555] text-[14px] font-medium mt-5 mb-3">You may also like</p>
                 <div className="grid grid-cols-3 gap-2.5">
-                  {[1, 2, 3].map((item) => (
-                    <div key={item}>
+                  {youMayAlsoLike.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => route.push(item.href)}
+                      className="text-left"
+                    >
                       <div className="bg-[#faf7f7] rounded-[14px] p-1.5 border border-[#f1ebeb]">
-                        <img src={recommendation.imgurl} alt="Bra" className="w-full object-contain max-h-[60px]" />
+                        <img src={item.imgurl} alt={item.title} className="w-full object-contain max-h-[60px]" />
                       </div>
-                      <h4 className="text-[11px] font-medium truncate mt-1.5">{recommendation.name}</h4>
-                      <p className="text-[12px] font-semibold">₹699</p>
-                    </div>
+                      <h4 className="text-[11px] font-medium truncate mt-1.5">{item.title}</h4>
+                      <p className="text-[12px] font-semibold">{item.price}</p>
+                    </button>
                   ))}
                 </div>
               </div>
