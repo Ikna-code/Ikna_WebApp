@@ -87,6 +87,29 @@ export const ProductCard = ({
   const isLimitedStock = product?.stock <= 5;
   const tagInfo = product?.tag;
 
+  const renderSwatch = (swatch: { id: string; label: string; color: string }) => {
+    const isActive = swatch.id === activeSwatchId;
+
+    return (
+      <button
+        key={swatch.id}
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onSwatchSelect?.(swatch.id);
+        }}
+        className={`h-5 w-5 rounded-full border transition-all shrink-0 ${
+          isActive
+            ? "border-[#321327] ring-1 ring-[#321327]/30"
+            : "border-[#321327]/20 hover:border-[#321327]/45"
+        }`}
+        style={{ backgroundColor: swatch.color }}
+        aria-label={`Show ${swatch.label}`}
+        title={swatch.label}
+      />
+    );
+  };
+
   return (
     <div
       className="
@@ -300,34 +323,22 @@ export const ProductCard = ({
         </div>
 
         {swatches.length > 1 && (
-          <div className="mt-2.5 flex items-center gap-2">
-            {swatches.slice(0, 6).map((swatch) => {
-              const isActive = swatch.id === activeSwatchId;
-              return (
-                <button
-                  key={swatch.id}
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onSwatchSelect?.(swatch.id);
-                  }}
-                  className={`h-5 w-5 rounded-full border transition-all ${
-                    isActive
-                      ? "border-[#321327] ring-1 ring-[#321327]/30"
-                      : "border-[#321327]/20 hover:border-[#321327]/45"
-                  }`}
-                  style={{ backgroundColor: swatch.color }}
-                  aria-label={`Show ${swatch.label}`}
-                  title={swatch.label}
-                />
-              );
-            })}
-            {swatches.length > 6 && (
-              <span className="text-[10px] font-semibold text-[#321327]/60">
-                +{swatches.length - 6}
-              </span>
-            )}
-          </div>
+          <>
+            <div className="mt-2.5 overflow-x-auto no-scrollbar md:hidden">
+              <div className="flex items-center gap-2 min-w-max pr-1">
+                {swatches.map((swatch) => renderSwatch(swatch))}
+              </div>
+            </div>
+
+            <div className="mt-2.5 hidden md:flex items-center gap-2">
+              {swatches.slice(0, 6).map((swatch) => renderSwatch(swatch))}
+              {swatches.length > 6 && (
+                <span className="text-[10px] font-semibold text-[#321327]/60">
+                  +{swatches.length - 6}
+                </span>
+              )}
+            </div>
+          </>
         )}
 
         {/* BUTTON */}
