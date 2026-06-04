@@ -17,7 +17,7 @@ const publicRoutes = [
   "/reviews",
   "/privacy-policy",
   "/terms-and-conditions",
-  "/fit-quiz",
+  "/sitemap",
 ] as const;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -32,17 +32,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const products = await db.product.findMany({
       select: {
         id: true,
-        updatedAt: true,
         createdAt: true,
       },
       orderBy: {
-        updatedAt: "desc",
+        createdAt: "desc",
       },
     });
 
     const productEntries: MetadataRoute.Sitemap = products.map((product) => ({
       url: `${siteUrl}/product/${product.id}`,
-      lastModified: product.updatedAt || product.createdAt || new Date(),
+      lastModified: product.createdAt || new Date(),
       changeFrequency: "weekly",
       priority: 0.7,
     }));

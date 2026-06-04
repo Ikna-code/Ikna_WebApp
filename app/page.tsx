@@ -7,7 +7,6 @@ import VariantSwitcher from '@/components/product/VariantSwitcher';
 import QuizCard from '@/components/utility/QuizCard';
 import SizeChart from '@/components/utility/SizeChart';
 import ProblemSolver from '@/components/utility/ProblemSolver';
-import ChatWidget from '@/components/utility/ChatWidget';
 import Review from '@/components/product/Review';
 import BannerSection from '@/components/product/BannerSection';
 import Banner from '@/components/product/Banner';
@@ -95,7 +94,6 @@ export default function Home() {
       <Footer />
 
       {/* Floating Support Widget */}
-      <ChatWidget />
     </div>
     </>
   );

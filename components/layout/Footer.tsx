@@ -102,6 +102,15 @@ const Footer = () => {
                 </Link>
               </li>
 
+              <li>
+                <Link
+                  href="/sitemap"
+                  className="hover:text-white hover:translate-x-1 inline-block transition-all duration-300"
+                >
+                 SiteMap
+                </Link>
+              </li>
+
 
             </ul>
 
