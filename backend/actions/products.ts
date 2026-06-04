@@ -3,6 +3,33 @@
   import { revalidatePath } from "next/cache";
   import { supabase } from '../lib/supabaseClient';
 
+  const toStoragePath = (pathOrUrl: string) => {
+    const value = String(pathOrUrl || '').trim();
+    if (!value) return '';
+
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      const markers = [
+        '/storage/v1/object/public/products/',
+        '/storage/v1/object/products/',
+      ];
+
+      for (const marker of markers) {
+        const markerIndex = value.indexOf(marker);
+        if (markerIndex >= 0) {
+          return value.slice(markerIndex + marker.length);
+        }
+      }
+    }
+
+    return value.replace(/^\/+/, '');
+  };
+
+  const isPathInProductFolder = (pathOrUrl: string, productId: string) => {
+    const normalized = toStoragePath(pathOrUrl);
+    const expectedPrefix = `product_photos/${String(productId).trim()}/`;
+    return normalized.startsWith(expectedPrefix);
+  };
+
   // --- MIDDLEWARE-LIKE ROLE CHECK ---
   async function verifyAdmin() {
     // Logic: Get session from your Auth provider (Clerk/Auth.js)
@@ -65,7 +92,22 @@
       return null;
     }
 
-    return data;
+    if (!data) return null;
+
+    const productImages = Array.isArray(data.product_images) ? data.product_images : [];
+    const safeImages = productImages.filter((image: { image_path?: string }) =>
+      isPathInProductFolder(String(image?.image_path || ''), productId)
+    );
+
+    const normalizedImage = isPathInProductFolder(String(data.image || ''), productId)
+      ? data.image
+      : safeImages[0]?.image_path || data.image;
+
+    return {
+      ...data,
+      image: normalizedImage,
+      product_images: safeImages,
+    };
   };
 
   export const getAllProductsWithPrimaryImage = async () => {
@@ -83,7 +125,24 @@
       return []; // Return empty array instead of null to prevent .map errors
     }
 
-    return data;
+    const rows = Array.isArray(data) ? data : [];
+
+    return rows.map((row: any) => {
+      const productImages = Array.isArray(row?.product_images) ? row.product_images : [];
+      const safeImages = productImages.filter((image: { image_path?: string }) =>
+        isPathInProductFolder(String(image?.image_path || ''), String(row?.id || ''))
+      );
+
+      const normalizedImage = isPathInProductFolder(String(row?.image || ''), String(row?.id || ''))
+        ? row.image
+        : safeImages[0]?.image_path || row?.image;
+
+      return {
+        ...row,
+        image: normalizedImage,
+        product_images: safeImages,
+      };
+    });
   };
 
   export async function getProductReviewStats(productId: string) {

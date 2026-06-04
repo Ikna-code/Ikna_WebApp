@@ -7,14 +7,28 @@ export const dynamic = 'force-dynamic';
 
 const prisma = new PrismaClient();
 
-async function requireAdmin() {
-  const dbUser = await ensureCurrentDbUser();
+// Service role client bypasses all Supabase RLS policies — use only in server-side admin routes.
+const supabaseAdmin = createSupabaseAdminClient();
 
-  if (!dbUser || dbUser.role !== Role.ADMIN) {
+const createImageId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `img_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+};
+
+async function requireAdmin() {
+  try {
+    const dbUser = await ensureCurrentDbUser();
+
+    if (!dbUser || dbUser.role !== Role.ADMIN) {
+      return null;
+    }
+
+    return dbUser.id;
+  } catch {
     return null;
   }
-
-  return dbUser.id;
 }
 
 function toStoragePath(pathOrUrl: string) {
@@ -22,10 +36,16 @@ function toStoragePath(pathOrUrl: string) {
   if (!value) return '';
 
   if (value.startsWith('http://') || value.startsWith('https://')) {
-    const marker = '/storage/v1/object/public/products/';
-    const markerIndex = value.indexOf(marker);
-    if (markerIndex >= 0) {
-      return value.slice(markerIndex + marker.length);
+    const markers = [
+      '/storage/v1/object/public/products/',
+      '/storage/v1/object/products/',
+    ];
+
+    for (const marker of markers) {
+      const markerIndex = value.indexOf(marker);
+      if (markerIndex >= 0) {
+        return value.slice(markerIndex + marker.length);
+      }
     }
   }
 
@@ -103,42 +123,77 @@ export async function PATCH(
       updateData.sizes = body.sizes.filter((item: unknown) => typeof item === 'string');
     }
 
-    const updatedProduct = await prisma.$transaction(async (tx) => {
-      if (imagesToDelete.length) {
-        await tx.productImage.deleteMany({
-          where: {
-            id: {
-              in: imagesToDelete.map((image) => image.id),
-            },
-          },
-        });
+    const hasScalarUpdates = Object.keys(updateData).length > 0;
+    const hasImageUpdates = imagePaths.length > 0 || imagesToDelete.length > 0;
+    if (!hasScalarUpdates && !hasImageUpdates) {
+      return NextResponse.json({
+        id,
+        message: 'No changes detected',
+      });
+    }
+
+    // Use service role Supabase client for all DB writes to bypass RLS.
+    if (imagesToDelete.length) {
+      const deleteIds = imagesToDelete.map((image) => image.id);
+      const { error: deleteImgError } = await supabaseAdmin
+        .from('product_images')
+        .delete()
+        .in('id', deleteIds);
+
+      if (deleteImgError) {
+        throw new Error(`Failed to delete images: ${deleteImgError.message}`);
+      }
+    }
+
+    if (imagePaths.length) {
+      const { error: resetPrimaryError } = await supabaseAdmin
+        .from('product_images')
+        .update({ is_primary: false })
+        .eq('product_id', id);
+
+      if (resetPrimaryError) {
+        throw new Error(`Failed to reset previous primary images: ${resetPrimaryError.message}`);
       }
 
-      if (imagePaths.length) {
-        await tx.productImage.createMany({
-          data: imagePaths.map((path: string, index: number) => ({
+      const { error: insertImgError } = await supabaseAdmin
+        .from('product_images')
+        .insert(
+          imagePaths.map((path: string, index: number) => ({
+            id: createImageId(),
             product_id: id,
             image_path: path,
             is_primary: index === 0,
-          })),
-        });
+          }))
+        );
+
+      if (insertImgError) {
+        throw new Error(`Failed to insert images: ${insertImgError.message}`);
       }
 
-      return tx.product.update({
-        where: { id },
-        data: updateData,
-      });
-    });
+      if (!updateData.image) {
+        updateData.image = imagePaths[0];
+      }
+    }
+
+    const { data: updatedProduct, error: updateError } = await supabaseAdmin
+      .from('Product')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) {
+      throw new Error(`Failed to update product: ${updateError.message}`);
+    }
 
     if (imagesToDelete.length) {
       try {
-        const supabase = createSupabaseAdminClient();
         const storagePaths = imagesToDelete
           .map((image) => toStoragePath(image.image_path))
           .filter((path) => path.length > 0);
 
         if (storagePaths.length) {
-          await supabase.storage.from('products').remove(storagePaths);
+          await supabaseAdmin.storage.from('products').remove(storagePaths);
         }
       } catch {
         // Storage cleanup failure should not block successful product updates.
@@ -146,8 +201,11 @@ export async function PATCH(
     }
 
     return NextResponse.json(updatedProduct);
-  } catch {
-    return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message || 'Failed to update product' },
+      { status: 500 }
+    );
   }
 }
 
@@ -164,12 +222,21 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    await prisma.product.delete({
-      where: { id },
-    });
+    // Delete via service role client to bypass RLS.
+    const { error: deleteError } = await supabaseAdmin
+      .from('Product')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      throw new Error(deleteError.message);
+    }
 
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message || 'Failed to delete product' },
+      { status: 500 }
+    );
   }
 }

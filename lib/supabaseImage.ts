@@ -2,6 +2,7 @@ import { IMAGE_BASE_URL } from '@/public/constants/constants';
 
 const PUBLIC_PREFIX = '/storage/v1/object/public/';
 const RENDER_PREFIX = '/storage/v1/render/image/public/';
+const LEGACY_OBJECT_PREFIX = '/storage/v1/object/products/';
 
 type SupabaseImageOptions = {
   width?: number;
@@ -25,6 +26,11 @@ export function getOptimizedSupabaseImageUrl(pathOrUrl: string | null | undefine
   const url = value.startsWith('http://') || value.startsWith('https://')
     ? new URL(value)
     : new URL(normalizePath(value), base);
+
+  // Repair legacy malformed storage URLs: /storage/v1/object/products/... -> /storage/v1/object/public/products/...
+  if (url.pathname.includes(LEGACY_OBJECT_PREFIX)) {
+    url.pathname = url.pathname.replace(LEGACY_OBJECT_PREFIX, PUBLIC_PREFIX);
+  }
 
   // 2. CRITICAL CHECK: If original is requested, skip transformation entirely
   if (options.original) {

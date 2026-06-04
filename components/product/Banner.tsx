@@ -18,7 +18,7 @@ const Banner = () => {
   const slides = [
     {
       id: 0,
-      src: '/images/Banner_Image_Final.png',
+      src: '/images/MinimizerB_Combo.png',
       alt: 'Promotional Banner 0',
       title: '',
       description: '',
@@ -34,6 +34,13 @@ const Banner = () => {
       id: 2,
       src: '/images/Feather_Banner_Final.png',
       alt: 'Promotional Banner 2',
+      title: '',
+      description: '',
+    },
+        {
+      id: 3,
+      src: '/images/ComfyB_Combo.png',
+      alt: 'Promotional Banner 3',
       title: '',
       description: '',
     },

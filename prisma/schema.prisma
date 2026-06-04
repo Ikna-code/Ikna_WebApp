@@ -89,6 +89,10 @@ model Product {
   
   tag         String?
   rating      Float?   
+  
+  // Color information for variant swatches
+  colorName   String?  @default("Unspecified") // e.g., "Black", "White", "Navy"
+  colorHex    String?  @default("#000000")     // e.g., "#111111", "#F8F8F8"
    
   sizes       String[] @default([])
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { MdVerified } from "react-icons/md";
 import { FaHeart, FaRegHeart } from "react-icons/fa";
@@ -9,6 +9,11 @@ import { useRouter } from "next/navigation";
 
 import { useStore } from "@/store/useStore";
 import { getOptimizedSupabaseImageUrl } from "@/lib/supabaseImage";
+import {
+  getProductColorLabel,
+  getProductSwatchColor,
+  groupProductsByCategory,
+} from "@/lib/productVariants";
 
 // ================= PRODUCT CARD =================
 
@@ -17,11 +22,17 @@ export const ProductCard = ({
   isWished,
   onToggleWishlist,
   userId,
+  swatches = [],
+  activeSwatchId,
+  onSwatchSelect,
 }: {
   product: any;
   isWished: boolean;
   onToggleWishlist: (id: string) => void | Promise<void>;
   userId: string | null;
+  swatches?: Array<{ id: string; label: string; color: string }>;
+  activeSwatchId?: string;
+  onSwatchSelect?: (id: string) => void;
 }) => {
   const [tooltip, setTooltip] = useState({
     show: false,
@@ -288,6 +299,37 @@ export const ProductCard = ({
           </div>
         </div>
 
+        {swatches.length > 1 && (
+          <div className="mt-2.5 flex items-center gap-2">
+            {swatches.slice(0, 6).map((swatch) => {
+              const isActive = swatch.id === activeSwatchId;
+              return (
+                <button
+                  key={swatch.id}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onSwatchSelect?.(swatch.id);
+                  }}
+                  className={`h-5 w-5 rounded-full border transition-all ${
+                    isActive
+                      ? "border-[#321327] ring-1 ring-[#321327]/30"
+                      : "border-[#321327]/20 hover:border-[#321327]/45"
+                  }`}
+                  style={{ backgroundColor: swatch.color }}
+                  aria-label={`Show ${swatch.label}`}
+                  title={swatch.label}
+                />
+              );
+            })}
+            {swatches.length > 6 && (
+              <span className="text-[10px] font-semibold text-[#321327]/60">
+                +{swatches.length - 6}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* BUTTON */}
         <button
           className="
@@ -349,6 +391,33 @@ const ProductGrid = () => {
   );
 
   const router = useRouter();
+  const groupedProducts = useMemo(
+    () => groupProductsByCategory(products),
+    [products]
+  );
+
+  const featuredGroups = useMemo(
+    () => groupedProducts.slice(0, 4),
+    [groupedProducts]
+  );
+
+  const [selectedVariantByCategory, setSelectedVariantByCategory] = useState<
+    Record<string, string>
+  >({});
+
+  useEffect(() => {
+    setSelectedVariantByCategory((previous) => {
+      const next = { ...previous };
+      for (const group of groupedProducts) {
+        const selectedId = next[group.categoryKey];
+        const exists = group.variants.some((variant) => variant.id === selectedId);
+        if (!exists) {
+          next[group.categoryKey] = group.variants[0]?.id;
+        }
+      }
+      return next;
+    });
+  }, [groupedProducts]);
 
   const toggleWishlistInState = async (
     id: string
@@ -396,36 +465,56 @@ const ProductGrid = () => {
                 md:gap-6
               "
             >
-              {products
-                .slice(0, 4)
-                .map((product) => (
+              {featuredGroups
+                .map((group) => {
+                  const activeVariantId = selectedVariantByCategory[group.categoryKey];
+                  const activeVariant =
+                    group.variants.find((variant) => variant.id === activeVariantId) ||
+                    group.variants[0];
 
-                  <div
-                    key={product.id}
-                    onClick={() =>
-                      router.push(
-                        `/product/${product.id}`
-                      )
-                    }
-                    className="cursor-pointer"
-                  >
-                    <ProductCard
-                      product={product}
-                      isWished={wishlist.includes(
-                        product.id
-                      )}
-                      onToggleWishlist={
-                        toggleWishlistInState
+                  if (!activeVariant) return null;
+
+                  return (
+                    <div
+                      key={group.categoryKey}
+                      onClick={() =>
+                        router.push(
+                          `/product/${activeVariant.id}`,
+                          { scroll: true }
+                        )
                       }
-                      userId={user?.id || null}
-                    />
-                  </div>
+                      className="cursor-pointer"
+                    >
+                      <ProductCard
+                        product={activeVariant}
+                        isWished={wishlist.includes(
+                          activeVariant.id
+                        )}
+                        onToggleWishlist={
+                          toggleWishlistInState
+                        }
+                        userId={user?.id || null}
+                        swatches={group.variants.map((variant, index) => ({
+                          id: variant.id,
+                          label: getProductColorLabel(variant, index),
+                          color: getProductSwatchColor(variant, index),
+                        }))}
+                        activeSwatchId={activeVariant.id}
+                        onSwatchSelect={(variantId) =>
+                          setSelectedVariantByCategory((previous) => ({
+                            ...previous,
+                            [group.categoryKey]: variantId,
+                          }))
+                        }
+                      />
+                    </div>
+                  );
 
-                ))}
+                })}
             </div>
 
             {/* VIEW ALL */}
-            {products.length > 4 && (
+            {groupedProducts.length > 4 && (
               <div className="text-center mt-8">
 
                 <button

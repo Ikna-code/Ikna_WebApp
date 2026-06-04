@@ -18,6 +18,11 @@ import ReviewSection from '@/app/reviews/page';
 import { useStore } from '@/store/useStore';
 import Footer from '@/components/layout/Footer';
 import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
+import {
+  getProductCategoryKey,
+  getProductColorLabel,
+  getProductSwatchColor,
+} from '@/lib/productVariants';
 
 /* ---------------- COMPONENT ---------------- */
 
@@ -47,6 +52,9 @@ const SingleProductPage = () => {
   const addItemToCart = useStore((state) => state.addItemToCart);
   const user = useStore((state) => state.user);
   const fetchProductDetails = useStore((state) => state.fetchProductDetails);
+  const products = useStore((state) => state.products);
+  const loadProducts = useStore((state) => state.loadProducts);
+  const isProductsInitialized = useStore((state) => state.isProductsInitialized);
 
   const productId = id?.toString() || '';
   const productData = useStore((state) =>
@@ -58,6 +66,9 @@ const SingleProductPage = () => {
   useEffect(() => {
     const initPage = async () => {
       try {
+        if (!isProductsInitialized) {
+          await loadProducts();
+        }
         if (!productId || productData) return;
         await fetchProductDetails(productId);
       } catch (error) {
@@ -66,13 +77,43 @@ const SingleProductPage = () => {
     };
 
     initPage();
-  }, [productId, productData, fetchProductDetails]);
+  }, [
+    productId,
+    productData,
+    fetchProductDetails,
+    isProductsInitialized,
+    loadProducts,
+  ]);
+
+  useEffect(() => {
+    setActiveImgIdx(0);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, [productId]);
 
   /* ---------------- PRODUCT ---------------- */
 
   const product = useMemo(() => {
     return productData && productData.id === productId ? productData : null;
   }, [productData, productId]);
+
+  const categoryVariants = useMemo(() => {
+    if (!product?.category) return product ? [product] : [];
+
+    const productCategoryKey = getProductCategoryKey(product);
+    const variants = products.filter((item: any) => {
+      if (!item?.id) return false;
+      return getProductCategoryKey(item) === productCategoryKey;
+    });
+
+    const includesCurrent = variants.some((item: any) => item.id === product.id);
+    if (!includesCurrent && product) {
+      return [product, ...variants];
+    }
+
+    return variants;
+  }, [products, product]);
 
   /* ---------------- SORTED SIZES ARRAY FOR THE CHIP LIST ---------------- */
   const availableSizes = useMemo(() => {
@@ -183,7 +224,7 @@ const SingleProductPage = () => {
   /* ---------------- UI ---------------- */
 
   return (
-    <div className="bg-[#F9F3F5] min-h-screen flex flex-col relative sticky">
+    <div className="bg-[#F9F3F5] min-h-screen flex flex-col">
 
       <Header />
 
@@ -285,6 +326,42 @@ const SingleProductPage = () => {
                   <h1 className="text-2xl sm:text-3xl lg:text-4xl font-serif text-[#321327] leading-[1.2] block tracking-normal break-words">
                     {product.name}
                   </h1>
+
+                  {categoryVariants.length > 1 && (
+                    <div className="pt-1.5">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#321327]/50 mb-2">
+                        Colors
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        {categoryVariants.map((variant: any, index: number) => {
+                          const isActive = variant.id === product.id;
+                          const colorLabel = getProductColorLabel(variant, index);
+                          return (
+                            <button
+                              key={variant.id}
+                              type="button"
+                              onClick={() => {
+                                if (variant.id === product.id) return;
+                                router.push(`/product/${variant.id}`, {
+                                  scroll: true,
+                                });
+                              }}
+                              className={`h-6 w-6 rounded-full border transition-all ${
+                                isActive
+                                  ? 'border-[#321327] ring-2 ring-[#321327]/25'
+                                  : 'border-[#321327]/20 hover:border-[#321327]/45'
+                              }`}
+                              style={{
+                                backgroundColor: getProductSwatchColor(variant, index),
+                              }}
+                              title={colorLabel}
+                              aria-label={`Show ${colorLabel}`}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   <button
                     onClick={scrollToReviews}

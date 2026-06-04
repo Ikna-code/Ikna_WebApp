@@ -14,7 +14,6 @@ import {
   X,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { createClient } from '@/backend/lib/supabaseClient';
 import { IMAGE_BASE_URL } from '@/public/constants/constants';
 
 // --- Interfaces ---
@@ -216,7 +215,7 @@ export default function ProductManagementDashboard() {
   const getImageUrl = (pathOrUrl: string) => {
     if (!pathOrUrl) return '';
     if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
-      return pathOrUrl;
+      return pathOrUrl.replace('/storage/v1/object/products/', '/storage/v1/object/public/products/');
     }
     return `${IMAGE_BASE_URL}${pathOrUrl}`;
   };
@@ -259,7 +258,7 @@ export default function ProductManagementDashboard() {
       const mappedProducts = products.map((product, index) => {
         const price = Number(product.price);
         const reviewCount = product.reviews?.length || 0;
-        const primaryPath = product.images?.find((img) => img.is_primary)?.image_path || product.image;
+        const primaryPath = product.image || product.images?.find((img) => img.is_primary)?.image_path || '';
 
         return {
           id: product.id,
@@ -331,49 +330,34 @@ export default function ProductManagementDashboard() {
     return parts.length > 1 ? parts[0] : '';
   };
 
-  const uploadImagesForSku = async (sku: string, files: File[]) => {
+  const uploadImagesForProductId = async (productId: string, files: File[]) => {
     if (!files.length) return [] as string[];
 
-    const supabase = createClient();
-    const uploadedPaths: string[] = [];
-
-    const sanitizePathSegment = (value: string) =>
-      String(value || '')
-        .trim()
-        .replace(/[^a-zA-Z0-9._-]/g, '_');
-
-    const rootFolder = sanitizePathSegment(getRootFolderNameFromFiles(files));
-
-    for (let index = 0; index < files.length; index += 1) {
-      const file = files[index];
-      const withPath = file as File & { webkitRelativePath?: string; _relativePath?: string };
-      const relativePath = withPath._relativePath || withPath.webkitRelativePath || file.name;
-      const normalizedRelative = relativePath.replace(/\\/g, '/').split('/').filter(Boolean);
-      const trimmedRelativeParts =
-        rootFolder && normalizedRelative[0] === getRootFolderNameFromFiles(files)
-          ? normalizedRelative.slice(1)
-          : normalizedRelative;
-      const safeParts = trimmedRelativeParts.map((part) => sanitizePathSegment(part));
-      const safeFileName = safeParts[safeParts.length - 1] || sanitizePathSegment(file.name);
-      const safeDirs = safeParts.slice(0, -1).join('/');
-      const basePath = `product_photos/${rootFolder || sku}`;
-      const storagePath = safeDirs
-        ? `${basePath}/${safeDirs}/${Date.now()}-${index}-${safeFileName}`
-        : `${basePath}/${Date.now()}-${index}-${safeFileName}`;
-
-      const { error } = await supabase.storage.from('products').upload(storagePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-      if (error) {
-        throw new Error(`Image upload failed: ${error.message}`);
-      }
-
-      uploadedPaths.push(storagePath);
+    if (!String(productId || '').trim()) {
+      throw new Error('Product id is required to upload images');
     }
 
-    return uploadedPaths;
+    const formData = new FormData();
+    formData.append('productId', String(productId).trim());
+
+    files.forEach((file) => {
+      const withPath = file as File & { webkitRelativePath?: string; _relativePath?: string };
+      const relativePath = withPath._relativePath || withPath.webkitRelativePath || file.name;
+      formData.append('files', file);
+      formData.append('paths', relativePath);
+    });
+
+    const response = await fetch('/api/admin/products/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(result?.error || 'Image upload failed');
+    }
+
+    return Array.isArray(result?.uploadedPaths) ? result.uploadedPaths : [];
   };
 
   const filteredProducts = productDetails.filter((product) => {
@@ -436,8 +420,6 @@ export default function ProductManagementDashboard() {
         throw new Error('SKU is required');
       }
 
-      const uploadedPaths = await uploadImagesForSku(folderSku, productImages);
-
       const sizes = newProductDetail.sizes
         .split(',')
         .map((size) => size.trim())
@@ -451,19 +433,44 @@ export default function ProductManagementDashboard() {
         sizes,
         category: newProductDetail.category,
         tag: newProductDetail.tag,
-        image: newProductDetail.image.trim() || uploadedPaths[0] || undefined,
+        image: newProductDetail.image.trim() || undefined,
         rating: newProductDetail.rating ? Number(newProductDetail.rating) : null,
-        imagePaths: uploadedPaths,
       };
 
-      const response = await fetch('/api/admin/products', {
+      const createResponse = await fetch('/api/admin/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
+      if (!createResponse.ok) {
         throw new Error('Failed to create product');
+      }
+
+      const createdProduct = await createResponse.json();
+      const createdProductId = String(createdProduct?.id || '').trim();
+
+      if (!createdProductId) {
+        throw new Error('Created product id missing');
+      }
+
+      if (productImages.length > 0) {
+        const uploadedPaths = await uploadImagesForProductId(createdProductId, productImages);
+
+        if (uploadedPaths.length > 0) {
+          const patchResponse = await fetch(`/api/admin/products/${createdProductId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              image: uploadedPaths[0],
+              imagePaths: uploadedPaths,
+            }),
+          });
+
+          if (!patchResponse.ok) {
+            throw new Error('Product created but failed to attach uploaded images');
+          }
+        }
       }
 
       setNextSku(String((parseSku(folderSku) || Number(nextSku) || 200000) + 1));
@@ -481,8 +488,8 @@ export default function ProductManagementDashboard() {
       handleClearAddProductImages();
       setIsAddModalOpen(false);
       await fetchProducts();
-    } catch {
-      setErrorMessage('Failed to create product.');
+    } catch (error: any) {
+      setErrorMessage(error?.message || 'Failed to create product.');
     } finally {
       setIsUploadingImages(false);
     }
@@ -707,7 +714,7 @@ export default function ProductManagementDashboard() {
     if (!editingProductId) return;
 
     try {
-      const uploadedPaths = await uploadImagesForSku(editingProductSku || nextSku, editProductImages);
+      const uploadedPaths = await uploadImagesForProductId(editingProductId, editProductImages);
       const sizes = editProductDetail.sizes
         .split(',')
         .map((size) => size.trim())
@@ -724,8 +731,8 @@ export default function ProductManagementDashboard() {
       )?.imagePath;
 
       const resolvedPrimaryImage =
-        (!primaryWasRemoved && currentPrimaryPath) ||
         uploadedPaths[0] ||
+        (!primaryWasRemoved && currentPrimaryPath) ||
         fallbackPrimaryFromExisting ||
         fallbackPathFromExisting ||
         null;
@@ -750,7 +757,8 @@ export default function ProductManagementDashboard() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update product');
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.error || 'Failed to update product');
       }
 
       setIsEditModalOpen(false);
@@ -761,8 +769,8 @@ export default function ProductManagementDashboard() {
       setRemovedEditImagePaths([]);
       handleClearEditProductImages();
       await fetchProducts();
-    } catch {
-      setErrorMessage('Failed to update product.');
+    } catch (error: any) {
+      setErrorMessage(error?.message || 'Failed to update product.');
     }
   };
 

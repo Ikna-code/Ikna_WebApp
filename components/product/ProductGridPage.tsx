@@ -1,12 +1,17 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LuFilter, LuArrowUpDown } from "react-icons/lu";
 
 import { ProductCard } from "./ProductGrid";
 import Footer from "@/components/layout/Footer";
 import { useStore } from "@/store/useStore";
+import {
+  getProductColorLabel,
+  getProductSwatchColor,
+  groupProductsByCategory,
+} from "@/lib/productVariants";
 
 interface ProductGridPageProps {
   products: any[];
@@ -97,6 +102,29 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
 
     return result;
   }, [products, selectedCategory, sortBy]);
+
+  const groupedProducts = useMemo(
+    () => groupProductsByCategory(filteredAndSortedProducts),
+    [filteredAndSortedProducts]
+  );
+
+  const [selectedVariantByCategory, setSelectedVariantByCategory] = useState<
+    Record<string, string>
+  >({});
+
+  useEffect(() => {
+    setSelectedVariantByCategory((previous) => {
+      const next = { ...previous };
+      for (const group of groupedProducts) {
+        const selectedId = next[group.categoryKey];
+        const exists = group.variants.some((variant) => variant.id === selectedId);
+        if (!exists) {
+          next[group.categoryKey] = group.variants[0]?.id;
+        }
+      }
+      return next;
+    });
+  }, [groupedProducts]);
 
   // WISHLIST
   const handleLocalToggle = async (id: string) => {
@@ -227,7 +255,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
 
         {/* PRODUCT GRID */}
         <main className="w-full px-0 md:px-8 flex-grow pb-20">
-          {filteredAndSortedProducts.length > 0 ? (
+          {groupedProducts.length > 0 ? (
             <div
               className="
   grid
@@ -238,10 +266,18 @@ gap-3
 md:gap-6
               "
             >
-              {filteredAndSortedProducts.map(
-                (product) => (
+              {groupedProducts.map(
+                (group) => {
+                  const activeVariantId = selectedVariantByCategory[group.categoryKey];
+                  const activeVariant =
+                    group.variants.find((variant) => variant.id === activeVariantId) ||
+                    group.variants[0];
+
+                  if (!activeVariant) return null;
+
+                  return (
                   <div
-                    key={product.id}
+                    key={group.categoryKey}
                     className="
                       group
                       cursor-pointer
@@ -258,22 +294,36 @@ md:gap-6
                     "
                     onClick={() =>
                       router.push(
-                        `/product/${product.id}`
+                        `/product/${activeVariant.id}`,
+                        { scroll: true }
                       )
                     }
                   >
                     <ProductCard
-                      product={product}
+                      product={activeVariant}
                       isWished={wishlist.includes(
-                        product.id
+                        activeVariant.id
                       )}
                       onToggleWishlist={
                         handleLocalToggle
                       }
                       userId={user?.id || null}
+                      swatches={group.variants.map((variant, index) => ({
+                        id: variant.id,
+                        label: getProductColorLabel(variant, index),
+                        color: getProductSwatchColor(variant, index),
+                      }))}
+                      activeSwatchId={activeVariant.id}
+                      onSwatchSelect={(variantId) =>
+                        setSelectedVariantByCategory((previous) => ({
+                          ...previous,
+                          [group.categoryKey]: variantId,
+                        }))
+                      }
                     />
                   </div>
-                )
+                  );
+                }
               )}
             </div>
           ) : (
