@@ -127,7 +127,7 @@ const OrdersPage = () => {
                                     alt={item.product?.name || "Product Image"} 
                                     fill 
                                     className="object-cover" 
-                                    sizes="(max-width: 640px) 40px, 48px"
+                                    sizes="48px"
                                   />
                                 </div>
                                 <div className="min-w-0">

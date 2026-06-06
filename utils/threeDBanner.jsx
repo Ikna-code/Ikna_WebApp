@@ -4,6 +4,14 @@ import { useRef, useState, useEffect } from 'react';
 import { motion, useScroll, useTransform, useSpring, useMotionValueEvent } from 'framer-motion';
 import { IMAGE_BASE_URL } from '@/public/constants/constants';
 
+const resolveImageSrc = (pathOrUrl) => {
+  const value = String(pathOrUrl || '').trim();
+  if (!value) return '';
+  if (value.startsWith('http://') || value.startsWith('https://')) return value;
+  const base = IMAGE_BASE_URL.endsWith('/') ? IMAGE_BASE_URL : `${IMAGE_BASE_URL}/`;
+  return `${base}${value.replace(/^\/+/, '')}`;
+};
+
 const PerspectiveGallery = ({ products, children }) => {
   const containerRef = useRef(null);
   const [isWhiteSectionActive, setIsWhiteSectionActive] = useState(false);
@@ -97,7 +105,7 @@ const PerspectiveGallery = ({ products, children }) => {
             }}
             className="absolute w-24 h-44 md:w-56 md:h-96 rounded-2xl overflow-hidden shadow-2xl border border-white/20 z-20"
           >
-            <img src={`${IMAGE_BASE_URL}/${products[1]?.image}`} className="w-full h-full object-cover" alt="" />
+            <img src={resolveImageSrc(products[1]?.image)} className="w-full h-full object-cover" alt="" />
           </motion.div>
 
           {/* CENTER CARD (Top priority layer) */}
@@ -120,7 +128,7 @@ const PerspectiveGallery = ({ products, children }) => {
             className="absolute w-24 h-44 md:w-56 md:h-96 rounded-2xl overflow-hidden shadow-2xl border border-white/20 z-20"
           >
             <img 
-              src={`${IMAGE_BASE_URL}/${products[2]?.image}`} 
+              src={resolveImageSrc(products[2]?.image)} 
               className="w-full h-full object-cover" 
               alt={products[2]?.name} 
             />

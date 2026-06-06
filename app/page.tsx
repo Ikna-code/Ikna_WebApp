@@ -10,7 +10,7 @@ import ProblemSolver from '@/components/utility/ProblemSolver';
 import Review from '@/components/product/Review';
 import BannerSection from '@/components/product/BannerSection';
 import Banner from '@/components/product/Banner';
-import ProductGrid from '@/components/product/ProductGrid';
+import ProductGrid from '@/components/product/ProductGridClient';
 import IknaLoader from './iknaLoader/page';
 // import OpenBanner from '@/components/product/OpenBanner';
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient, Role } from '@prisma/client';
 import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
 import { createSupabaseAdminClient } from '@/backend/lib/supabaseAdmin';
+import { extractCloudinaryPublicId } from '@/src/lib/cloudinary';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,41 @@ const createImageId = () => {
   }
   return `img_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 };
+
+const isNumericProductId = (value: string) => /^\d+$/.test(String(value || '').trim());
+
+const normalizeNumericProductId = (value: string) => {
+  const parsed = Number.parseInt(String(value || '').trim(), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? String(parsed) : '';
+};
+
+const isDuplicateProductIdError = (error: any) => {
+  const code = String(error?.code || '');
+  const message = String(error?.message || '');
+  return code === '23505' && /Product.*id|Product_pkey|duplicate key/i.test(message);
+};
+
+async function getNextSequentialProductId() {
+  const products = await prisma.product.findMany({
+    select: { id: true },
+  });
+
+  let maxId = 0;
+
+  for (const product of products) {
+    const currentId = String(product?.id || '').trim();
+    if (!isNumericProductId(currentId)) {
+      continue;
+    }
+
+    const numericId = Number.parseInt(currentId, 10);
+    if (Number.isFinite(numericId)) {
+      maxId = Math.max(maxId, numericId);
+    }
+  }
+
+  return String(maxId + 1);
+}
 
 async function requireAdmin() {
   try {
@@ -84,22 +120,56 @@ export async function POST(request: NextRequest) {
       ? body.sizes.filter((item: unknown) => typeof item === 'string' && item.length > 0)
       : [];
 
-    // Use service role Supabase client to bypass RLS for all writes.
-    const { data: product, error: createError } = await supabaseAdmin
-      .from('Product')
-      .insert({
-        name: body.name,
-        price: body.price,
-        stock: body.stock,
-        category: body.category || 'Bras',
-        image: primaryImagePath,
-        description: body.description,
-        tag: body.tag || null,
-        rating: typeof body?.rating === 'number' ? body.rating : null,
-        sizes,
-      })
-      .select()
-      .single();
+    const requestedIdRaw = typeof body?.id === 'string' ? body.id.trim() : '';
+    const requestedId = isNumericProductId(requestedIdRaw)
+      ? normalizeNumericProductId(requestedIdRaw)
+      : '';
+
+    const createPayload = {
+      name: body.name,
+      price: body.price,
+      stock: body.stock,
+      category: body.category || 'Bras',
+      image: primaryImagePath,
+      description: body.description,
+      tag: body.tag || null,
+      rating: typeof body?.rating === 'number' ? body.rating : null,
+      sizes,
+    };
+
+    const maxAttempts = 5;
+    let attempt = 0;
+    let product: any = null;
+    let createError: any = null;
+
+    while (attempt < maxAttempts) {
+      const productId =
+        attempt === 0 && requestedId ? requestedId : await getNextSequentialProductId();
+
+      // Use service role Supabase client to bypass RLS for all writes.
+      const result = await supabaseAdmin
+        .from('Product')
+        .insert({
+          id: productId,
+          ...createPayload,
+        })
+        .select()
+        .single();
+
+      product = result.data;
+      createError = result.error;
+
+      if (!createError && product) {
+        break;
+      }
+
+      if (isDuplicateProductIdError(createError)) {
+        attempt += 1;
+        continue;
+      }
+
+      break;
+    }
 
     if (createError || !product) {
       throw new Error(createError?.message || 'Failed to create product');
@@ -113,6 +183,7 @@ export async function POST(request: NextRequest) {
             id: createImageId(),
             product_id: product.id,
             image_path: path,
+            public_id: extractCloudinaryPublicId(path) || null,
             is_primary: index === 0,
           }))
         );

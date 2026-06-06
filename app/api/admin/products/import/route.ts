@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient, Role, Prisma } from '@prisma/client';
 import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
-import { createSupabaseAdminClient } from '@/backend/lib/supabaseAdmin';
+import { extractCloudinaryPublicId, uploadImage } from '@/src/lib/cloudinary';
 import * as XLSX from 'xlsx';
 
 export const dynamic = 'force-dynamic';
@@ -9,7 +9,6 @@ export const dynamic = 'force-dynamic';
 const prisma = new PrismaClient();
 const DEFAULT_PRODUCT_IMAGE =
   'https://images.unsplash.com/photo-1567016549366-5f3194bab37b?w=400&auto=format&fit=crop';
-const PRODUCT_IMAGES_BUCKET = 'products';
 const PRODUCT_IMAGES_PREFIX = 'product_photos';
 
 async function requireAdmin() {
@@ -190,7 +189,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Excel file has no data rows.' }, { status: 400 });
     }
 
-    const supabase = createSupabaseAdminClient();
     let nextFolderId = await getNextImageFolderId();
 
     const createdProducts: string[] = [];
@@ -258,26 +256,23 @@ export async function POST(request: NextRequest) {
       const explicitPrimaryImage = !hasUploadedImageMatch ? imageCell : '';
 
       const imagePaths: string[] = [];
+      const uploadedImages: Array<{ url: string; publicId: string }> = [];
 
       for (let imageIndex = 0; imageIndex < rowImages.length; imageIndex += 1) {
         const file = rowImages[imageIndex];
         const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const storagePath = `${PRODUCT_IMAGES_PREFIX}/${folderName}/${Date.now()}-${imageIndex}-${safeName}`;
-
-        const { error } = await supabase.storage
-          .from(PRODUCT_IMAGES_BUCKET)
-          .upload(storagePath, Buffer.from(await file.arrayBuffer()), {
-            contentType: file.type || 'application/octet-stream',
-            cacheControl: '3600',
-            upsert: false,
+        try {
+          const uploaded = await uploadImage(file, {
+            folder: `${PRODUCT_IMAGES_PREFIX}/${folderName}`,
+            fileName: `${Date.now()}-${imageIndex}-${safeName}`,
           });
 
-        if (error) {
-          errors.push(`Row ${index + 2}: image upload failed for ${file.name}: ${error.message}`);
+          imagePaths.push(uploaded.url);
+          uploadedImages.push(uploaded);
+        } catch (error: any) {
+          errors.push(`Row ${index + 2}: image upload failed for ${file.name}: ${error?.message || 'Unknown error'}`);
           continue;
         }
-
-        imagePaths.push(storagePath);
       }
 
       const primaryImagePath =
@@ -304,6 +299,7 @@ export async function POST(request: NextRequest) {
             ? {
                 create: imagePaths.map((path, imageIndex) => ({
                   image_path: path,
+                  public_id: uploadedImages[imageIndex]?.publicId || extractCloudinaryPublicId(path) || null,
                   is_primary: imageIndex === 0,
                 })),
               }

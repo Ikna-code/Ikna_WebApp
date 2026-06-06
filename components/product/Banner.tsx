@@ -84,6 +84,7 @@ const Banner = () => {
                 fill
                 priority={slide.id === 0}
                 quality={100}
+                sizes="1200px"
                 className="object-contain object-center h-auto w-auto"
               />
 

@@ -321,7 +321,7 @@ const CartPage = () => {
                       
                       {/* Image Container */}
                       <div className="relative w-full sm:w-28 h-48 sm:h-36 bg-[#FAF9FA] rounded-xl sm:rounded-2xl overflow-hidden shrink-0 border border-[#840d5c]/5">
-                        <Image src={getOptimizedSupabaseImageUrl(fallbackImage, { width: 400, quality: 70 })} alt={fallbackName} fill className="object-cover" />
+                        <Image src={getOptimizedSupabaseImageUrl(fallbackImage, { width: 400, quality: 70 })} alt={fallbackName} fill sizes="400px" className="object-cover" />
                       </div>
 
                       {/* Content Details */}
@@ -400,6 +400,7 @@ const CartPage = () => {
                                   src={getOptimizedSupabaseImageUrl(productImage, { width: 420, quality: 70 })}
                                   alt={product?.name || 'Recommended product'}
                                   fill
+                                  sizes="420px"
                                   className="object-cover"
                                 />
                               </div>

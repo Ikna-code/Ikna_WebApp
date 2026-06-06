@@ -274,8 +274,8 @@ export const ProductCard = ({
   <Image
     src={getOptimizedSupabaseImageUrl(product?.image, { width: 640, quality: 70 })}
     alt={product.name}
-    fill // 1. Added fill back so Next.js knows to occupy the parent container
-    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" // 2. Tells the browser how much space it takes up
+    fill
+    sizes="640px"
     className="
       object-cover
       w-full

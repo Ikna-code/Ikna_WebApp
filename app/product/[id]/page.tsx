@@ -95,8 +95,41 @@ const SingleProductPage = () => {
   /* ---------------- PRODUCT ---------------- */
 
   const product = useMemo(() => {
-    return productData && productData.id === productId ? productData : null;
+    if (!productData || !productId) return null;
+    return String(productData.id) === String(productId) ? productData : null;
   }, [productData, productId]);
+
+  const productImages = useMemo(() => {
+    const rows = Array.isArray(productData?.product_images) ? productData.product_images : [];
+    const filtered = rows
+      .map((row: any) => String(row?.image_path || '').trim())
+      .filter(Boolean);
+
+    if (filtered.length > 0) return filtered;
+
+    const fallback = String(productData?.image || product?.image || '').trim();
+    return fallback ? [fallback] : [];
+  }, [productData, product]);
+
+  const normalizedActiveIndex = useMemo(() => {
+    if (productImages.length === 0) return 0;
+    return Math.min(activeImgIdx, productImages.length - 1);
+  }, [activeImgIdx, productImages.length]);
+
+  // Precompute ALL gallery image URLs once so browser can cache them on first load.
+  // Tile clicks only change visibility — no new network requests.
+  const galleryImageSrcs = useMemo(() => {
+    return productImages.map((path: string) =>
+      getOptimizedSupabaseImageUrl(path, { width: 1200, quality: 75 })
+    ).filter(Boolean);
+  }, [productImages]);
+
+  const mainImageSrc = galleryImageSrcs[normalizedActiveIndex] || galleryImageSrcs[0] || '';
+
+  const comboImageSrc = useMemo(() => {
+    const candidate = productImages[0] || '';
+    return getOptimizedSupabaseImageUrl(candidate, { width: 320, quality: 70 });
+  }, [productImages]);
 
   const categoryVariants = useMemo(() => {
     if (!product?.category) return product ? [product] : [];
@@ -248,22 +281,25 @@ const SingleProductPage = () => {
 
             {/* LEFT CONTAINER: THUMBNAILS Track */}
 <div className="flex flex-row md:flex-col gap-3 overflow-x-auto md:overflow-y-auto no-scrollbar w-full md:w-24 lg:max-h-[550px] flex-shrink-0 py-0.5">
-  {productData?.product_images?.map(
-    (fileName: { image_path: string }, index: number) => (
+  {productImages.map(
+    (imagePath: string, index: number) => {
+      const thumbSrc = getOptimizedSupabaseImageUrl(imagePath, { width: 220, quality: 70 });
+      if (!thumbSrc) return null;
+      return (
       <button
         key={index}
         onClick={() => setActiveImgIdx(index)}
         className={`relative w-16 h-20 md:w-full md:h-28 flex-shrink-0 rounded-2xl overflow-hidden border-2 transition-all duration-300 ${
-          activeImgIdx === index
+          normalizedActiveIndex === index
             ? 'border-[#840d5c] shadow-md'
             : 'border-transparent opacity-40 hover:opacity-100'
         }`}
       >
         <Image
-          src={getOptimizedSupabaseImageUrl(fileName.image_path, { width: 220, quality: 70 })}
+          src={thumbSrc}
           alt="thumb"
           fill // 1. Added fill so it stretches nicely inside the button container
-          sizes="(max-width: 768px) 64px, 96px" // 2. Added sizes since these are small thumbnails
+          sizes="96px"
           className="
             object-cover 
             w-full 
@@ -271,7 +307,8 @@ const SingleProductPage = () => {
           "
         />
       </button>
-    )
+    );
+    }
   )}
 </div>
 
@@ -292,6 +329,7 @@ const SingleProductPage = () => {
                           src={feature.img}
                           alt={feature.label}
                           fill
+                          sizes="44px"
                           className="object-contain" 
                         />
                       </div>
@@ -304,13 +342,22 @@ const SingleProductPage = () => {
                 ))}
               </div>
 
-              <Image
-                src={getOptimizedSupabaseImageUrl(productData?.product_images[activeImgIdx]?.image_path, { width: 1200, quality: 75 })}
-                alt="Product Main Image"
-                fill
-                priority
-                className="object-contain p-6 transition-transform duration-1000 group-hover:scale-105"
-              />
+              {/* All gallery images pre-rendered; only the active one is visible.
+                  This means the browser fetches & caches all on first load.
+                  Subsequent tile clicks are zero-network — pure CSS opacity switch. */}
+              {galleryImageSrcs.map((src: string, idx: number) => (
+                <Image
+                  key={src}
+                  src={src}
+                  alt={idx === 0 ? 'Product Main Image' : `Product Image ${idx + 1}`}
+                  fill
+                  priority={idx === 0}
+                  sizes="500px"
+                  className={`object-contain p-6 transition-opacity duration-300 ${
+                    idx === normalizedActiveIndex ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                  }`}
+                />
+              ))}
             </div>
 
             {/* RIGHT CONTAINER: TEXT DETAILS PANEL */}
@@ -514,12 +561,15 @@ const SingleProductPage = () => {
                         key={item}
                         className="relative w-14 h-18 md:w-16 md:h-20 rounded-xl overflow-hidden border-2 border-white bg-white shadow-sm flex-shrink-0"
                       >
-                        <Image
-                          src={getOptimizedSupabaseImageUrl(productData?.product_images[0]?.image_path, { width: 320, quality: 70 })}
-                          alt="combo item"
-                          fill
-                          className="object-cover"
-                        />
+                        {comboImageSrc ? (
+                          <Image
+                            src={comboImageSrc}
+                            alt="combo item"
+                            fill
+                            sizes="64px"
+                            className="object-cover"
+                          />
+                        ) : null}
                       </div>
                     ))}
                   </div>

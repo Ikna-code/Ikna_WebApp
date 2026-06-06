@@ -2,10 +2,27 @@
   import { db } from "@/backend/lib/db";
   import { revalidatePath } from "next/cache";
   import { supabase } from '../lib/supabaseClient';
+  import { extractCloudinaryPublicId } from '@/src/lib/cloudinary';
+
+  // Sanitize products for safe serialization across server-client boundary
+  const sanitizeProduct = (product: any) => {
+    if (!product) return product;
+    return {
+      ...product,
+      price: product.price ? Number(product.price) : product.price,
+      discountAmount: product.discountAmount ? Number(product.discountAmount) : product.discountAmount,
+      totalAmount: product.totalAmount ? Number(product.totalAmount) : product.totalAmount,
+    };
+  };
 
   const toStoragePath = (pathOrUrl: string) => {
     const value = String(pathOrUrl || '').trim();
     if (!value) return '';
+
+    const cloudinaryPublicId = extractCloudinaryPublicId(value);
+    if (cloudinaryPublicId) {
+      return cloudinaryPublicId;
+    }
 
     if (value.startsWith('http://') || value.startsWith('https://')) {
       const markers = [
@@ -25,9 +42,19 @@
   };
 
   const isPathInProductFolder = (pathOrUrl: string, productId: string) => {
+    const value = String(pathOrUrl || '').trim();
+    if (value.includes('res.cloudinary.com')) {
+      return true;
+    }
+
     const normalized = toStoragePath(pathOrUrl);
-    const expectedPrefix = `product_photos/${String(productId).trim()}/`;
-    return normalized.startsWith(expectedPrefix);
+    const productIdValue = String(productId).trim();
+    const expectedPrefix = `product_photos/${productIdValue}/`;
+    if (normalized.startsWith(expectedPrefix)) return true;
+
+    // Legacy sku-based folders are still considered valid product image containers.
+    const legacySkuPrefix = `product_photos/${String(productIdValue).replace(/[^0-9]/g, '')}/`;
+    return legacySkuPrefix !== 'product_photos//' && normalized.startsWith(legacySkuPrefix);
   };
 
   // --- MIDDLEWARE-LIKE ROLE CHECK ---
@@ -43,12 +70,12 @@
     await verifyAdmin();
     const product = await db.product.create({ data });
     revalidatePath("/"); 
-    return product;
+    return sanitizeProduct(product);
   }
 
   // 🔵 READ (Public)
   export async function getAllProducts() {
-    return await db.product.findMany({
+    const products = await db.product.findMany({
       include: {
         reviews: {
           select: {
@@ -58,6 +85,7 @@
       },
       orderBy: { createdAt: 'desc' }
     });
+    return products.map(sanitizeProduct);
   }
 
   // 🟡 UPDATE
@@ -103,11 +131,11 @@
       ? data.image
       : safeImages[0]?.image_path || data.image;
 
-    return {
+    return sanitizeProduct({
       ...data,
       image: normalizedImage,
       product_images: safeImages,
-    };
+    });
   };
 
   export const getAllProductsWithPrimaryImage = async () => {
@@ -137,11 +165,11 @@
         ? row.image
         : safeImages[0]?.image_path || row?.image;
 
-      return {
+      return sanitizeProduct({
         ...row,
         image: normalizedImage,
         product_images: safeImages,
-      };
+      });
     });
   };
 

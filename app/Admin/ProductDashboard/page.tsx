@@ -215,7 +215,7 @@ export default function ProductManagementDashboard() {
   const getImageUrl = (pathOrUrl: string) => {
     if (!pathOrUrl) return '';
     if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
-      return pathOrUrl.replace('/storage/v1/object/products/', '/storage/v1/object/public/products/');
+      return pathOrUrl;
     }
     return `${IMAGE_BASE_URL}${pathOrUrl}`;
   };
@@ -227,7 +227,7 @@ export default function ProductManagementDashboard() {
     let storagePath = normalized;
 
     if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
-      const marker = '/storage/v1/object/public/products/';
+      const marker = '/image/upload/';
       const markerIndex = storagePath.indexOf(marker);
 
       if (markerIndex >= 0) {
@@ -347,7 +347,7 @@ export default function ProductManagementDashboard() {
       formData.append('paths', relativePath);
     });
 
-    const response = await fetch('/api/admin/products/upload', {
+    const response = await fetch('/api/admin/images/upload', {
       method: 'POST',
       body: formData,
     });
@@ -1830,8 +1830,7 @@ export default function ProductManagementDashboard() {
                     )}
 
                     <p className="mt-1 text-[10px] text-neutral-500">
-                      Uploaded images are stored in Supabase bucket <span className="font-bold">products</span>
-                      inside folder <span className="font-bold">product_photos</span>.
+                      Uploaded images are stored in Cloudinary folder <span className="font-bold">product_photos</span>.
                       If Product ID is provided in XLS, images are stored inside that product folder.
                     </p>
 
@@ -2070,7 +2069,7 @@ export default function ProductManagementDashboard() {
                       {productImages.length} image{productImages.length === 1 ? '' : 's'} selected.
                     </p>
                     <p className="mt-1 text-[10px] text-neutral-500">
-                      Files will be uploaded to Supabase bucket <span className="font-bold">products</span> under folder <span className="font-bold">product_photos/{getRootFolderNameFromFiles(productImages) || 'foldername'}</span>.
+                      Files will be uploaded to Cloudinary folder <span className="font-bold">product_photos/{getRootFolderNameFromFiles(productImages) || 'foldername'}</span>.
                     </p>
 
                     {addProductImagePreviewItems.length > 0 && (
@@ -2261,7 +2260,7 @@ export default function ProductManagementDashboard() {
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">LINKED SUPABASE IMAGES</label>
+                    <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">LINKED PRODUCT IMAGES</label>
                     {editExistingImages.length > 0 ? (
                       <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
                         <p className="text-[10px] font-semibold text-neutral-600">
@@ -2362,7 +2361,7 @@ export default function ProductManagementDashboard() {
                       </p>
                     )}
                     <p className="mt-1 text-[10px] text-neutral-500">
-                      Files will be uploaded to Supabase bucket <span className="font-bold">products</span> under folder <span className="font-bold">product_photos/{getRootFolderNameFromFiles(editProductImages) || 'foldername'}</span>.
+                      Files will be uploaded to Cloudinary folder <span className="font-bold">product_photos/{getRootFolderNameFromFiles(editProductImages) || 'foldername'}</span>.
                     </p>
 
                     {editProductImagePreviewItems.length > 0 && (

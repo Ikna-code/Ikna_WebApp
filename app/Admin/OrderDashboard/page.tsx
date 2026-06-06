@@ -521,7 +521,7 @@ export default function Orders() {
                           alt={item.productName}
                           fill
                           className="object-cover"
-                          sizes="(max-width: 640px) 48px, 64px"
+                          sizes="64px"
                         />
                       </div>
 

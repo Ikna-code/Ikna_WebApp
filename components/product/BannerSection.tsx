@@ -22,9 +22,10 @@ const BannerSection = () => {
               {/* The Model Image */}
               <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[95%]">
                 <Image
-                  src="/images/satinDress.avif" // Use a transparent PNG for the best 3D pop effect
+                  src="/images/satinDress.avif"
                   alt="IKNA Comfort"
                   fill
+                  sizes="600px"
                   className="object-contain object-bottom drop-shadow-2xl"
                   priority
                 />

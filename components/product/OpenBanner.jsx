@@ -93,7 +93,7 @@ const OpenBanner = () => {
           className={`relative w-28 h-40 md:w-56 md:h-80 rounded-2xl overflow-hidden shadow-2xl transition-all duration-[1500ms] delay-500 ${isOpened ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'}`}
           style={{ transform: `translateZ(70px) rotateY(-14deg)` }}
         >
-          <Image src="/images/product_photos/2/IMG_9502.jpg" alt="Model 1" fill className="object-cover" />
+          <Image src="/images/product_photos/2/IMG_9502.jpg" alt="Model 1" fill sizes="600px" className="object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/30" />
         </div>
 
@@ -102,7 +102,7 @@ const OpenBanner = () => {
           className={`relative w-36 h-52 md:w-72 md:h-[450px] rounded-2xl overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.9)] transition-all duration-[1500ms] delay-[800ms] ${isOpened ? 'translate-y-0 opacity-100' : 'translate-y-32 opacity-0'}`}
           style={{ transform: `translateZ(220px) translateY(${-scrollOffset * 0.6}px)` }}
         >
-          <Image src="/images/product_photos/6/IMG_9596.jpg" alt="Model 2" fill className="object-cover" />
+          <Image src="/images/product_photos/6/IMG_9596.jpg" alt="Model 2" fill sizes="600px" className="object-cover" />
           {/* Subtle magenta rim light effect */}
           <div className="absolute inset-0 border border-white/5 rounded-2xl" />
           <div className="absolute inset-0 bg-gradient-to-tr from-black/40 via-transparent to-white/10" />
@@ -113,7 +113,7 @@ const OpenBanner = () => {
           className={`relative w-28 h-40 md:w-56 md:h-80 rounded-2xl overflow-hidden shadow-2xl transition-all duration-[1500ms] delay-[1100ms] ${isOpened ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'}`}
           style={{ transform: `translateZ(70px) rotateY(14deg)` }}
         >
-          <Image src="/images/product_photos/3/IMG_9535.jpg" alt="Model 3" fill className="object-cover" />
+          <Image src="/images/product_photos/3/IMG_9535.jpg" alt="Model 3" fill sizes="600px" className="object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/30" />
         </div>
       </div>

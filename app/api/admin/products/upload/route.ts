@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Role } from '@prisma/client';
 import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
-import { createSupabaseAdminClient } from '@/backend/lib/supabaseAdmin';
+import { uploadImage } from '@/src/lib/cloudinary';
 
 export const dynamic = 'force-dynamic';
-
-const supabaseAdmin = createSupabaseAdminClient();
 
 async function requireAdmin() {
   const dbUser = await ensureCurrentDbUser();
@@ -49,6 +47,7 @@ export async function POST(request: NextRequest) {
     const rootFolder = relativePaths.find((path) => path.includes('/'))?.split('/')[0] || '';
 
     const uploadedPaths: string[] = [];
+    const uploadedImages: Array<{ url: string; publicId: string }> = [];
 
     for (let index = 0; index < files.length; index += 1) {
       const file = files[index];
@@ -62,27 +61,20 @@ export async function POST(request: NextRequest) {
       const safeFileName = safeParts[safeParts.length - 1] || sanitizePathSegment(file.name);
       const safeDirs = safeParts.slice(0, -1).join('/');
 
-      const basePath = `product_photos/${safeProductId}`;
-      const storagePath = safeDirs
-        ? `${basePath}/${safeDirs}/${safeFileName}`
-        : `${basePath}/${safeFileName}`;
+      const cloudinaryFileName = safeDirs
+        ? `${safeDirs}/${safeFileName}`
+        : safeFileName;
 
-      const { error } = await supabaseAdmin.storage
-        .from('products')
-        .upload(storagePath, file, {
-          cacheControl: '3600',
-          upsert: true,
-          contentType: file.type || undefined,
-        });
+      const uploaded = await uploadImage(file, {
+        productId: safeProductId,
+        fileName: cloudinaryFileName,
+      });
 
-      if (error) {
-        return NextResponse.json({ error: `Image upload failed: ${error.message}` }, { status: 400 });
-      }
-
-      uploadedPaths.push(storagePath);
+      uploadedPaths.push(uploaded.url);
+      uploadedImages.push(uploaded);
     }
 
-    return NextResponse.json({ uploadedPaths });
+    return NextResponse.json({ uploadedPaths, uploadedImages });
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message || 'Failed to upload images' },

@@ -53,7 +53,7 @@ const ProductSelection = () => {
             src={variant.image}
             alt={variant.name}
             fill
-            sizes="(max-width: 640px) 40vw, 33vw"
+            sizes="320px"
             className="object-cover transition-transform duration-500 group-hover:scale-105"
           />
           

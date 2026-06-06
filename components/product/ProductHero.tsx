@@ -22,7 +22,7 @@ const ProductHero = ({
           fill
           priority
           className="object-cover object-center transition-opacity duration-500"
-          sizes="(max-width: 768px) 100vw, 50vw"
+          sizes="800px"
         />
         
         {/* ... (Tags and Indicators stay the same) ... */}

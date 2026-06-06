@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient, Role } from '@prisma/client';
 import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
 import { createSupabaseAdminClient } from '@/backend/lib/supabaseAdmin';
+import { deleteImage, extractCloudinaryPublicId } from '@/src/lib/cloudinary';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +53,12 @@ function toStoragePath(pathOrUrl: string) {
   return value.replace(/^\/+/, '');
 }
 
+function toImageKey(pathOrUrl: string) {
+  const cloudinaryPublicId = extractCloudinaryPublicId(pathOrUrl);
+  if (cloudinaryPublicId) return `cld:${cloudinaryPublicId}`;
+  return `supa:${toStoragePath(pathOrUrl)}`;
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -83,6 +90,7 @@ export async function PATCH(
           select: {
             id: true,
             image_path: true,
+            public_id: true,
             is_primary: true,
           },
         },
@@ -93,11 +101,34 @@ export async function PATCH(
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
-    const removeIdSet = new Set(removeImageIds);
-    const removePathSet = new Set(removeImagePaths.map((path) => toStoragePath(path)));
-    const imagesToDelete = existingProduct.images.filter(
-      (image) => removeIdSet.has(image.id) || removePathSet.has(toStoragePath(image.image_path))
-    );
+    const imageById = new Map(existingProduct.images.map((image) => [image.id, image]));
+    const imageByKey = new Map(existingProduct.images.map((image) => [toImageKey(image.image_path), image]));
+    const orderedRemovals: Array<(typeof existingProduct.images)[number]> = [];
+    const seenRemovalIds = new Set<string>();
+
+    for (const removeId of removeImageIds) {
+      const matched = imageById.get(removeId);
+      if (matched && !seenRemovalIds.has(matched.id)) {
+        orderedRemovals.push(matched);
+        seenRemovalIds.add(matched.id);
+      }
+    }
+
+    for (const removePath of removeImagePaths) {
+      const matched = imageByKey.get(toImageKey(removePath));
+      if (matched && !seenRemovalIds.has(matched.id)) {
+        orderedRemovals.push(matched);
+        seenRemovalIds.add(matched.id);
+      }
+    }
+
+    const replacementCount = Math.min(orderedRemovals.length, imagePaths.length);
+    const replacementPairs = Array.from({ length: replacementCount }, (_, index) => ({
+      target: orderedRemovals[index],
+      nextPath: imagePaths[index],
+    }));
+    const imagesToDeleteOnly = orderedRemovals.slice(replacementCount);
+    const imagePathsToInsert = imagePaths.slice(replacementCount);
 
     const updateData: {
       name?: string;
@@ -124,7 +155,7 @@ export async function PATCH(
     }
 
     const hasScalarUpdates = Object.keys(updateData).length > 0;
-    const hasImageUpdates = imagePaths.length > 0 || imagesToDelete.length > 0;
+    const hasImageUpdates = imagePaths.length > 0 || orderedRemovals.length > 0;
     if (!hasScalarUpdates && !hasImageUpdates) {
       return NextResponse.json({
         id,
@@ -133,8 +164,8 @@ export async function PATCH(
     }
 
     // Use service role Supabase client for all DB writes to bypass RLS.
-    if (imagesToDelete.length) {
-      const deleteIds = imagesToDelete.map((image) => image.id);
+    if (imagesToDeleteOnly.length) {
+      const deleteIds = imagesToDeleteOnly.map((image) => image.id);
       const { error: deleteImgError } = await supabaseAdmin
         .from('product_images')
         .delete()
@@ -145,24 +176,35 @@ export async function PATCH(
       }
     }
 
-    if (imagePaths.length) {
-      const { error: resetPrimaryError } = await supabaseAdmin
-        .from('product_images')
-        .update({ is_primary: false })
-        .eq('product_id', id);
+    if (replacementPairs.length) {
+      for (const replacement of replacementPairs) {
+        const { error: replaceError } = await supabaseAdmin
+          .from('product_images')
+          .update({
+            image_path: replacement.nextPath,
+            public_id: extractCloudinaryPublicId(replacement.nextPath) || null,
+          })
+          .eq('id', replacement.target.id);
 
-      if (resetPrimaryError) {
-        throw new Error(`Failed to reset previous primary images: ${resetPrimaryError.message}`);
+        if (replaceError) {
+          throw new Error(`Failed to replace image: ${replaceError.message}`);
+        }
       }
+    }
 
+    if (imagePathsToInsert.length) {
+      const hasPrimaryImage = existingProduct.images.some((image) =>
+        seenRemovalIds.has(image.id) ? false : Boolean(image.is_primary)
+      );
       const { error: insertImgError } = await supabaseAdmin
         .from('product_images')
         .insert(
-          imagePaths.map((path: string, index: number) => ({
+          imagePathsToInsert.map((path: string, index: number) => ({
             id: createImageId(),
             product_id: id,
             image_path: path,
-            is_primary: index === 0,
+            public_id: extractCloudinaryPublicId(path) || null,
+            is_primary: !hasPrimaryImage && index === 0,
           }))
         );
 
@@ -171,7 +213,7 @@ export async function PATCH(
       }
 
       if (!updateData.image) {
-        updateData.image = imagePaths[0];
+        updateData.image = imagePathsToInsert[0] || replacementPairs[0]?.nextPath;
       }
     }
 
@@ -186,11 +228,19 @@ export async function PATCH(
       throw new Error(`Failed to update product: ${updateError.message}`);
     }
 
-    if (imagesToDelete.length) {
+    if (orderedRemovals.length) {
       try {
-        const storagePaths = imagesToDelete
+        const cloudinaryPublicIds = orderedRemovals
+          .map((image) => String(image.public_id || '').trim() || extractCloudinaryPublicId(image.image_path))
+          .filter((value) => value.length > 0);
+
+        for (const publicId of cloudinaryPublicIds) {
+          await deleteImage(publicId);
+        }
+
+        const storagePaths = orderedRemovals
           .map((image) => toStoragePath(image.image_path))
-          .filter((path) => path.length > 0);
+          .filter((path) => path.length > 0 && !extractCloudinaryPublicId(path));
 
         if (storagePaths.length) {
           await supabaseAdmin.storage.from('products').remove(storagePaths);

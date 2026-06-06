@@ -30,7 +30,7 @@ const Header = () => {
           <div className="flex-shrink-0">
             <Link href="/" className="block">
               <div className="relative w-12 h-12 md:w-16 md:h-16 mix-blend-multiply transition-transform hover:scale-105">
-                <Image src="/images/AI_images/logo1_ikna.png" alt="IKNA Logo" fill priority className="object-contain" />
+                <Image src="/images/AI_images/logo1_ikna.png" alt="IKNA Logo" fill priority sizes="160px" className="object-contain" />
               </div>
             </Link>
           </div>

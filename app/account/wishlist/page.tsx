@@ -115,7 +115,7 @@ const WishlistPage = () => {
                       alt={item.name} 
                       fill 
                       className="object-contain p-2 md:p-4 group-hover:scale-105 transition-transform duration-1000" 
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                      sizes="640px"
                     />
                     
                     {/* Gradient Overlay */}
