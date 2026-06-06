@@ -238,12 +238,12 @@ export default function TermsAndConditions() {
 
             <p className="text-gray-700 mb-2">
               <span className="font-medium">Email:</span>{' '}
-              support@ikna.com
+              admin@ikna.com
             </p>
 
             <p className="text-gray-700">
               <span className="font-medium">Phone:</span>{' '}
-              +91 XXXXX XXXXX
+              +91 98403 49375
             </p>
           </div>
         </section>
