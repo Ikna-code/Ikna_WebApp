@@ -3,12 +3,28 @@ import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 
+type SalesTrendPoint = {
+  date: string;
+  orders: number;
+  units: number;
+};
+
+type SalesTrendChartProps = {
+  data?: SalesTrendPoint[];
+  totals?: {
+    orders: number;
+    units: number;
+  };
+  periodLabel?: string;
+  isLoading?: boolean;
+};
+
 export default function SalesTrendChart({
   data = [],
   totals = { orders: 0, units: 0 },
   periodLabel = 'Selected Period',
   isLoading = false,
-}) {
+}: SalesTrendChartProps) {
   const hasData = Array.isArray(data) && data.length > 0;
 
   return (
@@ -45,10 +61,7 @@ export default function SalesTrendChart({
               <YAxis stroke="#a0708b" tickLine={false} axisLine={false} />
               <Tooltip
                 contentStyle={{ borderRadius: '10px', border: '1px solid #e8bfd5', fontSize: '11px' }}
-                formatter={(value, name) => [
-                  value,
-                  name === 'orders' ? 'Orders' : 'Units Sold',
-                ]}
+                formatter={(value, name) => [value, name === 'orders' ? 'Orders' : 'Units Sold']}
               />
               <Legend
                 formatter={(value) => (value === 'orders' ? 'Orders' : 'Units Sold')}
