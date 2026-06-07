@@ -11,16 +11,22 @@ import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
 const OrdersPage = () => {
   const orders = useStore((s) => s.orders);
   const isOrdersInitialized = useStore((s) => s.isOrdersInitialized);
+  const isAuthInitialized = useStore((s) => s.isAuthInitialized);
+  const user = useStore((s) => s.user);
   const fetchOrders = useStore((s) => s.fetchOrders);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isAuthInitialized || !user?.id || isOrdersInitialized) {
+      return;
+    }
+
     if (!isOrdersInitialized) {
       void fetchOrders();
     }
-  }, [isOrdersInitialized, fetchOrders]);
+  }, [isAuthInitialized, user?.id, isOrdersInitialized, fetchOrders]);
 
-  const loading = !isOrdersInitialized;
+  const loading = !isAuthInitialized || (Boolean(user?.id) && !isOrdersInitialized);
 
   const toggleAccordion = (id: string) => {
     setActiveOrderId(activeOrderId === id ? null : id);

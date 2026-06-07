@@ -33,7 +33,7 @@ export default function AppInitializer() {
   // Step 2: Subscribe to Supabase auth changes so new sessions (OTP, Google, etc.)
   // are reflected in the store without requiring a full page reload.
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event:any) => {
       if (event === 'SIGNED_IN') {
         // Re-hydrate store user and user-scoped data after any sign-in.
         forceRefetchUser();

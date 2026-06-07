@@ -22,9 +22,13 @@ export async function createRazorpayOrder(userId: string, couponCode?: string | 
 
   // 1. Create Order in Razorpay (Amount must be in Paise: 1 INR = 100 Paise)
   const razorpayOrder = await razorpay.orders.create({
-    amount: Math.round(1 * 100), 
+    amount: Math.round(totalAmount * 100),
     currency: "INR",
-    receipt: `receipt_${Date.now()}`,
+    receipt: `order_${orderRes.order.id}`,
+    notes: {
+      dbOrderId: orderRes.order.id,
+      userId,
+    },
   });
 
   return {

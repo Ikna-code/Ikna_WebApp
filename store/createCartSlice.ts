@@ -40,9 +40,14 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
     if (!force && get().isOrdersInitialized) return;
     try {
       const response = await fetch('/api/orders', { cache: 'no-store' });
+      if (response.status === 401) {
+        set({ orders: [], isOrdersInitialized: true, error: null });
+        return;
+      }
+
       if (!response.ok) throw new Error('Failed to fetch orders');
       const data = await response.json();
-      set({ orders: data, isOrdersInitialized: true });
+      set({ orders: data, isOrdersInitialized: true, error: null });
     } catch (error) {
       console.error('Error fetching orders:', error);
       // Avoid permanent spinner states in consumer pages.

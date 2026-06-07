@@ -32,6 +32,36 @@ type CheckoutSummary = {
 
 type PaymentMethod = 'ONLINE' | 'COD';
 
+type RazorpaySuccessResponse = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+type RazorpayCheckoutOptions = {
+  key: string | undefined;
+  amount: number;
+  currency: string;
+  name: string;
+  image: string;
+  description: string;
+  order_id: string;
+  handler: (response: RazorpaySuccessResponse) => Promise<void>;
+  prefill: {
+    name: string;
+    email: string;
+  };
+  theme: {
+    color: string;
+  };
+};
+
+type RazorpayInstance = {
+  open: () => void;
+};
+
+type RazorpayConstructor = new (options: RazorpayCheckoutOptions) => RazorpayInstance;
+
 const roundCurrency = (value: number) => Math.round(value * 100) / 100;
 
 export const calculateCheckoutSummary = ({
@@ -136,15 +166,18 @@ const CartPage = () => {
     setIsProcessing(true);
     try {
       const orderData = await createRazorpayOrder(userId, appliedCouponCode || null);
+      const razorpayBrandImage = `${window.location.origin}/images/AI_images/logo1_ikna.png`;
+      const razorpayAmount = Number(orderData.amount);
 
-      const options = {
+      const options: RazorpayCheckoutOptions = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, 
-        amount: orderData.amount,
+        amount: razorpayAmount,
         currency: "INR",
-        name: "Your Brand Name",
+        name: "IKNA",
+        image: razorpayBrandImage,
         description: "Order Checkout",
         order_id: orderData.orderId,
-        handler: async function (response: any) {
+        handler: async function (response: RazorpaySuccessResponse) {
           const result = await verifyPayment(
             response.razorpay_order_id,
             response.razorpay_payment_id,
@@ -166,7 +199,8 @@ const CartPage = () => {
         theme: { color: "#840d5c" },
       };
 
-      const rzp = new (window as any).Razorpay(options);
+      const RazorpayCheckout = (window as Window & typeof globalThis & { Razorpay: RazorpayConstructor }).Razorpay;
+      const rzp = new RazorpayCheckout(options);
       rzp.open();
     } catch (err) {
       console.error("Checkout error:", err);
