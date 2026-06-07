@@ -236,6 +236,20 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
             </div>
 
             <div className="mt-5 overflow-y-auto pr-1">
+              {Array.isArray(reportPreview.summaryRows) && reportPreview.summaryRows.length > 0 && (
+                <div className="rounded-2xl border border-[#e8bfd5] p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#8a5f79]">Business Summary</p>
+                  <div className="mt-3 space-y-2">
+                    {reportPreview.summaryRows.map(([label, value]) => (
+                      <div key={label} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="text-[#5c2a46]">{label}</span>
+                        <span className="font-semibold text-[#2f1126]">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
                 {reportPreview.metrics.map((metric) => (
                   <div key={metric.title} className="w-40 shrink-0 rounded-xl border border-[#e8bfd5] bg-[#f8eef4] p-3 sm:w-auto sm:rounded-2xl sm:p-4">
@@ -260,6 +274,19 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
                   ))}
                 </div>
               </div>
+
+              {Array.isArray(reportPreview.insights) && reportPreview.insights.length > 0 && (
+                <div className="mt-5 rounded-2xl border border-[#e8bfd5] p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#8a5f79]">Actionable Insights</p>
+                  <ul className="mt-3 space-y-2">
+                    {reportPreview.insights.map((insight, index) => (
+                      <li key={`${index}-${insight.slice(0, 24)}`} className="text-sm text-[#2f1126]">
+                        {insight}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
 import AppInitializer from "@/components/utility/AppInitializer";
+import { Toaster } from "sonner";
 
 const GA4_ID = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID;
 
@@ -125,6 +126,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col overflow-x-hidden overscroll-x-none selection:bg-[#840d5c]/20">
         <AppInitializer />
         {children}
+        <Toaster position="top-right" richColors closeButton />
         {GA4_ID && (
           <>
             <Script

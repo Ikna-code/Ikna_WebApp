@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Script from "next/script";
-import { Trash2, Plus, Minus, ChevronLeft, ShoppingBag, ArrowRight, ShieldCheck, Loader2, Sparkles, TicketPercent, CheckCircle2 } from 'lucide-react';
+import { Trash2, Plus, Minus, ChevronLeft, ShoppingBag, ArrowRight, ShieldCheck, Loader2, Sparkles, CreditCard, Truck, Gift, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
 import Header from '@/components/layout/Header';
+import { validateCouponForCart } from "@/backend/actions/coupon";
+import { createOrder } from "@/backend/actions/order";
 import { createRazorpayOrder } from "@/backend/actions/payment";
 import { verifyPayment } from "@/backend/actions/verify";
 import { useStore } from '@/store/useStore'; 
@@ -35,11 +38,13 @@ export const calculateCheckoutSummary = ({
   cartItems,
   isComboApplied,
   isFirstTimeUser,
+  couponDiscount,
   paymentMethod,
 }: {
   cartItems: CheckoutCartItem[];
   isComboApplied: boolean;
   isFirstTimeUser: boolean;
+  couponDiscount: number;
   paymentMethod: string;
 }): CheckoutSummary => {
   const itemSubtotal = roundCurrency(
@@ -54,17 +59,12 @@ export const calculateCheckoutSummary = ({
   const comboDiscount = isComboApplied ? roundCurrency(itemSubtotal * 0.1) : 0;
   const subtotalAfterCombo = roundCurrency(itemSubtotal - comboDiscount);
 
-  let orderDiscount = 0;
-  if (!isComboApplied) {
-    if (subtotalAfterCombo > 1299) {
-      orderDiscount = 200;
-    } else if (subtotalAfterCombo > 699) {
-      orderDiscount = 100;
-    }
-  }
+  const orderDiscount = isComboApplied ? 0 : Math.max(Number(couponDiscount || 0), 0);
 
   const firstTimeDiscount = isFirstTimeUser ? 100 : 0;
   const shippingFee = 0;
+  
+  // COD handling fee
   const codCharge = paymentMethod === 'COD' ? 100 : 0;
 
   const discountedTotal = roundCurrency(subtotalAfterCombo - orderDiscount - firstTimeDiscount);
@@ -84,9 +84,14 @@ export const calculateCheckoutSummary = ({
 const CartPage = () => {
   // 1. STATE MANAGEMENT
   const [couponCode, setCouponCode] = useState("");
+  const [appliedCouponCode, setAppliedCouponCode] = useState<string | null>(null);
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('ONLINE');
   const [showAllMobileItems, setShowAllMobileItems] = useState(false);
+  const hasOfferToastHydratedRef = useRef(false);
+  const hadComboOfferRef = useRef(false);
 
   // 2. GLOBAL STORE SELECTORS
   const user = useStore((state) => state.user);
@@ -105,13 +110,32 @@ const CartPage = () => {
     if (!userId || cartItems.length === 0) return;
 
     if (paymentMethod === 'COD') {
-      alert('Cash on delivery checkout is not enabled yet. Please use online payment for now.');
+      setIsProcessing(true);
+      try {
+        const codOrderRes = await createOrder(userId, appliedCouponCode || null, {
+          clearCart: true,
+          orderStatus: "PENDING",
+          paymentMethod: "COD",
+        });
+
+        if (!codOrderRes?.success || !codOrderRes.order?.id) {
+          throw new Error(codOrderRes?.error || "Could not place COD order.");
+        }
+
+        if (fetchCart) await fetchCart(userId, true);
+        window.location.href = `/success?orderId=${codOrderRes.order.id}`;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Could not place COD order.";
+        alert(message);
+      } finally {
+        setIsProcessing(false);
+      }
       return;
     }
     
     setIsProcessing(true);
     try {
-      const orderData = await createRazorpayOrder(userId, couponCode || null);
+      const orderData = await createRazorpayOrder(userId, appliedCouponCode || null);
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, 
@@ -167,6 +191,35 @@ const CartPage = () => {
     await storeRemoveItem(id);
   };
 
+  const handleApplyCoupon = async () => {
+    const userId = user?.id;
+    if (!userId) return;
+
+    const code = couponCode.trim().toUpperCase();
+    if (!code) {
+      toast.error('Please enter a coupon code.');
+      return;
+    }
+
+    setIsApplyingCoupon(true);
+    try {
+      const validation = await validateCouponForCart(userId, code, checkoutSummary.itemSubtotal);
+      if (!validation.success) {
+        setAppliedCouponCode(null);
+        setCouponDiscount(0);
+        toast.error(validation.error);
+        return;
+      }
+
+      setAppliedCouponCode(validation.code);
+      setCouponDiscount(validation.discountAmount);
+      setCouponCode(validation.code);
+      toast.success(`Coupon ${validation.code} applied successfully.`);
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
   // 7. CALCULATIONS: Drive the cart UI from the checkout summary rules.
   const normalizedCouponCode = couponCode.trim().toUpperCase();
   const checkoutItems: CheckoutCartItem[] = cartItems.map((item) => ({
@@ -194,6 +247,7 @@ const CartPage = () => {
     cartItems: checkoutItems,
     isComboApplied,
     isFirstTimeUser: false,
+    couponDiscount,
     paymentMethod,
   });
   const totalSavings = roundCurrency(
@@ -202,15 +256,15 @@ const CartPage = () => {
       checkoutSummary.firstTimeDiscount
   );
   const originalCheckoutPrice = roundCurrency(
-    checkoutSummary.itemSubtotal + checkoutSummary.shippingFee + checkoutSummary.codCharge
+    checkoutSummary.itemSubtotal
   );
   const discountStatus = isComboApplied
     ? 'Combo discount applied'
-    : checkoutSummary.orderDiscount > 0
-      ? 'Order discount applied'
+    : appliedCouponCode
+      ? `${appliedCouponCode} applied`
       : normalizedCouponCode
-        ? `Coupon ${normalizedCouponCode} entered, pending validation`
-        : 'No discount applied';
+        ? `Coupon ${normalizedCouponCode} entered, tap apply`
+        : 'NO DISCOUNT';
   const comboStatusMessage = comboEligibleEntry
     ? `${comboEligibleEntry[1]} items qualify for combo pricing`
     : null;
@@ -234,6 +288,38 @@ const CartPage = () => {
       loadProducts();
     }
   }, [isProductsInitialized, loadProducts]);
+
+  useEffect(() => {
+    if (!hasOfferToastHydratedRef.current) {
+      hasOfferToastHydratedRef.current = true;
+      hadComboOfferRef.current = isComboApplied;
+      return;
+    }
+
+    if (isComboApplied && !hadComboOfferRef.current) {
+      toast.success('Combo offer applied successfully.');
+    }
+
+    hadComboOfferRef.current = isComboApplied;
+  }, [isComboApplied]);
+
+  useEffect(() => {
+    if (!appliedCouponCode) return;
+
+    if (isComboApplied) {
+      setAppliedCouponCode(null);
+      setCouponDiscount(0);
+      toast.info('Coupon removed because combo pricing is active.');
+      return;
+    }
+
+    const minRequired = appliedCouponCode === 'SAVE200' ? 1299 : 699;
+    if (checkoutSummary.itemSubtotal < minRequired) {
+      setAppliedCouponCode(null);
+      setCouponDiscount(0);
+      toast.error(`Coupon ${appliedCouponCode} removed. Minimum order is ₹${minRequired}.`);
+    }
+  }, [appliedCouponCode, checkoutSummary.itemSubtotal, isComboApplied]);
 
   const cartProductIds = new Set(
     cartItems
@@ -417,173 +503,148 @@ const CartPage = () => {
                 )}
               </div>
 
-              {/* RIGHT: SUMMARY & CHECKOUT */}
-              <div className="lg:col-span-1 lg:sticky lg:top-24 space-y-4 md:space-y-6 w-full">
-                <div className="bg-[radial-gradient(circle_at_top,rgba(190,97,146,0.28),rgba(50,19,39,1)_55%)] text-white p-4 sm:p-5 lg:p-6 rounded-[2rem] sm:rounded-[2.4rem] shadow-[0_24px_80px_rgba(50,19,39,0.28)] space-y-4 sm:space-y-4 relative overflow-hidden border border-white/10 before:absolute before:inset-px before:rounded-[calc(2rem-1px)] sm:before:rounded-[calc(2.4rem-1px)] before:border before:border-white/5 before:pointer-events-none">
-                  <div className="absolute inset-x-6 top-0 h-px bg-linear-to-r from-transparent via-white/30 to-transparent"></div>
-                  <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-[#840d5c] blur-3xl opacity-20"></div>
-                  <div className="absolute -bottom-16 -left-10 h-36 w-36 rounded-full bg-[#f3d7e7]/10 blur-3xl opacity-70"></div>
+              {/* RIGHT: SUMMARY & CHECKOUT MATCHING ATTACHED IMAGE SPECIFICATIONS */}
+              <div className="lg:col-span-1 lg:sticky lg:top-24 space-y-4 w-full">
+                <div className="bg-[#311326] text-[#eedde4] p-5 rounded-[2rem] border border-white/5 space-y-5 shadow-2xl relative">
                   
-                  <div className="relative z-10 flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.22em] text-white/55">Checkout</p>
-                      <h2 className="mt-1.5 text-lg sm:text-xl font-serif">Order Summary</h2>
-                    </div>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/10 text-[#ffdbe9] shadow-inner shadow-white/5">
-                      <Sparkles size={15} />
-                    </div>
+                  {/* Summary Title */}
+                  <div>
+                    <h2 className="text-sm font-semibold uppercase tracking-widest text-white/70">
+                      YOUR SUMMARY
+                    </h2>
                   </div>
 
-                  <div className="relative z-10 grid grid-cols-1 sm:grid-cols-[1fr_auto] items-start sm:items-center gap-3 rounded-[1.35rem] border border-white/10 bg-white/6 px-3 py-3 sm:px-4 backdrop-blur-sm">
-                    <div>
-                      <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest opacity-60">
-                        Payment Method
-                      </p>
-                      <p className="mt-1 text-[11px] sm:text-xs text-white/70">{discountStatus}</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 rounded-full bg-[#f6e8ef]/10 p-1.5 border border-white/10 shadow-inner shadow-black/10 w-full sm:w-auto">
+                  {/* Payment Methods Layout Grid Selection Blocks */}
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">
+                      PAYMENT METHOD
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Online Block */}
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('ONLINE')}
-                        className={`rounded-full px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.18em] transition-colors min-w-[7.2rem] ${
+                        className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
                           paymentMethod === 'ONLINE'
-                            ? 'bg-white text-[#321327]'
-                            : 'text-white/70 hover:text-white'
+                            ? 'border-white/30 bg-white/5 text-white'
+                            : 'border-white/10 bg-transparent text-white/40 hover:text-white/70'
                         }`}
                       >
-                        Online
+                        <CreditCard className="w-4 h-4 mb-1 opacity-80" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">ONLINE</span>
+                        <span className="text-[9px] opacity-60 mt-0.5">(₹0 Extra)</span>
                       </button>
+
+                      {/* COD Block */}
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('COD')}
-                        className={`rounded-full px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.18em] transition-colors min-w-[7.2rem] ${
+                        className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
                           paymentMethod === 'COD'
-                            ? 'bg-white text-[#321327]'
-                            : 'text-white/70 hover:text-white'
+                            ? 'border-white/30 bg-white/5 text-white'
+                            : 'border-white/10 bg-transparent text-white/40 hover:text-white/70'
                         }`}
                       >
-                        COD
+                        <Truck className="w-4 h-4 mb-1 opacity-80" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">CASH ON DELIVERY</span>
+                        <span className="text-[9px] opacity-60 mt-0.5">(₹100 Extra)</span>
                       </button>
                     </div>
                   </div>
 
-                  <div className="relative z-10 rounded-[1.35rem] border border-white/10 bg-white/6 p-4 backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] space-y-3">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">Original Checkout Price</p>
-                        <p className="mt-1 text-sm text-white/50 line-through decoration-white/40">₹{originalCheckoutPrice.toLocaleString()}</p>
-                      </div>
-                      <span className="rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white/75">
-                        {discountStatus}
-                      </span>
-                    </div>
-                    {comboStatusMessage && (
-                      <p className="text-[11px] text-emerald-200/90 font-medium">{comboStatusMessage}</p>
-                    )}
-                    <div className="flex items-end justify-between gap-4">
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">Payable Now</p>
-                        <p className="text-2xl sm:text-3xl font-bold">₹{checkoutSummary.finalGrandTotal.toLocaleString()}</p>
-                      </div>
-                      {totalSavings > 0 && (
-                        <span className="rounded-full bg-emerald-300 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-[#1b3b2c]">
-                          Saved ₹{totalSavings.toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-[1.35rem] border border-white/8 bg-black/10 p-4 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.15em] relative z-10 backdrop-blur-sm">
-                    <div className="flex justify-between col-span-2">
-                      <span className="opacity-60">Items Total</span>
-                      <span>₹{checkoutSummary.itemSubtotal.toLocaleString()}</span>
-                    </div>
-                    {checkoutSummary.comboDiscount > 0 && (
-                      <div className="flex justify-between text-emerald-300 col-span-2">
-                        <span>Combo Discount</span>
-                        <span>-₹{checkoutSummary.comboDiscount.toLocaleString()}</span>
-                      </div>
-                    )}
-                    {checkoutSummary.orderDiscount > 0 && (
-                      <div className="flex justify-between text-emerald-300 col-span-2">
-                        <span>Order Discount</span>
-                        <span>-₹{checkoutSummary.orderDiscount.toLocaleString()}</span>
-                      </div>
-                    )}
-                    {checkoutSummary.firstTimeDiscount > 0 && (
-                      <div className="flex justify-between text-emerald-300 col-span-2">
-                        <span>First Order</span>
-                        <span>-₹{checkoutSummary.firstTimeDiscount.toLocaleString()}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="opacity-60">Shipping</span>
-                      <span className={checkoutSummary.shippingFee === 0 ? "text-green-400" : ""}>
-                        {checkoutSummary.shippingFee === 0 ? 'FREE' : `₹${checkoutSummary.shippingFee}`}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="opacity-60">{paymentMethod === 'COD' ? 'COD Handling' : 'Online Checkout'}</span>
-                      <span className={checkoutSummary.codCharge === 0 ? "text-green-400" : ""}>
-                        {checkoutSummary.codCharge === 0 ? 'FREE' : `₹${checkoutSummary.codCharge}`}
-                      </span>
-                    </div>
-                    <div className="flex justify-between col-span-2 border-t border-white/10 pt-2 mt-1 text-white">
-                      <span>Total</span>
-                      <span>₹{checkoutSummary.finalGrandTotal.toLocaleString()}</span>
-                    </div>
-                  </div>
-
-                  {isComboApplied ? (
-                    <div className="relative z-10 rounded-[1.2rem] border border-dashed border-white/15 bg-white/5 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">
-                      Coupon codes are hidden while combo pricing is active.
-                    </div>
-                  ) : (
-                    <div className="relative z-10 rounded-[1.35rem] border border-[#f4c8dc]/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(132,13,92,0.12))] p-3.5 sm:p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#f8d9e8] text-[#840d5c] shadow-[0_10px_25px_rgba(248,217,232,0.18)]">
-                          <TicketPercent size={18} />
-                        </div>
-                        <div>
-                          <label htmlFor="coupon" className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-white/60 block">
-                            Coupon Code
-                          </label>
-                          <p className="mt-1 text-[11px] sm:text-xs text-white/70">Unlock extra savings before you pay.</p>
-                        </div>
-                      </div>
-                      <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                  {!isComboApplied && (
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-white/45">Coupon</p>
+                      <div className="flex items-center gap-2">
                         <input
-                          id="coupon"
                           value={couponCode}
                           onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                          placeholder="ENTER COUPON CODE"
-                          className="w-full rounded-full bg-white/10 border border-white/20 px-4 py-3 text-xs tracking-wider uppercase placeholder:text-white/40 focus:outline-none focus:border-[#f8d9e8]/70 focus:bg-white/12"
+                          placeholder="Enter coupon"
+                          className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs tracking-wider text-white placeholder:text-white/35 outline-none focus:border-white/30"
                         />
                         <button
                           type="button"
-                          className="rounded-full bg-white text-[#321327] px-5 py-3 text-[10px] font-bold uppercase tracking-[0.18em]"
+                          onClick={handleApplyCoupon}
+                          disabled={isApplyingCoupon}
+                          className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white disabled:opacity-60"
                         >
-                          Apply
+                          {isApplyingCoupon ? 'Applying' : 'Apply'}
                         </button>
                       </div>
+                      <p className="text-[10px] text-white/45">SAVE100 above ₹699, SAVE200 above ₹1299.</p>
                     </div>
                   )}
 
-                  {/* Checkout Action Button */}
+                  {/* Payable Total Large Card Display Panel */}
+                  <div className="rounded-2xl border border-white/10 bg-white/1 p-5 space-y-4">
+                    <div>
+                      <p className="text-base text-white/90">Payable Total</p>
+                      <p className="text-4xl font-semibold mt-1 text-white">
+                        ₹{checkoutSummary.finalGrandTotal}
+                      </p>
+                    </div>
+                    <hr className="border-white/5" />
+                    <div className="flex justify-between items-center text-xs">
+                      <div>
+                        <p className="text-white/40 mb-0.5">Original Price:</p>
+                        <p className="text-sm font-medium text-white/80">₹{originalCheckoutPrice}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-white/40 mb-0.5">Discount Applied:</p>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-white/80">
+                          {discountStatus}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pricing Mini Rows Breakdown Ledger */}
+                  <div className="rounded-2xl border border-white/5 bg-black/20 p-4 space-y-3 text-xs tracking-wide">
+                    <div className="flex justify-between font-medium">
+                      <span className="text-white/50 uppercase tracking-wider text-[10px]">ITEMS TOTAL</span>
+                      <span className="text-white/90">₹{checkoutSummary.itemSubtotal}</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-y-2 text-[11px]">
+                      <div className="flex justify-between pr-2 border-r border-white/5">
+                        <span className="text-white/40 uppercase tracking-wider text-[10px]">SHIPPING</span>
+                        <span className="text-emerald-400 font-bold">FREE</span>
+                      </div>
+                      <div className="flex justify-between pl-2">
+                        <span className="text-white/40 uppercase tracking-wider text-[10px]">
+                          {paymentMethod === 'COD' ? 'COD CHARGE' : 'ONLINE CHECKOUT'}
+                        </span>
+                        <span className={checkoutSummary.codCharge === 0 ? "text-emerald-400 font-bold" : "text-white/90"}>
+                          {checkoutSummary.codCharge === 0 ? 'FREE' : `₹${checkoutSummary.codCharge}`}
+                        </span>
+                      </div>
+                    </div>
+
+                    {comboStatusMessage && (
+                      <p className="text-[11px] text-emerald-400/90 font-medium pt-1">{comboStatusMessage}</p>
+                    )}
+
+                    <div className="flex justify-between border-t border-white/10 pt-3 mt-1 font-bold text-sm">
+                      <span className="text-white/50 uppercase tracking-wider text-[11px]">TOTAL</span>
+                      <span className="text-white text-base">₹{checkoutSummary.finalGrandTotal}</span>
+                    </div>
+                  </div>
+
+                  {/* Main Trigger Call-To-Action Button */}
                   <button 
                     onClick={handlePayment}
                     disabled={isProcessing || cartItems.length === 0}
-                    className="w-full bg-[#840d5c] hover:bg-white hover:text-[#840d5c] py-4 sm:py-5 rounded-full font-bold uppercase tracking-[0.2em] text-[10px] sm:text-[11px] flex items-center justify-center gap-3 transition-all shadow-xl active:scale-[0.98] relative z-10 disabled:opacity-50"
+                    className="w-full bg-[#541232] hover:bg-[#681940] text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-40"
                   >
-                    {isProcessing ? 'Processing...' : paymentMethod === 'COD' ? 'Place COD Order' : 'Pay Now'} <ArrowRight size={16} />
+                    {isProcessing ? 'Processing...' : 'PAY NOW'} <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
 
-                {/* Secure Badge */}
-                <div className="flex items-center justify-center gap-2 opacity-40 py-2">
-                  <ShieldCheck size={14} />
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-[#321327]">
-                    {paymentMethod === 'COD' ? 'COD Adds ₹100 Handling Charge' : 'Free Shipping On Online Checkout'}
+                {/* Free Shipping Footer Branding Tag */}
+                <div className="flex items-center justify-center gap-2 py-1 text-black/50">
+                  <Gift className="w-4 h-4 text-black/60" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#231219]">
+                    FREE SHIPPING ON ONLINE CHECKOUT
                   </span>
                 </div>
               </div>

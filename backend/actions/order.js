@@ -189,20 +189,15 @@ console.log("Parsed quantity:", qty);
 // });
 /**
  * Removes a specific item from the cart.
- * Uses the Supabase admin client to bypass RLS / pooler limitations.
  */
 export async function removeFromCart(cartItemId) {
   try {
-    const { createSupabaseAdminClient } = await import("@/backend/lib/supabaseAdmin");
-    const admin = createSupabaseAdminClient();
-    const { error } = await admin
-      .from("cart_items")
-      .delete()
-      .eq("id", String(cartItemId));
+    const deleted = await db.cartItem.deleteMany({
+      where: { id: String(cartItemId) },
+    });
 
-    if (error) {
-      console.error("Remove from cart error:", error);
-      return { success: false, error: error.message };
+    if (!deleted.count) {
+      return { success: false, error: "Cart item not found" };
     }
 
     revalidatePath("/cart");
@@ -215,17 +210,11 @@ export async function removeFromCart(cartItemId) {
 
 export async function clearCart(userId) {
   try {
-    const { createSupabaseAdminClient } = await import("@/backend/lib/supabaseAdmin");
-    const admin = createSupabaseAdminClient();
-    const { error } = await admin
-      .from("cart_items")
-      .delete()
-      .eq("userId", String(userId));
+    await db.cartItem.deleteMany({
+      where: { userId: String(userId) },
+    });
 
-    if (error) {
-      console.error("Clear cart error:", error);
-      return { success: false, error: error.message };
-    }
+    revalidatePath("/cart");
     return { success: true };
   } catch (error) {
     console.error('Failed to clear cart:', error);
@@ -243,7 +232,7 @@ export async function clearCart(userId) {
  * Handles: Combo Discounts -> Coupon Code Deductions -> First Time 15% Reduction.
  * @param {string} userId
  * @param {string | null} [couponCode]
- * @param {{ clearCart?: boolean; orderStatus?: string }} [options]
+ * @param {{ clearCart?: boolean; orderStatus?: string; addressId?: string | null; paymentMethod?: "ONLINE" | "COD" | string }} [options]
  */
 export async function createOrder(userId, couponCode = null, options = {}) {
   try {
@@ -251,6 +240,7 @@ export async function createOrder(userId, couponCode = null, options = {}) {
       clearCart = true,
       orderStatus = "PENDING",
       addressId = null,
+      paymentMethod = "ONLINE",
     } = options;
 
     const result = await db.$transaction(async (tx) => {
@@ -362,6 +352,11 @@ export async function createOrder(userId, couponCode = null, options = {}) {
         
         workingSubtotal = workingSubtotal.sub(firstTimeSavings);
         totalDiscountAccumulator = totalDiscountAccumulator.add(firstTimeSavings);
+      }
+
+      // 4D. Apply COD handling charge at final amount level.
+      if (String(paymentMethod).toUpperCase() === "COD") {
+        workingSubtotal = workingSubtotal.add(new Prisma.Decimal(100));
       }
 
       // 5. Finalize the Database Records

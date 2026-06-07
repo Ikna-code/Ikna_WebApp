@@ -351,10 +351,62 @@ export default function Dashboard() {
 
   const channelTotal = activeChannels.reduce((sum, item) => sum + item.value, 0);
 
+  const revenueMetric = activeMetrics.find((metric) => metric.title.toLowerCase().includes('total sales'));
+  const ordersMetric = activeMetrics.find((metric) => metric.title.toLowerCase().includes('orders'));
+  const aovMetric = activeMetrics.find((metric) => metric.title.toLowerCase().includes('avg. order value'));
+
+  const totalRevenueValue = revenueMetric ? parseMetricNumber(revenueMetric.value) : 0;
+  const totalOrdersValue = ordersMetric ? parseMetricNumber(ordersMetric.value) : 0;
+  const avgOrderValue = aovMetric ? parseMetricNumber(aovMetric.value) : 0;
+  const dateRangeDays = daysBetweenInclusive(activeRange.start, activeRange.end);
+  const dailyRunRate = dateRangeDays > 0 ? totalRevenueValue / dateRangeDays : 0;
+  const projectedMonthlyRevenue = Math.round(dailyRunRate * 30);
+
+  const topChannel = activeChannels[0] || null;
+  const topThreeShare = (() => {
+    if (!channelTotal) return 0;
+    const topThreeValue = activeChannels.slice(0, 3).reduce((sum, item) => sum + item.value, 0);
+    return Math.round((topThreeValue / channelTotal) * 100);
+  })();
+
+  const fastestGrowingMetric = activeMetrics.reduce(
+    (best: { title: string; pct: number } | null, metric) => {
+      const pct = Number(String(metric.percentage).replace('%', '').trim()) || 0;
+      if (!best || pct > best.pct) return { title: metric.title, pct };
+      return best;
+    },
+    null
+  );
+
+  const businessInsights = [
+    'Revenue run-rate: ' + new Intl.NumberFormat('en-IN').format(Math.round(dailyRunRate)) + '/day, projecting ' + new Intl.NumberFormat('en-IN').format(projectedMonthlyRevenue) + ' for a 30-day cycle.',
+    topChannel
+      ? topChannel.name + ' contributes ' + topChannel.percentage + ' of sales value (' + new Intl.NumberFormat('en-IN').format(topChannel.value) + ').'
+      : 'Category contribution data is unavailable for this period.',
+    String(topThreeShare) + '% of revenue is concentrated in top 3 categories, signaling ' + (topThreeShare >= 75 ? 'high dependency risk' : 'healthy category diversification') + '.',
+    fastestGrowingMetric
+      ? fastestGrowingMetric.title + ' is growing fastest at ' + fastestGrowingMetric.pct.toFixed(1) + '% in the selected period.'
+      : 'Growth signal unavailable due to insufficient metric history.',
+  ];
+
+  const exportSummaryRows = [
+    ['Total Revenue', 'Rs ' + new Intl.NumberFormat('en-IN').format(Math.round(totalRevenueValue))],
+    ['Total Orders', new Intl.NumberFormat('en-IN').format(Math.round(totalOrdersValue))],
+    ['Average Order Value', 'Rs ' + new Intl.NumberFormat('en-IN').format(Math.round(avgOrderValue))],
+    ['Date Range (Days)', String(dateRangeDays)],
+    ['Daily Revenue Run-Rate', 'Rs ' + new Intl.NumberFormat('en-IN').format(Math.round(dailyRunRate))],
+    ['Projected 30-Day Revenue', 'Rs ' + new Intl.NumberFormat('en-IN').format(projectedMonthlyRevenue)],
+    ['Top Category', topChannel ? topChannel.name : 'N/A'],
+    ['Top Category Share', topChannel ? topChannel.percentage : 'N/A'],
+    ['Top 3 Category Share', String(topThreeShare) + '%'],
+  ];
+
   const reportPreview = {
-    period: `${formatTimePeriodLabel(timePeriod)} • ${formattedDateRange}`,
+    period: formatTimePeriodLabel(timePeriod) + ' - ' + formattedDateRange,
     metrics: activeMetrics,
     channels: activeChannels,
+    insights: businessInsights,
+    summaryRows: exportSummaryRows,
   };
 
   const handleExportReport = () => {
@@ -363,18 +415,26 @@ export default function Dashboard() {
       ['Period', formattedDateRange],
       ['Time Frame', formatTimePeriodLabel(timePeriod)],
       [''],
+      ['Business Summary'],
+      ...exportSummaryRows,
+      [''],
       ['Metrics'],
       ...activeMetrics.map((metric) => [metric.title, metric.value, metric.percentage]),
       [''],
       ['Sales by Category'],
-      ...activeChannels.map((channel) => [channel.name, `₹${channel.value.toLocaleString()}`, channel.percentage]),
+      ...activeChannels.map((channel) => [channel.name, 'Rs ' + channel.value.toLocaleString(), channel.percentage]),
+      [''],
+      ['Actionable Insights'],
+      ...businessInsights.map((insight, index) => ['Insight ' + (index + 1), insight]),
       [''],
       ['Generated on', new Date().toLocaleString()],
-    ].map((row) => row.join(',')).join('\n');
+    ]
+      .map((row) => row.join(','))
+      .join('\n');
 
     const element = document.createElement('a');
     element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
-    element.setAttribute('download', `sales_report_${new Date().getTime()}.csv`);
+    element.setAttribute('download', 'sales_report_' + new Date().getTime() + '.csv');
     element.style.display = 'none';
     document.body.appendChild(element);
     element.click();
