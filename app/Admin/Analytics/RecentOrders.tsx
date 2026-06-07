@@ -1,7 +1,6 @@
 'use client';
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useStore } from '@/store/useStore';
 
 type OrderItem = {
   id: string;
@@ -62,17 +61,13 @@ function getOrderDescription(order: StoreOrder) {
   return `${firstName} x${firstQty} +${items.length - 1} more`;
 }
 
-export default function RecentOrders() {
-  const router = useRouter();
-  const orders = useStore((s) => s.orders) as StoreOrder[];
-  const isOrdersInitialized = useStore((s) => s.isOrdersInitialized);
-  const fetchOrders = useStore((s) => s.fetchOrders);
+type RecentOrdersProps = {
+  orders?: StoreOrder[];
+  isLoading?: boolean;
+};
 
-  useEffect(() => {
-    if (!isOrdersInitialized) {
-      void fetchOrders();
-    }
-  }, [fetchOrders, isOrdersInitialized]);
+export default function RecentOrders({ orders = [], isLoading = false }: RecentOrdersProps) {
+  const router = useRouter();
 
   const latestOrders = useMemo(
     () => [...(orders || [])].sort((a, b) => getOrderTimestamp(b) - getOrderTimestamp(a)).slice(0, 4),
@@ -80,14 +75,14 @@ export default function RecentOrders() {
   );
 
   return (
-    <div className="bg-white p-6 rounded-3xl border border-[#e8bfd5] shadow-sm flex flex-col justify-between h-[360px] md:col-span-2 xl:col-span-1">
+    <div className="bg-white p-6 rounded-3xl border border-[#e8bfd5] shadow-sm flex flex-col justify-between h-90 md:col-span-2 xl:col-span-1">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-base font-bold text-[#2f1126]">Recent Orders</h2>
         <button className="text-xs font-bold text-[#840d5c] hover:underline" onClick={() => router.push('/Admin/OrderDashboard')}>View all</button>
       </div>
 
       <div className="space-y-3 flex-1 flex flex-col justify-center">
-        {!isOrdersInitialized ? (
+        {isLoading ? (
           <div className="text-xs text-[#8a5f79]">Loading recent orders...</div>
         ) : latestOrders.length === 0 ? (
           <div className="text-xs text-[#8a5f79]">No recent orders found.</div>
@@ -106,7 +101,7 @@ export default function RecentOrders() {
                     <span className="font-bold text-[#2f1126] tracking-tight">#{order.id.slice(0, 8)}</span>
                     <span className="font-extrabold text-[#840d5c]">{formatCurrency(order.totalAmount)}</span>
                   </div>
-                  <p className="text-[#8a5f79] font-medium text-[11px] truncate max-w-[170px]">{getOrderDescription(order)}</p>
+                  <p className="text-[#8a5f79] font-medium text-[11px] truncate max-w-42.5">{getOrderDescription(order)}</p>
                   <p className="text-[10px] text-[#a0708b]">{formatTimeLabel(order.updatedAt || order.createdAt)}</p>
                 </div>
                 <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${status.color} shadow-sm shrink-0`}>
