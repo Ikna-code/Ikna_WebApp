@@ -20,16 +20,22 @@ export async function verifyPayment(
 
   if (isAuthentic) {
     // 3. Update Order in DB
-    await db.order.update({
+    const updatedOrder = await db.order.update({
       where: { id: dbOrderId },
       data: { status: "PAID" },
+      select: { id: true, userId: true, totalAmount: true },
     });
 
-    // 4. Record the Payment
+    // 4. Clear cart server-side after successful payment so state can always rehydrate from DB accurately.
+    await db.cartItem.deleteMany({
+      where: { userId: updatedOrder.userId },
+    });
+
+    // 5. Record the Payment
     await db.payment.create({
       data: {
         orderId: dbOrderId,
-        amount: 0, // Ideally pass the actual amount here
+        amount: updatedOrder.totalAmount,
         status: "COMPLETED",
         provider: "RAZORPAY",
         transactionId: razorpayPaymentId,

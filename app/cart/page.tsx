@@ -6,7 +6,6 @@ import Link from 'next/link';
 import Script from "next/script";
 import { Trash2, Plus, Minus, ChevronLeft, ShoppingBag, ArrowRight, ShieldCheck, Loader2, Sparkles, TicketPercent, CheckCircle2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
-import { clearCart } from "@/backend/actions/order";
 import { createRazorpayOrder } from "@/backend/actions/payment";
 import { verifyPayment } from "@/backend/actions/verify";
 import { useStore } from '@/store/useStore'; 
@@ -130,8 +129,7 @@ const CartPage = () => {
           );
 
           if (result.success) {
-            await clearCart(userId);
-            if (fetchCart) await fetchCart(userId);
+            if (fetchCart) await fetchCart(userId, true);
             window.location.href = `/success?orderId=${orderData.dbOrderId}`;
           } else {
             alert("Payment verification failed. Please contact support.");

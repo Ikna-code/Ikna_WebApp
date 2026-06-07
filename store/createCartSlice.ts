@@ -17,7 +17,7 @@ export interface CartSlice {
   isLoading: boolean;
   error: string | null;
   fetchCart: (userId: string, force?: boolean) => Promise<void>;
-  fetchOrders: () => Promise<void>;
+  fetchOrders: (force?: boolean) => Promise<void>;
   fetchAdminOrders: (force?: boolean) => Promise<void>;
   addItemToCart: (userId: string, productId: string, selectedSize: string, quantity?: number, category?: string) => Promise<void>;
   updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
@@ -36,8 +36,8 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
   isLoading: false,
   error: null,
 
-  fetchOrders: async () => {
-    if (get().isOrdersInitialized) return;
+  fetchOrders: async (force = false) => {
+    if (!force && get().isOrdersInitialized) return;
     try {
       const response = await fetch('/api/orders', { cache: 'no-store' });
       if (!response.ok) throw new Error('Failed to fetch orders');

@@ -25,11 +25,14 @@ const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose }) => {
       setQuery(currentSearchParam);
       inputRef.current?.focus();
       document.body.style.overflow = "hidden";
+      document.body.classList.add("ikna-modal-open");
     } else {
       document.body.style.overflow = "unset";
+      document.body.classList.remove("ikna-modal-open");
     }
     return () => {
       document.body.style.overflow = "unset";
+      document.body.classList.remove("ikna-modal-open");
     };
   }, [isOpen, currentSearchParam]);
 
@@ -88,7 +91,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose }) => {
       {/* BACKDROP */}
       <div
         className={cn(
-          "fixed inset-0 bg-black/40 backdrop-blur-sm z-[99] transition-all duration-300",
+          "fixed inset-0 bg-black/15 backdrop-blur-sm z-[220] transition-all duration-300",
           isOpen ? "opacity-100 visible" : "opacity-0 invisible"
         )}
         onClick={onClose}
@@ -97,7 +100,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose }) => {
       {/* SIDEBAR */}
       <div
         className={cn(
-          "fixed top-0 right-0 h-full w-full sm:max-w-[450px] bg-[#F9F3F5] z-[100] shadow-2xl transform transition-transform duration-500 ease-in-out flex flex-col",
+          "fixed top-0 right-0 h-full w-full sm:max-w-[450px] bg-[#F9F3F5] z-[230] shadow-2xl transform transition-transform duration-500 ease-in-out flex flex-col",
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
       >

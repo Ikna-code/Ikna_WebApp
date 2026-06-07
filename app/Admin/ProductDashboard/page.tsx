@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Search,
   Filter,
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { IMAGE_BASE_URL } from '@/public/constants/constants';
+import { useStore } from '@/store/useStore';
 
 // --- Interfaces ---
 interface ProductDetail {
@@ -32,6 +33,23 @@ interface ProductDetail {
   rating: number | null;
   createdAt: string;
   images: { id: string; image_path: string; is_primary: boolean | null }[];
+  filters: ProductFilterAssignment[];
+}
+
+interface ProductFilterAssignment {
+  id: string;
+  filterOptionId: string;
+  filterOption?: {
+    id: string;
+    value: string;
+    displayLabel: string;
+    filterGroup?: {
+      id: string;
+      name: string;
+      displayName: string;
+      slug: string;
+    };
+  };
 }
 
 interface DbProduct {
@@ -48,6 +66,30 @@ interface DbProduct {
   tag?: string | null;
   reviews?: { rating: number }[];
   images?: { id: string; image_path: string; is_primary: boolean | null }[];
+  filters?: ProductFilterAssignment[];
+}
+
+interface FilterOptionMeta {
+  id: string;
+  value: string;
+  displayLabel: string;
+  colorHex?: string | null;
+}
+
+interface FilterGroupMeta {
+  id: string;
+  name: string;
+  displayName: string;
+  slug: string;
+  filterType: string;
+  filterOptions: FilterOptionMeta[];
+}
+
+interface ProductTypeFilterMeta {
+  id: string;
+  name: string;
+  slug: string;
+  filterGroups: FilterGroupMeta[];
 }
 
 interface ProductFormState {
@@ -146,7 +188,38 @@ const getProductSku = (product: DbProduct, fallbackIndex: number) => {
   return String(200001 + fallbackIndex);
 };
 
+const normalizeSlug = (value: string) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-');
+
+const getCandidateTypeSlugs = (category: string) => {
+  const base = normalizeSlug(category);
+  if (!base) return [] as string[];
+
+  if (base === 'briefs') return ['briefs', 'panties'];
+  if (base === 'panties') return ['panties', 'briefs'];
+
+  return [base];
+};
+
+const applySingleSelect = (
+  current: string[],
+  group: FilterGroupMeta,
+  nextOptionId: string
+) => {
+  const groupOptionIds = new Set(group.filterOptions.map((option) => option.id));
+  const next = current.filter((id) => !groupOptionIds.has(id));
+  if (nextOptionId) {
+    next.push(nextOptionId);
+  }
+  return next;
+};
+
 export default function ProductManagementDashboard() {
+  const refreshProducts = useStore((state) => state.refreshProducts);
   const [productDetails, setProductDetails] = useState<ProductDetail[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState('All');
@@ -211,6 +284,40 @@ export default function ProductManagementDashboard() {
   const [editExistingImages, setEditExistingImages] = useState<EditableExistingImage[]>([]);
   const [removedEditImageIds, setRemovedEditImageIds] = useState<string[]>([]);
   const [removedEditImagePaths, setRemovedEditImagePaths] = useState<string[]>([]);
+  const [filterMetadata, setFilterMetadata] = useState<ProductTypeFilterMeta[]>([]);
+  const [newFilterOptionIds, setNewFilterOptionIds] = useState<string[]>([]);
+  const [editFilterOptionIds, setEditFilterOptionIds] = useState<string[]>([]);
+
+  const getFilterGroupsForCategory = useCallback(
+    (category: string) => {
+      const candidateSlugs = getCandidateTypeSlugs(category);
+      const groupMap = new Map<string, FilterGroupMeta>();
+
+      for (const type of filterMetadata) {
+        const typeSlug = normalizeSlug(type.slug || type.name);
+        if (!candidateSlugs.includes(typeSlug)) continue;
+
+        for (const group of type.filterGroups || []) {
+          if (!groupMap.has(group.id)) {
+            groupMap.set(group.id, group);
+          }
+        }
+      }
+
+      return Array.from(groupMap.values());
+    },
+    [filterMetadata]
+  );
+
+  const addFilterGroups = useMemo(
+    () => getFilterGroupsForCategory(newProductDetail.category),
+    [getFilterGroupsForCategory, newProductDetail.category]
+  );
+
+  const editFilterGroups = useMemo(
+    () => getFilterGroupsForCategory(editProductDetail.category),
+    [getFilterGroupsForCategory, editProductDetail.category]
+  );
 
   const getImageUrl = (pathOrUrl: string) => {
     if (!pathOrUrl) return '';
@@ -275,6 +382,7 @@ export default function ProductManagementDashboard() {
           rating: typeof product.rating === 'number' ? product.rating : null,
           createdAt: product.createdAt,
           images: Array.isArray(product.images) ? product.images : [],
+          filters: Array.isArray(product.filters) ? product.filters : [],
         };
       });
 
@@ -301,6 +409,42 @@ export default function ProductManagementDashboard() {
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchFilterMetadata = async () => {
+      try {
+        const response = await fetch('/api/filters', { cache: 'no-store' });
+        if (!response.ok) return;
+
+        const payload: ProductTypeFilterMeta[] = await response.json();
+        if (isMounted) {
+          setFilterMetadata(Array.isArray(payload) ? payload : []);
+        }
+      } catch {
+        if (isMounted) {
+          setFilterMetadata([]);
+        }
+      }
+    };
+
+    void fetchFilterMetadata();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const allowed = new Set(addFilterGroups.flatMap((group) => group.filterOptions.map((option) => option.id)));
+    setNewFilterOptionIds((current) => current.filter((id) => allowed.has(id)));
+  }, [addFilterGroups]);
+
+  useEffect(() => {
+    const allowed = new Set(editFilterGroups.flatMap((group) => group.filterOptions.map((option) => option.id)));
+    setEditFilterOptionIds((current) => current.filter((id) => allowed.has(id)));
+  }, [editFilterGroups]);
 
   useEffect(() => {
     const syncViewport = () => {
@@ -435,6 +579,7 @@ export default function ProductManagementDashboard() {
         tag: newProductDetail.tag,
         image: newProductDetail.image.trim() || undefined,
         rating: newProductDetail.rating ? Number(newProductDetail.rating) : null,
+        filterOptionIds: newFilterOptionIds,
       };
 
       const createResponse = await fetch('/api/admin/products', {
@@ -485,9 +630,10 @@ export default function ProductManagementDashboard() {
         image: '',
         rating: '',
       });
+      setNewFilterOptionIds([]);
       handleClearAddProductImages();
       setIsAddModalOpen(false);
-      await fetchProducts();
+      await Promise.all([fetchProducts(), refreshProducts()]);
     } catch (error: any) {
       setErrorMessage(error?.message || 'Failed to create product.');
     } finally {
@@ -520,7 +666,7 @@ export default function ProductManagementDashboard() {
           })
         )
       );
-      await fetchProducts();
+      await Promise.all([fetchProducts(), refreshProducts()]);
       setSelectedProducts([]);
     } catch {
       setErrorMessage('Failed to update prices.');
@@ -552,7 +698,7 @@ export default function ProductManagementDashboard() {
           })
         )
       );
-      await fetchProducts();
+      await Promise.all([fetchProducts(), refreshProducts()]);
       setSelectedProducts([]);
     } catch {
       setErrorMessage('Failed to update stock.');
@@ -628,7 +774,7 @@ export default function ProductManagementDashboard() {
       }
 
       resetDeleteModal();
-      await fetchProducts();
+      await Promise.all([fetchProducts(), refreshProducts()]);
     } catch {
       setErrorMessage(
         deleteModal.mode === 'bulk'
@@ -654,6 +800,15 @@ export default function ProductManagementDashboard() {
       image: product.image,
       rating: product.rating != null ? String(product.rating) : '',
     });
+    setEditFilterOptionIds(
+      Array.from(
+        new Set(
+          (product.filters || [])
+            .map((item) => String(item?.filterOptionId || '').trim())
+            .filter(Boolean)
+        )
+      )
+    );
 
     const normalizedExistingImages =
       product.images.length > 0
@@ -750,6 +905,7 @@ export default function ProductManagementDashboard() {
           tag: editProductDetail.tag.trim(),
           image: resolvedPrimaryImage,
           rating: editProductDetail.rating ? Number(editProductDetail.rating) : null,
+          filterOptionIds: editFilterOptionIds,
           imagePaths: uploadedPaths.length ? uploadedPaths : undefined,
           removeImageIds: removedEditImageIds,
           removeImagePaths: removedEditImagePaths,
@@ -765,10 +921,11 @@ export default function ProductManagementDashboard() {
       setEditingProductId('');
       setEditingProductSku('');
       setEditExistingImages([]);
+      setEditFilterOptionIds([]);
       setRemovedEditImageIds([]);
       setRemovedEditImagePaths([]);
       handleClearEditProductImages();
-      await fetchProducts();
+      await Promise.all([fetchProducts(), refreshProducts()]);
     } catch (error: any) {
       setErrorMessage(error?.message || 'Failed to update product.');
     }
@@ -817,7 +974,7 @@ export default function ProductManagementDashboard() {
         errors: Array.isArray(data.errors) ? data.errors : [],
       });
 
-      await fetchProducts();
+      await Promise.all([fetchProducts(), refreshProducts()]);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to import products.');
     } finally {
@@ -1152,12 +1309,14 @@ export default function ProductManagementDashboard() {
   const closeAddModal = () => {
     if (isUploadingImages) return;
     handleClearAddProductImages();
+    setNewFilterOptionIds([]);
     setIsAddModalOpen(false);
   };
 
   const closeEditModal = () => {
     handleClearEditProductImages();
     setEditExistingImages([]);
+    setEditFilterOptionIds([]);
     setRemovedEditImageIds([]);
     setRemovedEditImagePaths([]);
     setIsEditModalOpen(false);
@@ -1931,7 +2090,7 @@ export default function ProductManagementDashboard() {
                         onChange={(e) => setNewProductDetail({ ...newProductDetail, category: e.target.value })}
                         className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
                       >
-                        {['Bras', 'Briefs', 'Sets', 'Others'].map((category) => (
+                        {['Bras', 'Panties', 'Briefs', 'Sets', 'Others'].map((category) => (
                           <option key={category}>{category}</option>
                         ))}
                       </select>
@@ -1947,6 +2106,46 @@ export default function ProductManagementDashboard() {
                         className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">DYNAMIC FILTERS</label>
+                    {addFilterGroups.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+                        {addFilterGroups.map((group) => {
+                          const selectedOptionId =
+                            group.filterOptions.find((option) => newFilterOptionIds.includes(option.id))?.id || '';
+
+                          return (
+                            <div key={group.id}>
+                              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+                                {group.displayName || group.name}
+                              </label>
+                              <select
+                                value={selectedOptionId}
+                                onChange={(e) =>
+                                  setNewFilterOptionIds((current) =>
+                                    applySingleSelect(current, group, e.target.value)
+                                  )
+                                }
+                                className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
+                              >
+                                <option value="">Select {group.displayName || group.name}</option>
+                                {group.filterOptions.map((option) => (
+                                  <option key={option.id} value={option.id}>
+                                    {option.displayLabel}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 px-3 py-2 text-[11px] text-neutral-500">
+                        No dynamic filters configured for this category.
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">DESCRIPTION</label>
@@ -2149,13 +2348,15 @@ export default function ProductManagementDashboard() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">CATEGORY</label>
-                      <input
-                        type="text"
-                        required
+                      <select
                         value={editProductDetail.category}
                         onChange={(e) => setEditProductDetail({ ...editProductDetail, category: e.target.value })}
                         className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
-                      />
+                      >
+                        {['Bras', 'Panties', 'Briefs', 'Sets', 'Others'].map((category) => (
+                          <option key={category}>{category}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">TAG</label>
@@ -2167,6 +2368,46 @@ export default function ProductManagementDashboard() {
                         className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">DYNAMIC FILTERS</label>
+                    {editFilterGroups.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+                        {editFilterGroups.map((group) => {
+                          const selectedOptionId =
+                            group.filterOptions.find((option) => editFilterOptionIds.includes(option.id))?.id || '';
+
+                          return (
+                            <div key={group.id}>
+                              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+                                {group.displayName || group.name}
+                              </label>
+                              <select
+                                value={selectedOptionId}
+                                onChange={(e) =>
+                                  setEditFilterOptionIds((current) =>
+                                    applySingleSelect(current, group, e.target.value)
+                                  )
+                                }
+                                className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
+                              >
+                                <option value="">Select {group.displayName || group.name}</option>
+                                {group.filterOptions.map((option) => (
+                                  <option key={option.id} value={option.id}>
+                                    {option.displayLabel}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 px-3 py-2 text-[11px] text-neutral-500">
+                        No dynamic filters configured for this category.
+                      </p>
+                    )}
                   </div>
 
                   <div>

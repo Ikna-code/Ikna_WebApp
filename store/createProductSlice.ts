@@ -1,5 +1,5 @@
 import { StateCreator } from "zustand";
-import { getAllProductsWithPrimaryImage, getProductWithImages } from "@/backend/actions/products";
+import { getProductWithImages } from "@/backend/actions/products";
 import { toggleWishlistAction, getWishlist } from "@/backend/actions/order";
 import { createReview, getReviews, deleteReview } from "@/backend/actions/review";
 
@@ -16,7 +16,8 @@ export interface ProductSlice {
   currentProductReviews: any[];
   isLoading: boolean;
   error: string | null;
-  loadProducts: () => Promise<void>;
+  loadProducts: (force?: boolean) => Promise<void>;
+  refreshProducts: () => Promise<void>;
   fetchProductDetails: (productId: string, force?: boolean) => Promise<any>;
   fetchWishlist: (userId: string) => Promise<void>;
   toggleWishlist: (userId: string, productId: string) => Promise<void>;
@@ -34,56 +35,38 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
   isLoading: false,
   error: null,
 
-  loadProducts: async () => {
-    if (get().isProductsInitialized) return;
+  loadProducts: async (force = false) => {
+    if (!force && get().isProductsInitialized) return;
     set({ isLoading: true, error: null });
     try {
-      const products = await getAllProductsWithPrimaryImage();
-      const baseProducts = Array.isArray(products) ? products : [];
-
-      // First paint can use base cards, then hydrate full image collections into store.
-      const detailEntries = await Promise.all(
-        baseProducts
-          .map((p: any) => p?.id)
-          .filter(Boolean)
-          .map(async (productId: string) => {
-            const existingRequest = productDetailInFlight.get(productId);
-            if (existingRequest) {
-              const inFlightData = await existingRequest;
-              return [productId, inFlightData] as const;
-            }
-
-            const request = getProductWithImages(productId)
-              .catch(() => null)
-              .finally(() => {
-                productDetailInFlight.delete(productId);
-              });
-
-            productDetailInFlight.set(productId, request);
-
-            const data = await request;
-            return [productId, data] as const;
-          })
-      );
-
-      const fullDetailsById: Record<string, any> = {};
-      for (const [productId, data] of detailEntries) {
-        if (data) {
-          fullDetailsById[productId] = {
-            ...data,
-            [FULL_DETAIL_FLAG]: true,
-          };
-        }
+      const response = await fetch("/api/admin/products", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("Failed to load products");
       }
 
-      const hydratedProducts = baseProducts.map((product: any) => {
-        const full = fullDetailsById[product?.id];
-        if (full) return full;
+      const payload = await response.json();
+      const rows = Array.isArray(payload) ? payload : [];
+
+      const hydratedProducts = rows.map((product: any) => {
+        const images = Array.isArray(product?.images) ? product.images : [];
+        const primary = images.find((img: any) => Boolean(img?.is_primary));
+        const fallback = images[0];
+        const imagePath = product?.image || primary?.image_path || fallback?.image_path || "";
+
         return {
           ...product,
-          [FULL_DETAIL_FLAG]: false,
+          image: imagePath,
+          product_images: images,
+          [FULL_DETAIL_FLAG]: true,
         };
       });
+
+      const fullDetailsById = hydratedProducts.reduce((acc: Record<string, any>, product: any) => {
+        if (product?.id) {
+          acc[product.id] = product;
+        }
+        return acc;
+      }, {});
 
       set((state) => ({
         products: hydratedProducts,
@@ -97,6 +80,10 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
     } catch (e: any) {
       set({ error: e?.message || "Failed to load products", isLoading: false });
     }
+  },
+
+  refreshProducts: async () => {
+    await get().loadProducts(true);
   },
 
   fetchProductDetails: async (productId: string, force = false) => {

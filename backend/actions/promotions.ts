@@ -14,13 +14,21 @@ export async function calculateComboDiscounts(tx: any, cartItems: any[]) {
   // Fetch active combo offers along with their eligible matching product records
   const activeCombos = await tx.comboOffer.findMany({
     where: { isActive: true },
-    include: { products: { select: { id: true } } }
+    include: {
+      ComboProducts: {
+        select: {
+          Product: {
+            select: { id: true }
+          }
+        }
+      }
+    }
   });
 
   const cartProductIds = cartItems.map(item => item.productId);
 
   for (const combo of activeCombos) {
-    const requiredIds = combo.products.map((p: { id: string }) => p.id);
+    const requiredIds = combo.ComboProducts.map((entry: { Product: { id: string } }) => entry.Product.id);
     
     // Check if every single product required for the combo is present in the current cart
     const isComboMatched = requiredIds.every((id: string) => cartProductIds.includes(id));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useStore } from "@/store/useStore";
 import { createClient } from "@/backend/lib/supabaseClient";
 
@@ -17,11 +17,13 @@ export default function AppInitializer() {
   const isAuthInitialized = useStore((s) => s.isAuthInitialized);
   const user = useStore((s) => s.user);
   const loadProducts = useStore((s) => s.loadProducts);
+  const refreshProducts = useStore((s) => s.refreshProducts);
   const fetchWishlist = useStore((s) => s.fetchWishlist);
   const fetchCart = useStore((s) => s.fetchCart);
   const fetchOrders = useStore((s) => s.fetchOrders);
   const fetchAddresses = useStore((s) => s.fetchAddresses);
   const supabase = useMemo(() => createClient(), []);
+  const productRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Step 1: Authenticate the user (runs exactly once on mount)
   useEffect(() => {
@@ -55,12 +57,14 @@ export default function AppInitializer() {
     return () => subscription.unsubscribe();
   }, [supabase, forceRefetchUser]);
 
-  // Step 2: Once auth is resolved, load products and user-specific data
+  // Step 2: Products are public, so load regardless of auth state.
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
+
+  // Step 3: Once auth is resolved, load user-specific data.
   useEffect(() => {
     if (!isAuthInitialized) return;
-
-    // Products are public — always load them
-    loadProducts();
 
     // User-specific data only when logged in
     if (user?.id) {
@@ -69,7 +73,93 @@ export default function AppInitializer() {
       fetchOrders();
       fetchAddresses(user.id);
     }
-  }, [isAuthInitialized, user?.id, loadProducts, fetchCart, fetchWishlist, fetchOrders, fetchAddresses]);
+  }, [isAuthInitialized, user?.id, fetchCart, fetchWishlist, fetchOrders, fetchAddresses]);
+
+  // Step 3b: Keep user cart and orders in sync with DB changes in realtime.
+  useEffect(() => {
+    if (!isAuthInitialized || !user?.id) return;
+
+    const scheduleCartRefresh = () => {
+      void fetchCart(user.id, true);
+    };
+
+    const scheduleOrderRefresh = () => {
+      void fetchOrders(true);
+    };
+
+    const channel = supabase
+      .channel(`user-commerce-sync-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "cart_items",
+          filter: `userId=eq.${user.id}`,
+        },
+        scheduleCartRefresh
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `userId=eq.${user.id}`,
+        },
+        scheduleOrderRefresh
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [isAuthInitialized, user?.id, fetchCart, fetchOrders, supabase]);
+
+  // Step 4: Keep product catalog in sync when Admin panel changes products/images.
+  useEffect(() => {
+    if (!isAuthInitialized) return;
+
+    const scheduleProductRefresh = () => {
+      if (productRefreshTimerRef.current) {
+        clearTimeout(productRefreshTimerRef.current);
+      }
+
+      productRefreshTimerRef.current = setTimeout(() => {
+        void refreshProducts();
+      }, 250);
+    };
+
+    const channel = supabase
+      .channel("products-store-sync")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "Product",
+        },
+        scheduleProductRefresh
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "product_images",
+        },
+        scheduleProductRefresh
+      )
+      .subscribe();
+
+    return () => {
+      if (productRefreshTimerRef.current) {
+        clearTimeout(productRefreshTimerRef.current);
+        productRefreshTimerRef.current = null;
+      }
+      void supabase.removeChannel(channel);
+    };
+  }, [isAuthInitialized, refreshProducts, supabase]);
 
   return null;
 }

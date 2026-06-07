@@ -1,21 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient, Role } from '@prisma/client';
+import { Prisma, PrismaClient, Role } from '@prisma/client';
 import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
-import { createSupabaseAdminClient } from '@/backend/lib/supabaseAdmin';
 import { extractCloudinaryPublicId } from '@/src/lib/cloudinary';
 
 export const dynamic = 'force-dynamic';
 
 const prisma = new PrismaClient();
-
-// Service role client bypasses all Supabase RLS policies — use only in server-side admin routes.
-const supabaseAdmin = createSupabaseAdminClient();
+const prismaAny = prisma as any;
 
 const createImageId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
   return `img_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const createProductFilterId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `pf_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 };
 
 const isNumericProductId = (value: string) => /^\d+$/.test(String(value || '').trim());
@@ -28,8 +32,98 @@ const normalizeNumericProductId = (value: string) => {
 const isDuplicateProductIdError = (error: any) => {
   const code = String(error?.code || '');
   const message = String(error?.message || '');
-  return code === '23505' && /Product.*id|Product_pkey|duplicate key/i.test(message);
+  return (
+    code === '23505' ||
+    code === 'P2002' ||
+    /Product.*id|Product_pkey|duplicate key|Unique constraint failed/i.test(message)
+  );
 };
+
+const slugify = (value: string) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+
+async function resolveProductTypeId(body: any) {
+  try {
+    const explicitId = typeof body?.productTypeId === 'string' ? body.productTypeId.trim() : '';
+    if (explicitId) {
+      const byId = await prismaAny.productType.findUnique({ where: { id: explicitId } });
+      if (byId?.id) return byId.id;
+    }
+
+    const explicitSlug = typeof body?.productTypeSlug === 'string' ? body.productTypeSlug.trim() : '';
+    if (explicitSlug) {
+      const bySlug = await prismaAny.productType.findUnique({ where: { slug: explicitSlug } });
+      if (bySlug?.id) return bySlug.id;
+    }
+
+    const baseName = typeof body?.productTypeName === 'string' && body.productTypeName.trim()
+      ? body.productTypeName.trim()
+      : typeof body?.category === 'string' && body.category.trim()
+        ? body.category.trim()
+        : 'General';
+
+    const baseSlug = slugify(baseName) || 'general';
+    const existing = await prismaAny.productType.findUnique({ where: { slug: baseSlug } });
+    if (existing?.id) return existing.id;
+
+    const created = await prismaAny.productType.create({
+      data: {
+        name: baseName,
+        slug: baseSlug,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+
+    return created.id;
+  } catch {
+    // Fallback path for environments where generated Prisma typings lag schema changes.
+    try {
+      const explicitId = typeof body?.productTypeId === 'string' ? body.productTypeId.trim() : '';
+      if (explicitId) {
+        const byId = await prisma.$queryRaw<Array<{ id: string }>>`
+          SELECT id FROM "product_types" WHERE id = ${explicitId} LIMIT 1
+        `;
+        if (byId[0]?.id) return byId[0].id;
+      }
+
+      const explicitSlug = typeof body?.productTypeSlug === 'string' ? body.productTypeSlug.trim() : '';
+      if (explicitSlug) {
+        const bySlug = await prisma.$queryRaw<Array<{ id: string }>>`
+          SELECT id FROM "product_types" WHERE slug = ${explicitSlug} LIMIT 1
+        `;
+        if (bySlug[0]?.id) return bySlug[0].id;
+      }
+
+      const baseName = typeof body?.productTypeName === 'string' && body.productTypeName.trim()
+        ? body.productTypeName.trim()
+        : typeof body?.category === 'string' && body.category.trim()
+          ? body.category.trim()
+          : 'General';
+      const baseSlug = slugify(baseName) || 'general';
+
+      const existing = await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM "product_types" WHERE slug = ${baseSlug} LIMIT 1
+      `;
+      if (existing[0]?.id) return existing[0].id;
+
+      const created = await prisma.$queryRaw<Array<{ id: string }>>`
+        INSERT INTO "product_types" ("id", "name", "slug", "isActive", "createdAt", "updatedAt")
+        VALUES (gen_random_uuid()::text, ${baseName}, ${baseSlug}, true, NOW(), NOW())
+        RETURNING id
+      `;
+
+      return created[0]?.id || '';
+    } catch {
+      return '';
+    }
+  }
+}
 
 async function getNextSequentialProductId() {
   const products = await prisma.product.findMany({
@@ -67,6 +161,70 @@ async function requireAdmin() {
   }
 }
 
+async function syncProductFilters(
+  productId: string,
+  filterOptionIdsRaw: unknown,
+  productTypeId: string
+) {
+  if (!Array.isArray(filterOptionIdsRaw)) {
+    return;
+  }
+
+  const candidateIds = Array.from(
+    new Set(
+      filterOptionIdsRaw
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+        .filter(Boolean)
+    )
+  );
+
+  if (candidateIds.length === 0) {
+    await prisma.$executeRaw`
+      DELETE FROM "product_filters"
+      WHERE "productId" = ${productId}
+    `;
+    return;
+  }
+
+  const candidateOptions = await prisma.$queryRaw<Array<{ id: string; productTypeId: string }>>`
+    SELECT fo.id, fg."productTypeId" AS "productTypeId"
+    FROM "filter_options" fo
+    INNER JOIN "filter_groups" fg ON fg.id = fo."filterGroupId"
+    WHERE fo."isActive" = true
+      AND fg."isActive" = true
+      AND fo.id IN (${Prisma.join(candidateIds)})
+  `;
+
+  const allowedByType = productTypeId
+    ? candidateOptions
+        .filter((option) => String(option.productTypeId) === String(productTypeId))
+        .map((option) => String(option.id))
+    : [];
+
+  const fallbackAllowed = candidateOptions.map((option) => String(option.id));
+  const sourceIds = allowedByType.length > 0 ? allowedByType : fallbackAllowed;
+  const allowedIds = new Set(sourceIds);
+  const validOptionIds = candidateIds.filter((id) => allowedIds.has(id));
+
+  if (validOptionIds.length === 0) {
+    return;
+  }
+
+  await prisma.$executeRaw`
+    DELETE FROM "product_filters"
+    WHERE "productId" = ${productId}
+  `;
+
+  for (const optionId of validOptionIds) {
+    await prisma.$executeRaw`
+      INSERT INTO "product_filters" ("id", "productId", "filterOptionId")
+      VALUES (${createProductFilterId()}, ${productId}, ${optionId})
+      ON CONFLICT ("productId", "filterOptionId") DO NOTHING
+    `;
+  }
+}
+
 export async function GET() {
   const products = await prisma.product.findMany({
     include: {
@@ -84,7 +242,67 @@ export async function GET() {
     orderBy: { createdAt: 'desc' },
   });
 
-  return NextResponse.json(products);
+  const productIds = products.map((product) => String(product.id));
+  const filterRowsRaw = productIds.length
+    ? await prisma.$queryRaw<Array<{
+        id: string;
+        productId: string;
+        filterOptionId: string;
+        optionId: string;
+        optionValue: string;
+        optionDisplayLabel: string;
+        groupId: string;
+        groupName: string;
+        groupDisplayName: string;
+        groupSlug: string;
+      }>>`
+        SELECT
+          pf.id,
+          pf."productId" AS "productId",
+          pf."filterOptionId" AS "filterOptionId",
+          fo.id AS "optionId",
+          fo.value AS "optionValue",
+          fo."displayLabel" AS "optionDisplayLabel",
+          fg.id AS "groupId",
+          fg.name AS "groupName",
+          fg."displayName" AS "groupDisplayName",
+          fg.slug AS "groupSlug"
+        FROM "product_filters" pf
+        INNER JOIN "filter_options" fo ON fo.id = pf."filterOptionId"
+        INNER JOIN "filter_groups" fg ON fg.id = fo."filterGroupId"
+      `
+    : [];
+
+  const productIdSet = new Set(productIds);
+  const filterRows = filterRowsRaw.filter((row) => productIdSet.has(String(row.productId)));
+
+  const filtersByProduct = new Map<string, any[]>();
+  for (const row of filterRows) {
+    const list = filtersByProduct.get(row.productId) || [];
+    list.push({
+      id: row.id,
+      filterOptionId: row.filterOptionId,
+      filterOption: {
+        id: row.optionId,
+        value: row.optionValue,
+        displayLabel: row.optionDisplayLabel,
+        filterGroup: {
+          id: row.groupId,
+          name: row.groupName,
+          displayName: row.groupDisplayName,
+          slug: row.groupSlug,
+        },
+      },
+    });
+    filtersByProduct.set(row.productId, list);
+  }
+
+  return NextResponse.json(
+    products.map((product) => ({
+      ...product,
+      filters: filtersByProduct.get(String(product.id)) || [],
+    }))
+  );
 }
 
 export async function POST(request: NextRequest) {
@@ -96,6 +314,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
+    const productTypeId = await resolveProductTypeId(body);
 
     if (
       !body?.name ||
@@ -125,7 +344,7 @@ export async function POST(request: NextRequest) {
       ? normalizeNumericProductId(requestedIdRaw)
       : '';
 
-    const createPayload = {
+    const createPayload: Record<string, any> = {
       name: body.name,
       price: body.price,
       stock: body.stock,
@@ -137,6 +356,14 @@ export async function POST(request: NextRequest) {
       sizes,
     };
 
+    if (productTypeId) {
+      createPayload.productTypeId = productTypeId;
+    }
+
+    if (!createPayload.productTypeId) {
+      return NextResponse.json({ error: 'Unable to resolve product type' }, { status: 500 });
+    }
+
     const maxAttempts = 5;
     let attempt = 0;
     let product: any = null;
@@ -146,18 +373,36 @@ export async function POST(request: NextRequest) {
       const productId =
         attempt === 0 && requestedId ? requestedId : await getNextSequentialProductId();
 
-      // Use service role Supabase client to bypass RLS for all writes.
-      const result = await supabaseAdmin
-        .from('Product')
-        .insert({
-          id: productId,
-          ...createPayload,
-        })
-        .select()
-        .single();
+      try {
+        const now = new Date();
+        const inserted = await prisma.$queryRaw<Array<Record<string, any>>>`
+          INSERT INTO "Product"
+            ("id", "name", "price", "description", "image", "category", "stock", "createdAt", "updatedAt", "tag", "rating", "sizes", "productTypeId")
+          VALUES
+            (
+              ${productId},
+              ${String(createPayload.name)},
+              ${createPayload.price},
+              ${String(createPayload.description)},
+              ${String(createPayload.image)},
+              ${String(createPayload.category)},
+              ${createPayload.stock},
+              ${now},
+              ${now},
+              ${createPayload.tag ?? null},
+              ${createPayload.rating ?? null},
+              ${createPayload.sizes},
+              ${String(createPayload.productTypeId)}
+            )
+          RETURNING *
+        `;
 
-      product = result.data;
-      createError = result.error;
+        product = inserted?.[0] || null;
+        createError = null;
+      } catch (error: any) {
+        product = null;
+        createError = error;
+      }
 
       if (!createError && product) {
         break;
@@ -176,23 +421,23 @@ export async function POST(request: NextRequest) {
     }
 
     if (imagePaths.length) {
-      const { error: imgError } = await supabaseAdmin
-        .from('product_images')
-        .insert(
-          imagePaths.map((path: string, index: number) => ({
+      try {
+        await prismaAny.productImage.createMany({
+          data: imagePaths.map((path: string, index: number) => ({
             id: createImageId(),
             product_id: product.id,
             image_path: path,
             public_id: extractCloudinaryPublicId(path) || null,
             is_primary: index === 0,
-          }))
-        );
-
-      if (imgError) {
+          })),
+        });
+      } catch (imgError: any) {
         // Product was created; log but don't fail the whole request.
-        console.error('Image insert error:', imgError.message);
+        console.error('Image insert error:', imgError?.message || imgError);
       }
     }
+
+    await syncProductFilters(product.id, body?.filterOptionIds, String(createPayload.productTypeId));
 
     return NextResponse.json(product, { status: 201 });
   } catch (error: any) {

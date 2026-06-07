@@ -42,28 +42,129 @@ model Address {
   @@map("addresses")
 }
 
-model Product {
-  id            String          @id @default(cuid())
-  name          String
-  price         Decimal         @db.Decimal(10, 2)
-  description   String
-  image         String
-  category      String
-  stock         Int             @default(0)
-  createdAt     DateTime        @default(now()) @db.Timestamp(0)
-  tag           String?
-  rating        Float?
-  sizes         String[]        @default([])
-  colorHex      String?         @default("#000000")
-  colorName     String?         @default("Unspecified")
-  ComboProducts ComboProducts[]
-  cartItems     CartItem[]
-  orderItems    OrderItem[]
-  images        ProductImage[]
-  reviews       Review[]
-  wishlistItems WishlistItem[]
+model ProductType {
+  id            String                @id @default(cuid())
+  name          String                @unique
+  slug          String                @unique
+  description   String?
+  icon          String?
+  displayOrder  Int                   @default(0)
+  isActive      Boolean               @default(true)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  
+  products      Product[]
+  subcategories SubCategory[]
+  filterGroups  FilterGroup[]
+  comboPacks    ComboPack[]
 
+  @@index([slug])
+  @@map("product_types")
+}
+
+model SubCategory {
+  id              String                @id @default(cuid())
+  productTypeId   String
+  name            String
+  slug            String
+  description     String?
+  displayOrder    Int                   @default(0)
+  isActive        Boolean               @default(true)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  
+  productType     ProductType           @relation(fields: [productTypeId], references: [id], onDelete: Cascade)
+  products        Product[]
+
+  @@unique([productTypeId, slug])
+  @@index([productTypeId])
+  @@map("sub_categories")
+}
+
+model Product {
+  id                String          @id @default(cuid())
+  name              String
+  price             Decimal         @db.Decimal(10, 2)
+  description       String
+  image             String
+  stock             Int             @default(0)
+  createdAt         DateTime        @default(now()) @db.Timestamp(0)
+  updatedAt         DateTime        @updatedAt
+  tag               String?
+  rating            Float?
+  sizes             String[]        @default([])
+  colorHex          String?         @default("#000000")
+  colorName         String?         @default("Unspecified")
+  
+  productTypeId     String
+  subCategoryId     String?
+  category          String?         // Deprecated: Use productTypeId instead
+  
+  productType       ProductType     @relation(fields: [productTypeId], references: [id], onDelete: Restrict)
+  subCategory       SubCategory?    @relation(fields: [subCategoryId], references: [id], onDelete: SetNull)
+  ComboProducts     ComboProducts[]
+  cartItems         CartItem[]
+  orderItems        OrderItem[]
+  images            ProductImage[]
+  reviews           Review[]
+  wishlistItems     WishlistItem[]
+  filters           ProductFilter[]
+  comboPacks        ComboPack[]
+
+  @@index([productTypeId])
+  @@index([subCategoryId])
   @@map("Product")
+}
+
+model FilterGroup {
+  id              String                @id @default(cuid())
+  productTypeId   String
+  name            String
+  displayName     String
+  slug            String
+  displayOrder    Int                   @default(0)
+  isActive        Boolean               @default(true)
+  filterType      FilterType            @default(MULTI_SELECT)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  
+  productType     ProductType           @relation(fields: [productTypeId], references: [id], onDelete: Cascade)
+  filterOptions   FilterOption[]
+
+  @@unique([productTypeId, slug])
+  @@index([productTypeId])
+  @@map("filter_groups")
+}
+
+model FilterOption {
+  id              String                @id @default(cuid())
+  filterGroupId   String
+  value           String
+  displayLabel    String
+  colorHex        String?
+  displayOrder    Int                   @default(0)
+  isActive        Boolean               @default(true)
+  createdAt       DateTime              @default(now())
+  
+  filterGroup     FilterGroup           @relation(fields: [filterGroupId], references: [id], onDelete: Cascade)
+  productFilters  ProductFilter[]
+
+  @@index([filterGroupId])
+  @@map("filter_options")
+}
+
+model ProductFilter {
+  id                String                @id @default(cuid())
+  productId         String
+  filterOptionId    String
+  
+  product           Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+  filterOption      FilterOption          @relation(fields: [filterOptionId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, filterOptionId])
+  @@index([productId])
+  @@index([filterOptionId])
+  @@map("product_filters")
 }
 
 model ProductImage {
@@ -124,16 +225,17 @@ model Order {
 }
 
 model OrderItem {
-  id           String      @id @default(cuid())
-  orderId      String
-  productId    String
-  quantity     Int
-  price        Decimal     @db.Decimal(10, 2)
-  selectedSize String?
-  comboOfferId String?
-  comboOffer   ComboOffer? @relation(fields: [comboOfferId], references: [id])
-  order        Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product      Product     @relation(fields: [productId], references: [id])
+  id                String        @id @default(cuid())
+  orderId           String
+  productId         String
+  quantity          Int
+  price             Decimal       @db.Decimal(10, 2)
+  selectedSize      String?
+  comboOfferId      String?
+  comboOffer        ComboOffer?   @relation(fields: [comboOfferId], references: [id])
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product           Product       @relation(fields: [productId], references: [id])
+  orderComboItems   OrderComboItem[]
 
   @@map("order_items")
 }
@@ -175,6 +277,44 @@ model ComboOffer {
   orderItems    OrderItem[]
 
   @@map("combo_offers")
+}
+
+model ComboPack {
+  id              String                @id @default(cuid())
+  name            String
+  description     String?
+  productTypeId   String
+  minQuantity     Int                   @default(3)
+  maxQuantity     Int?
+  discountType    DiscountType          @default(PERCENTAGE)
+  discountValue   Decimal               @db.Decimal(10, 2)
+  isActive        Boolean               @default(true)
+  startDate       DateTime?
+  endDate         DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  
+  productType     ProductType           @relation(fields: [productTypeId], references: [id])
+  products        Product[]
+  orderComboItems OrderComboItem[]
+
+  @@index([productTypeId])
+  @@map("combo_packs")
+}
+
+model OrderComboItem {
+  id              String                @id @default(cuid())
+  orderItemId     String
+  comboPackId     String
+  quantityInCombo Int
+  discountApplied Decimal               @db.Decimal(10, 2)
+  
+  orderItem       OrderItem             @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  comboPack       ComboPack             @relation(fields: [comboPackId], references: [id])
+
+  @@index([orderItemId])
+  @@index([comboPackId])
+  @@map("order_combo_items")
 }
 
 model Review {
@@ -238,4 +378,11 @@ enum PaymentStatus {
 enum DiscountType {
   PERCENTAGE
   FIXED_AMOUNT
+}
+
+enum FilterType {
+  MULTI_SELECT
+  SINGLE_SELECT
+  RANGE
+  COLOR
 }

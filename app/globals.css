@@ -192,6 +192,15 @@ background:
   display: none;
 }
 
+body.ikna-modal-open .shop-content-layer {
+  filter: blur(8px) saturate(0.95) brightness(0.9);
+  transition: filter 220ms ease;
+}
+
+.shop-content-layer {
+  transition: filter 220ms ease;
+}
+
 /* Privacy Policy Styles */
 /* 1. Announcement Bar */
 .announcementBar {

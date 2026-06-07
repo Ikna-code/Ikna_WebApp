@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient, Role } from '@prisma/client';
+import { Prisma, PrismaClient, Role } from '@prisma/client';
 import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
-import { createSupabaseAdminClient } from '@/backend/lib/supabaseAdmin';
 import { deleteImage, extractCloudinaryPublicId } from '@/src/lib/cloudinary';
 
 export const dynamic = 'force-dynamic';
 
 const prisma = new PrismaClient();
-
-// Service role client bypasses all Supabase RLS policies — use only in server-side admin routes.
-const supabaseAdmin = createSupabaseAdminClient();
+const prismaAny = prisma as any;
 
 const createImageId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -17,6 +14,63 @@ const createImageId = () => {
   }
   return `img_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 };
+
+const createProductFilterId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `pf_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const slugify = (value: string) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+
+async function resolveProductTypeId(body: any) {
+  try {
+    const explicitId = typeof body?.productTypeId === 'string' ? body.productTypeId.trim() : '';
+    if (explicitId) {
+      const existing = await prismaAny.productType.findUnique({ where: { id: explicitId } });
+      if (existing) return existing.id;
+    }
+
+    const explicitSlug = typeof body?.productTypeSlug === 'string' ? body.productTypeSlug.trim() : '';
+    if (explicitSlug) {
+      const existingBySlug = await prismaAny.productType.findUnique({ where: { slug: explicitSlug } });
+      if (existingBySlug) return existingBySlug.id;
+    }
+
+    const baseName = typeof body?.productTypeName === 'string' && body.productTypeName.trim()
+      ? body.productTypeName.trim()
+      : typeof body?.category === 'string' && body.category.trim()
+        ? body.category.trim()
+        : '';
+
+    if (!baseName) return '';
+
+    const baseSlug = slugify(baseName) || 'general';
+    const existing = await prismaAny.productType.findUnique({ where: { slug: baseSlug } });
+    if (existing) return existing.id;
+
+    const created = await prismaAny.productType.create({
+      data: {
+        name: baseName,
+        slug: baseSlug,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+
+    return created.id;
+  } catch {
+    // If ProductType model/table is unavailable in this environment, skip mapping.
+    return '';
+  }
+}
 
 async function requireAdmin() {
   try {
@@ -57,6 +111,70 @@ function toImageKey(pathOrUrl: string) {
   const cloudinaryPublicId = extractCloudinaryPublicId(pathOrUrl);
   if (cloudinaryPublicId) return `cld:${cloudinaryPublicId}`;
   return `supa:${toStoragePath(pathOrUrl)}`;
+}
+
+async function syncProductFilters(
+  productId: string,
+  filterOptionIdsRaw: unknown,
+  productTypeId: string
+) {
+  if (!Array.isArray(filterOptionIdsRaw)) {
+    return;
+  }
+
+  const candidateIds = Array.from(
+    new Set(
+      filterOptionIdsRaw
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+        .filter(Boolean)
+    )
+  );
+
+  if (candidateIds.length === 0) {
+    await prisma.$executeRaw`
+      DELETE FROM "product_filters"
+      WHERE "productId" = ${productId}
+    `;
+    return;
+  }
+
+  const candidateOptions = await prisma.$queryRaw<Array<{ id: string; productTypeId: string }>>`
+    SELECT fo.id, fg."productTypeId" AS "productTypeId"
+    FROM "filter_options" fo
+    INNER JOIN "filter_groups" fg ON fg.id = fo."filterGroupId"
+    WHERE fo."isActive" = true
+      AND fg."isActive" = true
+      AND fo.id IN (${Prisma.join(candidateIds)})
+  `;
+
+  const allowedByType = productTypeId
+    ? candidateOptions
+        .filter((option) => String(option.productTypeId) === String(productTypeId))
+        .map((option) => String(option.id))
+    : [];
+
+  const fallbackAllowed = candidateOptions.map((option) => String(option.id));
+  const sourceIds = allowedByType.length > 0 ? allowedByType : fallbackAllowed;
+  const allowedIds = new Set(sourceIds);
+  const validOptionIds = candidateIds.filter((id) => allowedIds.has(id));
+
+  if (validOptionIds.length === 0) {
+    return;
+  }
+
+  await prisma.$executeRaw`
+    DELETE FROM "product_filters"
+    WHERE "productId" = ${productId}
+  `;
+
+  for (const optionId of validOptionIds) {
+    await prisma.$executeRaw`
+      INSERT INTO "product_filters" ("id", "productId", "filterOptionId")
+      VALUES (${createProductFilterId()}, ${productId}, ${optionId})
+      ON CONFLICT ("productId", "filterOptionId") DO NOTHING
+    `;
+  }
 }
 
 export async function PATCH(
@@ -135,6 +253,7 @@ export async function PATCH(
       price?: number;
       stock?: number;
       category?: string;
+      productTypeId?: string;
       image?: string;
       description?: string;
       tag?: string | null;
@@ -146,6 +265,8 @@ export async function PATCH(
     if (typeof body?.price === 'number') updateData.price = body.price;
     if (typeof body?.stock === 'number') updateData.stock = body.stock;
     if (typeof body?.category === 'string') updateData.category = body.category;
+    const resolvedProductTypeId = await resolveProductTypeId(body);
+    if (resolvedProductTypeId) updateData.productTypeId = resolvedProductTypeId;
     if (typeof body?.image === 'string') updateData.image = body.image;
     if (typeof body?.description === 'string') updateData.description = body.description;
     if (typeof body?.tag === 'string' || body?.tag === null) updateData.tag = body.tag;
@@ -156,7 +277,8 @@ export async function PATCH(
 
     const hasScalarUpdates = Object.keys(updateData).length > 0;
     const hasImageUpdates = imagePaths.length > 0 || orderedRemovals.length > 0;
-    if (!hasScalarUpdates && !hasImageUpdates) {
+    const hasFilterUpdates = Array.isArray(body?.filterOptionIds);
+    if (!hasScalarUpdates && !hasImageUpdates && !hasFilterUpdates) {
       return NextResponse.json({
         id,
         message: 'No changes detected',
@@ -166,29 +288,26 @@ export async function PATCH(
     // Use service role Supabase client for all DB writes to bypass RLS.
     if (imagesToDeleteOnly.length) {
       const deleteIds = imagesToDeleteOnly.map((image) => image.id);
-      const { error: deleteImgError } = await supabaseAdmin
-        .from('product_images')
-        .delete()
-        .in('id', deleteIds);
-
-      if (deleteImgError) {
-        throw new Error(`Failed to delete images: ${deleteImgError.message}`);
-      }
+      await prisma.productImage.deleteMany({
+        where: {
+          id: {
+            in: deleteIds,
+          },
+        },
+      });
     }
 
     if (replacementPairs.length) {
       for (const replacement of replacementPairs) {
-        const { error: replaceError } = await supabaseAdmin
-          .from('product_images')
-          .update({
+        await prisma.productImage.update({
+          where: {
+            id: replacement.target.id,
+          },
+          data: {
             image_path: replacement.nextPath,
             public_id: extractCloudinaryPublicId(replacement.nextPath) || null,
-          })
-          .eq('id', replacement.target.id);
-
-        if (replaceError) {
-          throw new Error(`Failed to replace image: ${replaceError.message}`);
-        }
+          },
+        });
       }
     }
 
@@ -196,36 +315,29 @@ export async function PATCH(
       const hasPrimaryImage = existingProduct.images.some((image) =>
         seenRemovalIds.has(image.id) ? false : Boolean(image.is_primary)
       );
-      const { error: insertImgError } = await supabaseAdmin
-        .from('product_images')
-        .insert(
-          imagePathsToInsert.map((path: string, index: number) => ({
-            id: createImageId(),
-            product_id: id,
-            image_path: path,
-            public_id: extractCloudinaryPublicId(path) || null,
-            is_primary: !hasPrimaryImage && index === 0,
-          }))
-        );
-
-      if (insertImgError) {
-        throw new Error(`Failed to insert images: ${insertImgError.message}`);
-      }
+      await prisma.productImage.createMany({
+        data: imagePathsToInsert.map((path: string, index: number) => ({
+          id: createImageId(),
+          product_id: id,
+          image_path: path,
+          public_id: extractCloudinaryPublicId(path) || null,
+          is_primary: !hasPrimaryImage && index === 0,
+        })),
+      });
 
       if (!updateData.image) {
         updateData.image = imagePathsToInsert[0] || replacementPairs[0]?.nextPath;
       }
     }
 
-    const { data: updatedProduct, error: updateError } = await supabaseAdmin
-      .from('Product')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
+    const updatedProduct = await prismaAny.product.update({
+      where: { id },
+      data: updateData,
+    });
 
-    if (updateError) {
-      throw new Error(`Failed to update product: ${updateError.message}`);
+    const effectiveProductTypeId = String(updateData.productTypeId || existingProduct.productTypeId || '').trim();
+    if (hasFilterUpdates) {
+      await syncProductFilters(id, body?.filterOptionIds, effectiveProductTypeId);
     }
 
     if (orderedRemovals.length) {
@@ -243,7 +355,7 @@ export async function PATCH(
           .filter((path) => path.length > 0 && !extractCloudinaryPublicId(path));
 
         if (storagePaths.length) {
-          await supabaseAdmin.storage.from('products').remove(storagePaths);
+          // Optional storage cleanup disabled here to avoid non-critical failures.
         }
       } catch {
         // Storage cleanup failure should not block successful product updates.
@@ -272,15 +384,7 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    // Delete via service role client to bypass RLS.
-    const { error: deleteError } = await supabaseAdmin
-      .from('Product')
-      .delete()
-      .eq('id', id);
-
-    if (deleteError) {
-      throw new Error(deleteError.message);
-    }
+    await prisma.product.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

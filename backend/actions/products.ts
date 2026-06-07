@@ -1,7 +1,6 @@
   "use server"
   import { db } from "@/backend/lib/db";
   import { revalidatePath } from "next/cache";
-  import { supabase } from '../lib/supabaseClient';
   import { extractCloudinaryPublicId } from '@/src/lib/cloudinary';
 
   // Sanitize products for safe serialization across server-client boundary
@@ -103,60 +102,63 @@
   }
 
   export const getProductWithImages = async (productId: string) => {
-    const { data, error } = await supabase
-      .from('Product') // Note the capital "P" as per your SQL
-      .select(`
-        *,
-        product_images (
-          image_path,
-          is_primary
-        )
-      `)
-      .eq('id', productId)
-      .single();
+    const row = await db.product.findUnique({
+      where: { id: productId },
+      include: {
+        images: {
+          select: {
+            image_path: true,
+            is_primary: true,
+          },
+          orderBy: [
+            { is_primary: 'desc' },
+            { id: 'asc' },
+          ],
+        },
+      },
+    });
 
-    if (error) {
-      console.error("Error fetching product:", error);
-      return null;
-    }
+    if (!row) return null;
 
-    if (!data) return null;
-
-    const productImages = Array.isArray(data.product_images) ? data.product_images : [];
+    const productImages = Array.isArray(row.images) ? row.images : [];
     const safeImages = productImages.filter((image: { image_path?: string }) =>
       isPathInProductFolder(String(image?.image_path || ''), productId)
     );
 
-    const normalizedImage = isPathInProductFolder(String(data.image || ''), productId)
-      ? data.image
-      : safeImages[0]?.image_path || data.image;
+    const normalizedImage = isPathInProductFolder(String(row.image || ''), productId)
+      ? row.image
+      : safeImages[0]?.image_path || row.image;
 
     return sanitizeProduct({
-      ...data,
+      ...row,
       image: normalizedImage,
       product_images: safeImages,
     });
   };
 
   export const getAllProductsWithPrimaryImage = async () => {
-    const { data, error } = await supabase
-      .from('Product')
-      .select(`
-        *,
-        product_images(image_path, is_primary)
-      `)
-      // This syntax tells Supabase: "Only include the images where is_primary is true"
-      .filter('product_images.is_primary', 'eq', true);
-
-    if (error) {
-      console.error("Error fetching products:", error);
-      return []; // Return empty array instead of null to prevent .map errors
-    }
-
-    const rows = Array.isArray(data) ? data : [];
+    const rows = await db.product.findMany({
+      include: {
+        images: {
+          select: {
+            image_path: true,
+            is_primary: true,
+          },
+          where: {
+            is_primary: true,
+          },
+          orderBy: {
+            id: 'asc',
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
 
     return rows.map((row: any) => {
-      const productImages = Array.isArray(row?.product_images) ? row.product_images : [];
+      const productImages = Array.isArray(row?.images) ? row.images : [];
       const safeImages = productImages.filter((image: { image_path?: string }) =>
         isPathInProductFolder(String(image?.image_path || ''), String(row?.id || ''))
       );
