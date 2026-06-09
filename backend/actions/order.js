@@ -6,6 +6,8 @@ import { supabase } from '../lib/supabaseClient';// 🛒 CART ACTIONS
 import { Prisma } from "@prisma/client";
 import { calculateComboDiscounts, validateCouponCode } from "./promotions";
 
+const toPlainData = (value) => JSON.parse(JSON.stringify(value));
+
 function generateShortOrderId(length = 6) {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let result = "";
@@ -40,7 +42,9 @@ export async function addToCart(
   productId, 
   selectedSize, 
   quantity= 1,
-  category
+  category,
+  comboEligibleQuantity = 0,
+  comboBundleId = ""
 ) {
   try {
     // 1. Verify product exists and check stock
@@ -59,21 +63,24 @@ export async function addToCart(
     // 2. Perform the Upsert
     const cartItem = await db.cartItem.upsert({
       where: {
-        // FIXED: This must match the tri-composite key in your schema
-        userId_productId_selectedSize: {
+        userId_productId_selectedSize_comboBundleId: {
           userId,
           productId,
           selectedSize,
+          comboBundleId: String(comboBundleId || ""),
         },
       },
       update: {
         quantity: { increment: quantity },
+        comboEligibleQuantity: { increment: Math.max(0, Number(comboEligibleQuantity) || 0) },
       },
       create: {
         userId,
         productId,
         selectedSize,
         quantity,
+        comboEligibleQuantity: Math.max(0, Number(comboEligibleQuantity) || 0),
+        comboBundleId: String(comboBundleId || ""),
         category, // Store category for potential combo logic
       },
     });
@@ -104,7 +111,7 @@ export async function getCartItems(userId) {
       },
     });
 
-    return { success: true, items };
+    return { success: true, items: toPlainData(items) };
   } catch (error) {
     console.error("Fetch cart error:", error);
     return { success: false, error: "Could not load cart items" };
@@ -155,12 +162,51 @@ export async function updateCartQuantity(cartItemId, newQuantity) {
     // 2. Ensure quantity is a valid number (Prisma expects Int for quantity)
     const qty = Math.max(1, parseInt(newQuantity));
 console.log("Parsed quantity:", qty);
+    const existingItem = await db.cartItem.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        userId: true,
+        comboBundleId: true,
+        comboEligibleQuantity: true,
+      },
+    });
+
+    const normalizedBundleId = String(existingItem?.comboBundleId || '').trim();
+    if (normalizedBundleId) {
+      const siblingBundleItems = await db.cartItem.findMany({
+        where: {
+          userId: existingItem?.userId,
+          comboBundleId: normalizedBundleId,
+        },
+        select: {
+          comboEligibleQuantity: true,
+        },
+      });
+
+      const eligibleBundleQty = siblingBundleItems.reduce(
+        (sum, item) => sum + Math.max(Number(item?.comboEligibleQuantity) || 0, 0),
+        0
+      );
+
+      if (eligibleBundleQty >= 3) {
+        return { success: false, error: "Completed combo bundles cannot be edited. Remove the bundle item instead." };
+      }
+    }
+
+    const boundedComboEligibleQty = Math.min(
+      Math.max(Number(existingItem?.comboEligibleQuantity) || 0, 0),
+      qty
+    );
+
     const updatedItem = await db.cartItem.update({
       where: { 
         id: id 
       },
       data: { 
-        quantity: qty 
+        quantity: qty,
+        comboEligibleQuantity: boundedComboEligibleQty,
       },
     });
 
@@ -286,21 +332,27 @@ export async function createOrder(userId, couponCode = null, options = {}) {
       // Create pre-calculated structure mapping item records
       const preparedOrderItems = cartItems.map((item) => {
         const originalPrice = new Prisma.Decimal(item.product.price);
-        const comboMeta = comboDiscounts[item.productId];
+        const comboMeta = comboDiscounts[item.id];
         
         let finalUnitPrice = originalPrice;
         let appliedComboId = null;
+        let lineItemCost = originalPrice.mul(item.quantity);
 
         if (comboMeta) {
-          finalUnitPrice = originalPrice.sub(comboMeta.amountPerUnit);
+          const discountedUnits = Math.min(
+            Math.max(Number(comboMeta.discountedUnits) || 0, 0),
+            Math.max(Number(item.quantity) || 0, 0)
+          );
+          const totalLineComboSavings = comboMeta.amountPerUnit.mul(discountedUnits);
+
+          lineItemCost = lineItemCost.sub(totalLineComboSavings);
+          finalUnitPrice = item.quantity > 0 ? lineItemCost.div(item.quantity) : originalPrice;
           appliedComboId = comboMeta.comboOfferId;
           
-          // Accumulate line item variance
-          const totalLineComboSavings = comboMeta.amountPerUnit.mul(item.quantity);
+          // Accumulate line item variance only for discounted combo units.
           totalDiscountAccumulator = totalDiscountAccumulator.add(totalLineComboSavings);
         }
 
-        const lineItemCost = finalUnitPrice.mul(item.quantity);
         workingSubtotal = workingSubtotal.add(lineItemCost);
 
         return {

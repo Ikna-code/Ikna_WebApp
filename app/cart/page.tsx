@@ -19,7 +19,7 @@ type CheckoutCartItem = {
   productId: string;
   price: number;
   quantity: number;
-  isComboEligible: boolean;
+  comboEligibleQuantity: number;
 };
 
 type CheckoutSummary = {
@@ -260,38 +260,98 @@ const CartPage = () => {
 
   // 7. CALCULATIONS: Drive the cart UI from the checkout summary rules.
   const comboTarget = 3;
-  const productQuantities = cartItems.reduce<Record<string, number>>((acc, item) => {
-    const productId = item?.productId || item?.Product?.id || item?.product?.id || item?.id;
-    if (!productId) {
-      return acc;
+  const getSubCategoryKey = (item: any) => {
+    const key =
+      item?.Product?.subCategory?.name ||
+      item?.Product?.subCategory?.slug ||
+      item?.Product?.subCategoryName ||
+      item?.Product?.subCategoryId ||
+      item?.product?.subCategory?.name ||
+      item?.product?.subCategory?.slug ||
+      item?.product?.subCategoryName ||
+      item?.product?.subCategoryId ||
+      item?.subCategoryName ||
+      item?.subCategoryId ||
+      item?.subCategory;
+
+    return String(key || '').trim().toLowerCase();
+  };
+
+  const comboEligibleQuantityByCartItemId = new Map<string, number>();
+  const comboBundleGroups = new Map<string, typeof cartItems>();
+
+  cartItems.forEach((item) => {
+    const comboBundleId = String(item?.comboBundleId || '').trim();
+    if (!comboBundleId) {
+      return;
     }
 
-    acc[productId] = (acc[productId] || 0) + Number(item?.quantity || 1);
-    return acc;
-  }, {});
+    const existing = comboBundleGroups.get(comboBundleId);
+    if (existing) {
+      existing.push(item);
+      return;
+    }
 
-  const comboEligibleProductIds = new Set(
-    Object.entries(productQuantities)
-      .filter(([, quantity]) => quantity >= comboTarget)
-      .map(([productId]) => productId)
+    comboBundleGroups.set(comboBundleId, [item]);
+  });
+
+  const comboBundleSummaries = Array.from(comboBundleGroups.entries()).map(([bundleId, items]) => {
+    const totalEligibleQty = items.reduce(
+      (sum, item) => sum + Math.max(Number(item?.comboEligibleQuantity) || 0, 0),
+      0
+    );
+    const subCategoryKeys = new Set(items.map((item) => getSubCategoryKey(item)).filter(Boolean));
+    const isValid = totalEligibleQty >= comboTarget && subCategoryKeys.size === 1;
+
+    if (isValid) {
+      items.forEach((item) => {
+        const lineEligibleQty = Math.min(
+          Math.max(Number(item?.comboEligibleQuantity) || 0, 0),
+          Math.max(Number(item?.quantity) || 0, 0)
+        );
+        if (lineEligibleQty > 0) {
+          comboEligibleQuantityByCartItemId.set(item.id, lineEligibleQty);
+        }
+      });
+    }
+
+    return {
+      bundleId,
+      items,
+      totalEligibleQty,
+      isValid,
+    };
+  });
+
+  const validComboBundles = comboBundleSummaries.filter((bundle) => bundle.isValid);
+  const validComboBundleIds = new Set(validComboBundles.map((bundle) => bundle.bundleId));
+
+  const regularCartItems = cartItems.filter(
+    (item) => !validComboBundleIds.has(String(item?.comboBundleId || '').trim())
   );
+
+  const cartDisplayEntries = [
+    ...validComboBundles.map((bundle) => ({ type: 'bundle' as const, bundle })),
+    ...regularCartItems.map((item) => ({ type: 'item' as const, item })),
+  ];
+
+  const comboSetCount = validComboBundles.length;
 
   const checkoutItems: CheckoutCartItem[] = cartItems.map((item) => ({
     id: item.id,
     productId: item?.productId || item?.Product?.id || item?.product?.id || item?.id,
     price: Number(item?.Product?.price || item?.product?.price || item?.price || 0),
     quantity: Number(item?.quantity || 1),
-    isComboEligible: comboEligibleProductIds.has(item?.productId || item?.Product?.id || item?.product?.id || item?.id),
+    comboEligibleQuantity: comboEligibleQuantityByCartItemId.get(item.id) || 0,
   }));
-  const totalCartItems = cartItems.reduce((sum, item) => sum + (Number(item?.quantity) || 1), 0);
   const comboEligibleSubtotal = checkoutItems.reduce((acc, item) => {
-    if (!item.isComboEligible) {
+    if (item.comboEligibleQuantity <= 0) {
       return acc;
     }
 
-    return acc + Math.max(item.price, 0) * Math.max(item.quantity, 0);
+    return acc + Math.max(item.price, 0) * Math.max(item.comboEligibleQuantity, 0);
   }, 0);
-  const isComboApplied = comboEligibleProductIds.size > 0;
+  const isComboApplied = comboEligibleSubtotal > 0;
   const checkoutSummary = calculateCheckoutSummary({
     cartItems: checkoutItems,
     comboEligibleSubtotal,
@@ -309,10 +369,10 @@ const CartPage = () => {
       : 'NO DISCOUNT';
       
   const comboStatusMessage = isComboApplied
-    ? `Combo active on ${comboEligibleProductIds.size} product${comboEligibleProductIds.size > 1 ? 's' : ''} (${comboTarget}+ qty each)`
+    ? `Combo active on ${comboSetCount} completed bundle${comboSetCount > 1 ? 's' : ''}`
     : null;
-  const hiddenMobileItemsCount = Math.max(cartItems.length - 3, 0);
-  const visibleCartItems = showAllMobileItems ? cartItems : cartItems.slice(0, 3);
+  const hiddenMobileItemsCount = Math.max(cartDisplayEntries.length - 3, 0);
+  const visibleCartEntries = showAllMobileItems ? cartDisplayEntries : cartDisplayEntries.slice(0, 3);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(min-width: 1024px)');
@@ -451,26 +511,94 @@ const CartPage = () => {
               <div className={`lg:col-span-3 space-y-4 md:space-y-5 ${cartItems.length > 4 ? 'lg:max-h-[calc(100vh-11rem)] lg:overflow-y-auto lg:pr-2' : ''}`}>
                 <div className="hidden lg:flex items-center justify-between px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#321327]/45">
                   <span>Products In Cart</span>
-                  {cartItems.length > 4 && <span>Scroll to view all {cartItems.length} items</span>}
+                  {cartDisplayEntries.length > 4 && <span>Scroll to view all {cartDisplayEntries.length} entries</span>}
                 </div>
 
-                {visibleCartItems.map((item) => {
-                  const targetProduct = item?.Product || item?.product || item; 
-                  const cartProductId = item?.productId || item?.Product?.id || item?.product?.id || item?.id;
-                  const isComboLineActive = comboEligibleProductIds.has(cartProductId);
+                {visibleCartEntries.map((entry) => {
+                  if (entry.type === 'bundle') {
+                    const bundlePrice = entry.bundle.items.reduce((sum, item) => {
+                      const targetProduct = item?.Product || item?.product || item;
+                      return sum + (Number(targetProduct?.price || item?.price || 0) * Math.max(Number(item?.quantity) || 0, 0));
+                    }, 0);
+
+                    return (
+                      <div key={entry.bundle.bundleId} className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-[2.3rem] border border-[#ffb6d8] shadow-sm w-full space-y-4">
+                        <div className="flex items-start justify-between gap-4 border-b border-[#840d5c]/8 pb-4">
+                          <div>
+                            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#ffe4f1] px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-[#a3095b] border border-[#ffb6d8]">
+                              <Sparkles size={10} /> Combo Bundle Locked
+                            </div>
+                            <h3 className="mt-2 text-base sm:text-lg font-serif text-[#321327] leading-tight">Completed Combo Bundle</h3>
+                            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#840d5c]/70 mt-1">
+                              Quantity is locked. Remove an item to break this bundle.
+                            </p>
+                          </div>
+                          <p className="text-base sm:text-lg font-bold text-[#321327] whitespace-nowrap">₹{bundlePrice.toLocaleString()}</p>
+                        </div>
+
+                        <div className="space-y-3">
+                          {entry.bundle.items.map((item) => {
+                            const targetProduct = item?.Product || item?.product || item;
+                            const fallbackImage = targetProduct?.image || targetProduct?.image_path || '';
+                            const fallbackName = targetProduct?.name || 'Product';
+                            return (
+                              <div key={item.id} className="flex flex-col sm:flex-row gap-4 sm:gap-5 items-start sm:items-center rounded-2xl bg-[#fff7fb] p-3 border border-[#840d5c]/8">
+                                <div className="relative w-full sm:w-24 h-36 sm:h-28 rounded-xl overflow-hidden shrink-0 border border-[#840d5c]/5 bg-white">
+                                  {fallbackImage ? (
+                                    <Image src={getOptimizedSupabaseImageUrl(fallbackImage, { width: 400, quality: 70 })} alt={fallbackName} fill sizes="400px" className="object-cover" />
+                                  ) : (
+                                    <div className="flex h-full w-full items-center justify-center text-[10px] font-bold uppercase tracking-widest text-[#840d5c]/35">
+                                      No Image
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="grow w-full space-y-2">
+                                  <div className="flex justify-between items-start gap-4">
+                                    <div>
+                                      <h4 className="text-sm sm:text-base font-serif text-[#321327] leading-tight">{fallbackName}</h4>
+                                      <p className="text-[10px] font-bold uppercase tracking-widest text-[#840d5c]/60 mt-1">
+                                        Size {item.selectedSize || targetProduct?.size || 'M'}
+                                      </p>
+                                    </div>
+                                    <p className="text-sm font-bold text-[#321327] whitespace-nowrap">₹{Number(targetProduct?.price || item?.price || 0).toLocaleString()}</p>
+                                  </div>
+                                  <div className="flex justify-between items-center pt-2 border-t border-[#840d5c]/5">
+                                    <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#321327] border border-[#840d5c]/10">
+                                      Locked Qty {item.quantity || 1}
+                                    </div>
+                                    <button onClick={() => removeItem(item.id)} className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-red-400 hover:text-red-600 transition-colors py-1">
+                                      <Trash2 size={13} /> Remove
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const item = entry.item;
+                  const targetProduct = item?.Product || item?.product || item;
+                  const comboEligibleQuantity = comboEligibleQuantityByCartItemId.get(item.id) || 0;
+                  const isComboLineActive = comboEligibleQuantity > 0;
                   const fallbackImage = targetProduct?.image || targetProduct?.image_path || '';
                   const fallbackName = targetProduct?.name || 'Product';
                   const fallbackPrice = targetProduct?.price || item?.price || 0;
 
                   return (
                     <div key={item.id} className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-[2.3rem] flex flex-col sm:flex-row gap-4 sm:gap-5 items-start sm:items-center border border-[#840d5c]/8 shadow-sm hover:shadow-md transition-all w-full">
-                      
-                      {/* Image Container */}
                       <div className="relative w-full sm:w-28 h-48 sm:h-36 bg-[#FAF9FA] rounded-xl sm:rounded-2xl overflow-hidden shrink-0 border border-[#840d5c]/5">
-                        <Image src={getOptimizedSupabaseImageUrl(fallbackImage, { width: 400, quality: 70 })} alt={fallbackName} fill sizes="400px" className="object-cover" />
+                        {fallbackImage ? (
+                          <Image src={getOptimizedSupabaseImageUrl(fallbackImage, { width: 400, quality: 70 })} alt={fallbackName} fill sizes="400px" className="object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-[10px] font-bold uppercase tracking-widest text-[#840d5c]/35">
+                            No Image
+                          </div>
+                        )}
                       </div>
 
-                      {/* Content Details */}
                       <div className="grow w-full space-y-3">
                         <div className="flex justify-between items-start gap-4">
                           <div>
@@ -487,7 +615,6 @@ const CartPage = () => {
                           <p className="text-base sm:text-lg font-bold text-[#321327] whitespace-nowrap">₹{fallbackPrice.toLocaleString()}</p>
                         </div>
 
-                        {/* Actions row */}
                         <div className="flex justify-between items-center pt-2 border-t border-[#840d5c]/5 sm:border-none">
                           <div className="flex items-center gap-3 sm:gap-4 bg-[#FAF3F5] px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border border-[#840d5c]/10">
                             <button onClick={() => updateQuantity(item.id, (item.quantity || 1) - 1)} className="text-[#321327]/60 hover:text-[#840d5c] p-0.5"><Minus size={12} /></button>
@@ -505,11 +632,10 @@ const CartPage = () => {
                         </div>
                         {isComboLineActive && (
                           <div className="text-[10px] font-semibold text-[#a3095b]">
-                            10% combo discount is applied to this product line.
+                            10% combo discount is applied on {comboEligibleQuantity}/{Math.max(Number(item?.quantity) || 1, 1)} unit(s) in this line.
                           </div>
                         )}
                       </div>
-
                     </div>
                   );
                 })}
@@ -641,7 +767,9 @@ const CartPage = () => {
                         <span className="uppercase">
                           {paymentMethod === 'COD' ? 'COD CHARGE' : 'ONLINE CHECKOUT'}
                         </span>
-                        <span className="text-emerald-600 font-extrabold">FREE</span>
+                        <span className={`font-extrabold ${paymentMethod === 'COD' ? 'text-[#7c0a53]' : 'text-emerald-600'}`}>
+                          {paymentMethod === 'COD' ? `₹${checkoutSummary.codCharge}` : 'FREE'}
+                        </span>
                       </div>
                     </div>
 
@@ -650,7 +778,7 @@ const CartPage = () => {
                     <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 py-0.5">
                       <Gift size={14} className="fill-emerald-600 text-white" />
                       <span>
-                        {comboStatusMessage ? comboStatusMessage : `${totalCartItems} items qualify for combo pricing`}
+                        {comboStatusMessage ? comboStatusMessage : `Add ${comboTarget} items from combo pack to unlock combo pricing`}
                       </span>
                     </div>
 
@@ -728,13 +856,19 @@ const CartPage = () => {
                         className="snap-start shrink-0 w-[72%] sm:w-[46%] lg:w-[calc((100%-3rem)/4)] rounded-2xl border border-[#840d5c]/8 bg-[#fffafb] p-3 hover:shadow-md transition-shadow"
                       >
                         <div className="relative w-full h-40 sm:h-44 rounded-xl overflow-hidden bg-white border border-[#840d5c]/8">
-                          <Image
-                            src={getOptimizedSupabaseImageUrl(productImage, { width: 420, quality: 70 })}
-                            alt={product?.name || 'Recommended product'}
-                            fill
-                            sizes="420px"
-                            className="object-cover"
-                          />
+                          {productImage ? (
+                            <Image
+                              src={getOptimizedSupabaseImageUrl(productImage, { width: 420, quality: 70 })}
+                              alt={product?.name || 'Recommended product'}
+                              fill
+                              sizes="420px"
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[10px] font-bold uppercase tracking-widest text-[#840d5c]/35">
+                              No Image
+                            </div>
+                          )}
                         </div>
                         <div className="mt-3 space-y-1">
                           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#321327] line-clamp-2 min-h-[2.1rem]">

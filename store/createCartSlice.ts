@@ -19,7 +19,7 @@ export interface CartSlice {
   fetchCart: (userId: string, force?: boolean) => Promise<void>;
   fetchOrders: (force?: boolean) => Promise<void>;
   fetchAdminOrders: (force?: boolean) => Promise<void>;
-  addItemToCart: (userId: string, productId: string, selectedSize: string, quantity?: number, category?: string) => Promise<void>;
+  addItemToCart: (userId: string, productId: string, selectedSize: string, quantity?: number, category?: string, comboEligibleQuantity?: number, comboBundleId?: string) => Promise<void>;
   updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
   removeItem: (cartItemId: string) => Promise<void>;
   checkout: (userId: string, couponCode?: string | null) => Promise<any>;
@@ -82,10 +82,10 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
     }
   },
 
-  addItemToCart: async (userId, productId, selectedSize, quantity = 1, category) => {
+  addItemToCart: async (userId, productId, selectedSize, quantity = 1, category, comboEligibleQuantity = 0, comboBundleId = "") => {
     set({ isLoading: true, error: null });
     try {
-      const res = await addToCart(userId, productId, selectedSize, quantity, category);
+      const res = await addToCart(userId, productId, selectedSize, quantity, category, comboEligibleQuantity, comboBundleId);
       
       if (res?.success && res.cartItem) {
         // Rehydrate from DB so each cart item includes nested product fields (image/price).
@@ -109,12 +109,25 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
     // so we must NOT replace the item — only patch the quantity field.
     set((state) => ({
       cartItems: state.cartItems.map((item) =>
-        item.id === cartItemId ? { ...item, quantity } : item
+        item.id === cartItemId
+          ? {
+              ...item,
+              quantity,
+              comboEligibleQuantity: Math.min(
+                Math.max(Number(item?.comboEligibleQuantity) || 0, 0),
+                Math.max(Number(quantity) || 0, 0)
+              ),
+            }
+          : item
       ),
     }));
     const res = await updateCartQuantity(cartItemId, quantity);
     if (!res?.success) {
       console.error("updateQuantity failed:", res?.error);
+      const cartUserId = get().cartUserId;
+      if (cartUserId) {
+        await get().fetchCart(cartUserId, true);
+      }
     }
   },
 

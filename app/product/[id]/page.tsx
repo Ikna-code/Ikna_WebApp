@@ -37,6 +37,8 @@ const getProductSubCategoryKey = (item: any) =>
     .trim()
     .toLowerCase();
 
+  const createComboBundleId = () => `combo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
 /* ---------------- TYPES ---------------- */
 interface ComboSelection {
   id: string;
@@ -275,7 +277,7 @@ const SingleProductPage = () => {
       setToast({ message: "Please select a size", type: 'info' });
       return;
     }
-    await addItemToCart(userId, activeVariant?.id, selectedSize, 1, activeVariant?.category);
+    await addItemToCart(userId, activeVariant?.id, selectedSize, 1, activeVariant?.category, 0, '');
     if (!useStore.getState().error) {
       setToast({ message: "Added to bag!", type: 'success' });
     }
@@ -324,8 +326,18 @@ const SingleProductPage = () => {
       return;
     }
 
+    const comboBundleId = applyComboPricing ? createComboBundleId() : '';
+
     for (const item of comboItems) {
-      await addItemToCart(userId, item.product.id, item.size, 1, item.product.category);
+      await addItemToCart(
+        userId,
+        item.product.id,
+        item.size,
+        1,
+        item.product.category,
+        applyComboPricing ? 1 : 0,
+        comboBundleId
+      );
     }
 
     if (applyComboPricing) {

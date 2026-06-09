@@ -176,12 +176,14 @@ model CartItem {
   userId       String  @map("userId")
   productId    String  @map("productId")
   quantity     Int     @default(1)
+  comboEligibleQuantity Int @default(0)
+  comboBundleId String @default("")
   selectedSize String?
   category     String?
   product      Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, productId, selectedSize])
+  @@unique([userId, productId, selectedSize, comboBundleId])
   @@map("cart_items")
 }
 

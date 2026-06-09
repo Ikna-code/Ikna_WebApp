@@ -2,20 +2,22 @@ import { Prisma } from "@prisma/client";
 
 
 type ComboSelectedProduct = {
+  cartItemId?: string;
+  comboBundleId?: string | null;
   productId?: string;
   category?: string | null;
   subCategory?: string | null;
   subCategoryName?: string | null;
   subCategoryId?: string | null;
+  comboEligibleQuantity?: number | null;
   quantity?: number | null;
 };
 
 type ComboQualificationGroup = {
   key: string;
-  category: string;
   subCategory: string;
   quantity: number;
-  productIds: string[];
+  cartItemIds: string[];
   items: ComboSelectedProduct[];
 };
 
@@ -28,23 +30,26 @@ export function qualifyProductsForSameSubCategoryCombo(
   const groups = new Map<string, ComboQualificationGroup>();
 
   for (const item of selectedProducts) {
-    const normalizedCategory = normalizeComboValue(item?.category);
+    const normalizedBundleId = normalizeComboValue(item?.comboBundleId);
     const normalizedSubCategory = normalizeComboValue(
       item?.subCategoryName || item?.subCategory || item?.subCategoryId
     );
 
-    if (!normalizedCategory || !normalizedSubCategory) {
+    if (!normalizedBundleId || !normalizedSubCategory) {
       continue;
     }
 
-    const key = `${normalizedCategory}::${normalizedSubCategory}`;
-    const quantity = Math.max(Number(item?.quantity) || 1, 1);
+    const key = `${normalizedBundleId}::${normalizedSubCategory}`;
+    const quantity = Math.max(Number(item?.comboEligibleQuantity) || 0, 0);
+    if (quantity <= 0) {
+      continue;
+    }
     const existing = groups.get(key);
 
     if (existing) {
       existing.quantity += quantity;
-      if (item?.productId) {
-        existing.productIds.push(String(item.productId));
+      if (item?.cartItemId) {
+        existing.cartItemIds.push(String(item.cartItemId));
       }
       existing.items.push(item);
       continue;
@@ -52,10 +57,9 @@ export function qualifyProductsForSameSubCategoryCombo(
 
     groups.set(key, {
       key,
-      category: normalizedCategory,
       subCategory: normalizedSubCategory,
       quantity,
-      productIds: item?.productId ? [String(item.productId)] : [],
+      cartItemIds: item?.cartItemId ? [String(item.cartItemId)] : [],
       items: [item],
     });
   }
@@ -71,14 +75,69 @@ export function qualifyProductsForSameSubCategoryCombo(
   };
 }
 
+function mapEligibleUnitsByCartItem(
+  selectedProducts: ComboSelectedProduct[],
+  minimumQuantity = 3
+) {
+  const grouped = new Map<string, ComboSelectedProduct[]>();
+
+  for (const item of selectedProducts) {
+    const bundleId = normalizeComboValue(item?.comboBundleId);
+    const subCategoryKey = normalizeComboValue(
+      item?.subCategoryName || item?.subCategory || item?.subCategoryId
+    );
+
+    if (!bundleId || !subCategoryKey || !item?.cartItemId) {
+      continue;
+    }
+
+    const groupKey = `${bundleId}::${subCategoryKey}`;
+
+    const existing = grouped.get(groupKey);
+    if (existing) {
+      existing.push(item);
+      continue;
+    }
+
+    grouped.set(groupKey, [item]);
+  }
+
+  const eligibleUnitsByCartItemId = new Map<string, number>();
+
+  for (const items of grouped.values()) {
+    const totalQty = items.reduce((sum, item) => sum + Math.max(Number(item?.comboEligibleQuantity) || 0, 0), 0);
+    let remainingEligibleUnits =
+      Math.floor(totalQty / Math.max(minimumQuantity, 1)) * Math.max(minimumQuantity, 1);
+
+    for (const item of items) {
+      if (remainingEligibleUnits <= 0) {
+        break;
+      }
+
+      const lineQty = Math.max(Number(item?.comboEligibleQuantity) || 0, 0);
+      if (lineQty <= 0) {
+        continue;
+      }
+      const discountedUnits = Math.min(lineQty, remainingEligibleUnits);
+
+      if (discountedUnits > 0 && item?.cartItemId) {
+        eligibleUnitsByCartItemId.set(String(item.cartItemId), discountedUnits);
+        remainingEligibleUnits -= discountedUnits;
+      }
+    }
+  }
+
+  return eligibleUnitsByCartItemId;
+}
+
 
 
 /**
  * Scans a cart array to see if any products form bundles defined by active combo deals.
- * Returns an object mapping individual productId strings to a calculated discount factor.
+ * Returns an object mapping cartItemId strings to discount metadata.
  */
 export async function calculateComboDiscounts(tx: any, cartItems: any[]) {
-  const itemDiscounts: Record<string, { amountPerUnit: Prisma.Decimal; comboOfferId: string }> = {}; // Map of productId -> discount decimal amount per unit
+  const itemDiscounts: Record<string, { amountPerUnit: Prisma.Decimal; discountedUnits: number; comboOfferId: string }> = {}; // Map of cartItemId -> combo metadata
   
   // Fetch active combo offers along with their eligible matching product records
   const activeCombos = await tx.comboOffer.findMany({
@@ -104,51 +163,49 @@ export async function calculateComboDiscounts(tx: any, cartItems: any[]) {
     }
   });
 
-  const cartProductIds = cartItems.map(item => item.productId);
-
   for (const combo of activeCombos) {
-    const requiredIds = combo.ComboProducts.map((entry: { Product: { id: string } }) => entry.Product.id);
-    
-    // Check if every single product required for the combo is present in the current cart
-    const isComboMatched = requiredIds.every((id: string) => cartProductIds.includes(id));
+    const selectedComboItems = cartItems.map((item) => ({
+      cartItemId: item?.id,
+      comboBundleId: item?.comboBundleId,
+      productId: item?.productId,
+      quantity: item?.quantity,
+      comboEligibleQuantity: item?.comboEligibleQuantity,
+      category: item?.product?.category,
+      subCategoryId: item?.product?.subCategoryId,
+      subCategoryName: item?.product?.subCategory?.name || item?.product?.subCategory?.slug,
+      subCategory: item?.product?.subCategoryName,
+    }));
 
-    if (isComboMatched) {
-          const selectedComboItems = cartItems
-            .filter((item) => requiredIds.includes(item.productId))
-            .map((item) => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              category: item?.product?.category,
-              subCategoryId: item?.product?.subCategoryId,
-              subCategoryName: item?.product?.subCategory?.name || item?.product?.subCategory?.slug,
-            }));
-
-          const comboQualification = qualifyProductsForSameSubCategoryCombo(
-            selectedComboItems,
-            requiredIds.length
-          );
-
-          if (!comboQualification.qualifies) {
-            continue;
-          }
-
-      // Find the items matching this combination and calculate discount distributions
-      cartItems.forEach(item => {
-        if (requiredIds.includes(item.productId)) {
-          const itemBasePrice = new Prisma.Decimal(item.product.price);
-          // percentage factor: (price * discountPct) / 100
-          const unitDiscount = itemBasePrice.mul(new Prisma.Decimal(combo.discountPct)).div(100);
-          
-          // Store discount mapped to the offer context
-          itemDiscounts[item.productId] = {
-            amountPerUnit: unitDiscount,
-            comboOfferId: combo.id
-          };
-        }
-      });
-      // Break early if you only allow one global combo package scenario per cart instance
-      break; 
+    const comboQualification = qualifyProductsForSameSubCategoryCombo(selectedComboItems, 3);
+    if (!comboQualification.qualifies) {
+      continue;
     }
+
+    const eligibleUnitsByCartItemId = mapEligibleUnitsByCartItem(selectedComboItems, 3);
+    if (eligibleUnitsByCartItemId.size === 0) {
+      continue;
+    }
+
+    cartItems.forEach((item) => {
+      const cartItemId = String(item?.id || '');
+      const discountedUnits = eligibleUnitsByCartItemId.get(cartItemId) || 0;
+
+      if (!cartItemId || discountedUnits <= 0) {
+        return;
+      }
+
+      const itemBasePrice = new Prisma.Decimal(item.product.price);
+      const unitDiscount = itemBasePrice.mul(new Prisma.Decimal(combo.discountPct)).div(100);
+
+      itemDiscounts[cartItemId] = {
+        amountPerUnit: unitDiscount,
+        discountedUnits,
+        comboOfferId: combo.id,
+      };
+    });
+
+    // Apply only one active combo offer per checkout.
+    break;
   }
   return itemDiscounts;
 }
