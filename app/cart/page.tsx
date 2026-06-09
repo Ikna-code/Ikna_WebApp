@@ -7,7 +7,7 @@ import Script from "next/script";
 import { Trash2, Plus, Minus, ChevronLeft, ShoppingBag, ArrowRight, ShieldCheck, Loader2, Sparkles, CreditCard, Truck, Gift, CheckCircle2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import Header from '@/components/layout/Header';
-import { validateCouponForCart } from "@/backend/actions/coupon";
+import { getCouponTicketsForCart, validateCouponForCart, type CartCouponTicket } from "@/backend/actions/coupon";
 import { createOrder } from "@/backend/actions/order";
 import { createRazorpayOrder } from "@/backend/actions/payment";
 import { verifyPayment } from "@/backend/actions/verify";
@@ -69,12 +69,14 @@ const roundCurrency = (value: number) => Math.round(value * 100) / 100;
 export const calculateCheckoutSummary = ({
   cartItems,
   comboEligibleSubtotal,
+  appliedCouponCode,
   isFirstTimeUser,
   couponDiscount,
   paymentMethod,
 }: {
   cartItems: CheckoutCartItem[];
   comboEligibleSubtotal: number;
+  appliedCouponCode: string | null;
   isFirstTimeUser: boolean;
   couponDiscount: number;
   paymentMethod: string;
@@ -92,8 +94,10 @@ export const calculateCheckoutSummary = ({
   const comboDiscount = roundCurrency(Math.max(Number(comboEligibleSubtotal) || 0, 0) * 0.1);
   const isComboApplied = comboDiscount > 0;
   const subtotalAfterCombo = roundCurrency(itemSubtotal - comboDiscount);
+  const normalizedCouponCode = String(appliedCouponCode || '').trim().toUpperCase();
+  const canStackWithCombo = normalizedCouponCode === 'WELCOME100';
 
-  const orderDiscount = isComboApplied ? 0 : Math.max(Number(couponDiscount || 0), 0);
+  const orderDiscount = isComboApplied && !canStackWithCombo ? 0 : Math.max(Number(couponDiscount || 0), 0);
 
   const firstTimeDiscount = isFirstTimeUser ? 100 : 0;
   const shippingFee = 0;
@@ -117,10 +121,12 @@ export const calculateCheckoutSummary = ({
 
 const CartPage = () => {
   // 1. STATE MANAGEMENT
-  const [couponCode, setCouponCode] = useState("");
   const [appliedCouponCode, setAppliedCouponCode] = useState<string | null>(null);
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [couponTickets, setCouponTickets] = useState<CartCouponTicket[]>([]);
+  const [isLoadingCouponTickets, setIsLoadingCouponTickets] = useState(false);
+  const [showAllCoupons, setShowAllCoupons] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('ONLINE');
   const [showAllMobileItems, setShowAllMobileItems] = useState(false);
@@ -229,19 +235,19 @@ const CartPage = () => {
     await storeRemoveItem(id);
   };
 
-  const handleApplyCoupon = async () => {
+  const handleApplyCoupon = async (couponCode: string) => {
     const userId = user?.id;
     if (!userId) return;
 
-    const code = couponCode.trim().toUpperCase();
+    const code = String(couponCode || '').trim().toUpperCase();
     if (!code) {
-      toast.error('Please enter a coupon code.');
+      toast.error('Invalid coupon code.');
       return;
     }
 
     setIsApplyingCoupon(true);
     try {
-      const validation = await validateCouponForCart(userId, code, checkoutSummary.itemSubtotal);
+      const validation = await validateCouponForCart(userId, code, checkoutSummary.itemSubtotal, isComboApplied);
       if (!validation.success) {
         setAppliedCouponCode(null);
         setCouponDiscount(0);
@@ -251,11 +257,22 @@ const CartPage = () => {
 
       setAppliedCouponCode(validation.code);
       setCouponDiscount(validation.discountAmount);
-      setCouponCode(validation.code);
+      setShowAllCoupons(false);
       toast.success(`Coupon ${validation.code} applied successfully.`);
     } finally {
       setIsApplyingCoupon(false);
     }
+  };
+
+  const handleRemoveCoupon = () => {
+    if (!appliedCouponCode) {
+      return;
+    }
+
+    const removedCode = appliedCouponCode;
+    setAppliedCouponCode(null);
+    setCouponDiscount(0);
+    toast.info(`Coupon ${removedCode} removed.`);
   };
 
   // 7. CALCULATIONS: Drive the cart UI from the checkout summary rules.
@@ -355,6 +372,7 @@ const CartPage = () => {
   const checkoutSummary = calculateCheckoutSummary({
     cartItems: checkoutItems,
     comboEligibleSubtotal,
+    appliedCouponCode,
     isFirstTimeUser: false,
     couponDiscount,
     paymentMethod,
@@ -393,6 +411,45 @@ const CartPage = () => {
   }, [isProductsInitialized, loadProducts]);
 
   useEffect(() => {
+    const userId = user?.id;
+    if (!userId) {
+      setCouponTickets([]);
+      return;
+    }
+
+    let isMounted = true;
+    const fetchCoupons = async () => {
+      setIsLoadingCouponTickets(true);
+      try {
+        const tickets = await getCouponTicketsForCart(
+          userId,
+          checkoutSummary.itemSubtotal,
+          isComboApplied,
+          appliedCouponCode
+        );
+        if (isMounted) {
+          setCouponTickets(tickets);
+        }
+      } catch (error) {
+        console.error('Failed to load coupon tickets:', error);
+        if (isMounted) {
+          setCouponTickets([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingCouponTickets(false);
+        }
+      }
+    };
+
+    fetchCoupons();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id, checkoutSummary.itemSubtotal, isComboApplied, appliedCouponCode]);
+
+  useEffect(() => {
     if (!hasOfferToastHydratedRef.current) {
       hasOfferToastHydratedRef.current = true;
       hadComboOfferRef.current = isComboApplied;
@@ -409,14 +466,14 @@ const CartPage = () => {
   useEffect(() => {
     if (!appliedCouponCode) return;
 
-    if (isComboApplied) {
+    if (isComboApplied && String(appliedCouponCode).toUpperCase() !== 'WELCOME100') {
       setAppliedCouponCode(null);
       setCouponDiscount(0);
       toast.info('Coupon removed because combo pricing is active.');
       return;
     }
 
-    const minRequired = appliedCouponCode === 'SAVE200' ? 1299 : 699;
+    const minRequired = appliedCouponCode === 'SAVE200' ? 1299 : appliedCouponCode === 'SAVE100' ? 699 : 0;
     if (checkoutSummary.itemSubtotal < minRequired) {
       setAppliedCouponCode(null);
       setCouponDiscount(0);
@@ -704,27 +761,109 @@ const CartPage = () => {
                     </div>
                   </div>
 
-                  {/* Coupon Block (Only shows when combo pricing is not overriding) */}
-                  {!isComboApplied && (
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-3 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <input
-                          value={couponCode}
-                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                          placeholder="ENTER COUPON"
-                          className="w-full rounded-xl bg-white/10 px-3 py-2 text-xs uppercase tracking-wider text-white placeholder:text-white/40 outline-none focus:bg-white/15"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleApplyCoupon}
-                          disabled={isApplyingCoupon}
-                          className="rounded-xl bg-white text-[#7c0a53] px-4 py-2 text-xs font-bold uppercase tracking-wider disabled:opacity-60 shrink-0"
-                        >
-                          {isApplyingCoupon ? '...' : 'Apply'}
-                        </button>
-                      </div>
+                  {/* Coupon Ticket Block */}
+                  <div className="rounded-2xl border border-white/10 bg-black/10 p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-white/80">Available Coupons</p>
+                      <button
+                        type="button"
+                        onClick={() => setShowAllCoupons((previous) => !previous)}
+                        className="rounded-lg border border-white/20 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-white/90 hover:bg-white/10"
+                      >
+                        {showAllCoupons ? 'Hide Coupons' : 'View All Coupons'}
+                      </button>
                     </div>
-                  )}
+
+                    {isLoadingCouponTickets ? (
+                      <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] uppercase tracking-widest text-white/60">
+                        Loading coupons...
+                      </div>
+                    ) : !showAllCoupons ? (
+                      (() => {
+                        const appliedTicket = couponTickets.find((ticket) => {
+                          return !!appliedCouponCode && appliedCouponCode.toUpperCase() === ticket.code;
+                        });
+
+                        if (!appliedTicket) {
+                          return (
+                            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] uppercase tracking-widest text-white/70">
+                              No coupon applied. Click view all coupons.
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="rounded-xl border border-[#ffd5eb] bg-[#a70f67]/40 px-3 py-2">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className="text-xs font-bold uppercase tracking-wide text-white">{appliedTicket.title}</p>
+                                <p className="text-[10px] text-white/80 mt-0.5">{appliedTicket.description}</p>
+                                <p className="text-[10px] font-semibold text-white/85 mt-0.5">Save ₹{appliedTicket.discountAmount}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleRemoveCoupon}
+                                className="rounded-lg border border-white/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-white/10"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      <div className="space-y-2">
+                        {couponTickets.length === 0 && (
+                          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] uppercase tracking-widest text-white/70">
+                            No coupons available right now.
+                          </div>
+                        )}
+                        {couponTickets.map((ticket) => {
+                          const isApplied = !!appliedCouponCode && appliedCouponCode.toUpperCase() === ticket.code;
+                          const isDisabled = !ticket.enabled || (isApplyingCoupon && !isApplied);
+
+                          return (
+                            <div
+                              key={ticket.code}
+                              className={`rounded-xl border px-3 py-2 ${isApplied ? 'border-[#ffd5eb] bg-[#a70f67]/40' : 'border-white/10 bg-white/5'} ${isDisabled ? 'opacity-55' : ''}`}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-xs font-bold uppercase tracking-wide text-white">{ticket.title}</p>
+                                  <p className="text-[10px] text-white/80 mt-0.5">{ticket.description}</p>
+                                  <p className="text-[10px] font-semibold text-white/85 mt-0.5">Save ₹{ticket.discountAmount} {ticket.minSubtotal > 0 ? `(min ₹${ticket.minSubtotal})` : ''}</p>
+                                  {ticket.disabledReason && (
+                                    <p className="text-[10px] text-[#ffd7ea] mt-0.5">{ticket.disabledReason}</p>
+                                  )}
+                                </div>
+                                {isApplied ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="rounded-full bg-white/15 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-white">Applied</span>
+                                    <button
+                                      type="button"
+                                      onClick={handleRemoveCoupon}
+                                      className="rounded-lg border border-white/20 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-white hover:bg-white/10"
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleApplyCoupon(ticket.code)}
+                                    disabled={isDisabled}
+                                    className="rounded-lg bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#7c0a53] disabled:opacity-50"
+                                  >
+                                    Apply
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Payable Total Large Card Display Panel */}
                   <div className="rounded-3xl bg-white/5 border border-white/10 p-5 space-y-4">
