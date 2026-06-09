@@ -259,6 +259,8 @@ export async function PATCH(
       tag?: string | null;
       rating?: number | null;
       sizes?: string[];
+      colorHex?: string | null;
+      colorName?: string | null;
     } = {};
 
     if (typeof body?.name === 'string') updateData.name = body.name;
@@ -271,6 +273,12 @@ export async function PATCH(
     if (typeof body?.description === 'string') updateData.description = body.description;
     if (typeof body?.tag === 'string' || body?.tag === null) updateData.tag = body.tag;
     if (typeof body?.rating === 'number' || body?.rating === null) updateData.rating = body.rating;
+    if (typeof body?.colorHex === 'string' || body?.colorHex === null) {
+      updateData.colorHex = typeof body?.colorHex === 'string' ? body.colorHex.trim() : null;
+    }
+    if (typeof body?.colorName === 'string' || body?.colorName === null) {
+      updateData.colorName = typeof body?.colorName === 'string' ? body.colorName.trim() : null;
+    }
     if (Array.isArray(body?.sizes)) {
       updateData.sizes = body.sizes.filter((item: unknown) => typeof item === 'string');
     }

@@ -354,6 +354,14 @@ export async function POST(request: NextRequest) {
       tag: body.tag || null,
       rating: typeof body?.rating === 'number' ? body.rating : null,
       sizes,
+      colorHex:
+        typeof body?.colorHex === 'string' && body.colorHex.trim().length > 0
+          ? body.colorHex.trim()
+          : '#000000',
+      colorName:
+        typeof body?.colorName === 'string' && body.colorName.trim().length > 0
+          ? body.colorName.trim()
+          : 'Unspecified',
     };
 
     if (productTypeId) {
@@ -377,7 +385,7 @@ export async function POST(request: NextRequest) {
         const now = new Date();
         const inserted = await prisma.$queryRaw<Array<Record<string, any>>>`
           INSERT INTO "Product"
-            ("id", "name", "price", "description", "image", "category", "stock", "createdAt", "updatedAt", "tag", "rating", "sizes", "productTypeId")
+            ("id", "name", "price", "description", "image", "category", "stock", "createdAt", "updatedAt", "tag", "rating", "sizes", "productTypeId", "colorHex", "colorName")
           VALUES
             (
               ${productId},
@@ -392,7 +400,9 @@ export async function POST(request: NextRequest) {
               ${createPayload.tag ?? null},
               ${createPayload.rating ?? null},
               ${createPayload.sizes},
-              ${String(createPayload.productTypeId)}
+              ${String(createPayload.productTypeId)},
+              ${String(createPayload.colorHex)},
+              ${String(createPayload.colorName)}
             )
           RETURNING *
         `;

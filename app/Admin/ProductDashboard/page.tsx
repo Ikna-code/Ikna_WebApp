@@ -34,6 +34,8 @@ interface ProductDetail {
   createdAt: string;
   images: { id: string; image_path: string; is_primary: boolean | null }[];
   filters: ProductFilterAssignment[];
+  colorHex: string;
+  colorName: string;
 }
 
 interface ProductFilterAssignment {
@@ -67,6 +69,8 @@ interface DbProduct {
   reviews?: { rating: number }[];
   images?: { id: string; image_path: string; is_primary: boolean | null }[];
   filters?: ProductFilterAssignment[];
+  colorHex?: string | null;
+  colorName?: string | null;
 }
 
 interface FilterOptionMeta {
@@ -102,6 +106,8 @@ interface ProductFormState {
   tag: string;
   image: string;
   rating: string;
+  colorHex: string;
+  colorName: string;
 }
 
 interface DeleteModalState {
@@ -130,6 +136,20 @@ interface EditableExistingImage {
   isPrimary: boolean;
 }
 
+
+interface DBFilterOption {
+  id: string;
+  value: string;
+  displayLabel: string;
+}
+interface DBFilterGroup {
+  id: string;
+  productTypeId: string;
+  name: string;
+  displayName: string;
+  slug: string;
+  filterOptions: DBFilterOption[];
+}
 const IMPORT_TEMPLATE_HEADERS = [
   'id',
   'name',
@@ -218,6 +238,35 @@ const applySingleSelect = (
   return next;
 };
 
+const applyFilterSelect = (
+  current: string[],
+  group: FilterGroupMeta,
+  nextOptionId: string
+) => {
+  // If group is explicit multi-select or is labeled as badges/tags/status
+  const isMultiSelect = 
+    group.filterType === 'multi' || 
+    group.slug === 'badges' || 
+    group.slug === 'tags';
+
+  if (isMultiSelect) {
+    // Standard Toggle Behavior (Add if missing, remove if present)
+    if (current.includes(nextOptionId)) {
+      return current.filter((id) => id !== nextOptionId);
+    } else {
+      return [...current, nextOptionId];
+    }
+  }
+
+  // Fallback to Single Select behavior for other standard filter dimensions
+  const groupOptionIds = new Set(group.filterOptions.map((option) => option.id));
+  const next = current.filter((id) => !groupOptionIds.has(id));
+  if (nextOptionId) {
+    next.push(nextOptionId);
+  }
+  return next;
+};
+
 export default function ProductManagementDashboard() {
   const refreshProducts = useStore((state) => state.refreshProducts);
   const [productDetails, setProductDetails] = useState<ProductDetail[]>([]);
@@ -243,6 +292,8 @@ export default function ProductManagementDashboard() {
     tag: 'Black',
     image: '',
     rating: '',
+    colorHex: '#000000',
+    colorName: 'Black',
   });
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -279,6 +330,8 @@ export default function ProductManagementDashboard() {
     tag: 'Black',
     image: '',
     rating: '',
+    colorHex: '#000000',
+    colorName: 'Black',
   });
   const [editProductImages, setEditProductImages] = useState<File[]>([]);
   const [editExistingImages, setEditExistingImages] = useState<EditableExistingImage[]>([]);
@@ -287,6 +340,24 @@ export default function ProductManagementDashboard() {
   const [filterMetadata, setFilterMetadata] = useState<ProductTypeFilterMeta[]>([]);
   const [newFilterOptionIds, setNewFilterOptionIds] = useState<string[]>([]);
   const [editFilterOptionIds, setEditFilterOptionIds] = useState<string[]>([]);
+  const [dbFilterGroups, setDbFilterGroups] = useState<DBFilterGroup[]>([]);
+
+
+  const addFilterGroupsMemo = useMemo(() => {
+    // If no category/productTypeId is selected yet, show all groups; otherwise match them
+    if (!newProductDetail.category) return dbFilterGroups;
+    return dbFilterGroups.filter(
+      (g) => g.productTypeId === newProductDetail.category || g.slug === 'tags'
+    );
+  }, [dbFilterGroups, newProductDetail.category]);
+
+  const editFilterGroupsMemo = useMemo(() => {
+    if (!editProductDetail.category) return dbFilterGroups;
+    return dbFilterGroups.filter(
+      (g) => g.productTypeId === editProductDetail.category || g.slug === 'tags'
+    );
+  }, [dbFilterGroups, editProductDetail.category]);
+
 
   const getFilterGroupsForCategory = useCallback(
     (category: string) => {
@@ -362,30 +433,33 @@ export default function ProductManagementDashboard() {
       }
 
       const products: DbProduct[] = await response.json();
-      const mappedProducts = products.map((product, index) => {
-        const price = Number(product.price);
-        const reviewCount = product.reviews?.length || 0;
-        const primaryPath = product.image || product.images?.find((img) => img.is_primary)?.image_path || '';
+// Find this block around line 321 inside fetchProducts:
+const mappedProducts = products.map((product, index) => {
+  const price = Number(product.price);
+  const reviewCount = product.reviews?.length || 0;
+  const primaryPath = product.image || product.images?.find((img) => img.is_primary)?.image_path || '';
 
-        return {
-          id: product.id,
-          sku: getProductSku(product, index),
-          name: product.name,
-          color: product.tag || 'N/A',
-          category: product.category,
-          price,
-          stock: product.stock,
-          salesVelocity: `${Math.max(0, Math.round(reviewCount / 2))} units/week`,
-          image: primaryPath,
-          description: product.description || '',
-          sizes: product.sizes || [],
-          rating: typeof product.rating === 'number' ? product.rating : null,
-          createdAt: product.createdAt,
-          images: Array.isArray(product.images) ? product.images : [],
-          filters: Array.isArray(product.filters) ? product.filters : [],
-        };
-      });
-
+  return {
+    id: product.id,
+    sku: getProductSku(product, index),
+    name: product.name,
+    color: product.colorName || product.tag || 'N/A', // Set colorName as primary fallback
+    category: product.category,
+    price,
+    stock: product.stock,
+    salesVelocity: `${Math.max(0, Math.round(reviewCount / 2))} units/week`,
+    image: primaryPath,
+    description: product.description || '',
+    sizes: product.sizes || [],
+    rating: typeof product.rating === 'number' ? product.rating : null,
+    createdAt: product.createdAt,
+    images: Array.isArray(product.images) ? product.images : [],
+    filters: Array.isArray(product.filters) ? product.filters : [],
+    // Add these lines to map into state:
+    colorHex: product.colorHex || '#000000',
+    colorName: product.colorName || product.tag || 'Unspecified'
+  };
+});
       setProductDetails(mappedProducts);
 
       const maxSku = mappedProducts.reduce((max, product) => {
@@ -455,6 +529,22 @@ export default function ProductManagementDashboard() {
     window.addEventListener('resize', syncViewport);
 
     return () => window.removeEventListener('resize', syncViewport);
+  }, []);
+
+  // Fetch Filter Groups and Options from DB
+  useEffect(() => {
+    const fetchFilters = async () => {
+      try {
+        const res = await fetch('/api/admin/filters'); // Or your configured filters endpoint
+        if (res.ok) {
+          const data = await res.json();
+          setDbFilterGroups(data);
+        }
+      } catch (err) {
+        console.error('Failed to load filter tags:', err);
+      }
+    };
+    fetchFilters();
   }, []);
 
   const categories = ['All', ...Array.from(new Set(productDetails.map((p) => p.category)))];
@@ -569,7 +659,7 @@ export default function ProductManagementDashboard() {
         .map((size) => size.trim())
         .filter(Boolean);
 
-      const payload = {
+const payload = {
         name: newProductDetail.name.trim(),
         price: Number(newProductDetail.price),
         stock: Number(newProductDetail.stock),
@@ -580,6 +670,11 @@ export default function ProductManagementDashboard() {
         image: newProductDetail.image.trim() || undefined,
         rating: newProductDetail.rating ? Number(newProductDetail.rating) : null,
         filterOptionIds: newFilterOptionIds,
+        
+        // Exact column map alignment for Postgres table definition
+        colorHex: newProductDetail.colorHex.trim() || '#000000',
+        colorName: newProductDetail.colorName.trim() || 'Unspecified',
+        // productTypeId: newProductDetail.productTypeId || 'default_type_id_here'
       };
 
       const createResponse = await fetch('/api/admin/products', {
@@ -626,13 +721,16 @@ export default function ProductManagementDashboard() {
         description: '',
         sizes: '',
         category: 'Bras',
-        tag: 'Black',
+        tag: 'New Arrival',
         image: '',
         rating: '',
+        colorHex: '#000000',
+        colorName: 'Black',
       });
       setNewFilterOptionIds([]);
       handleClearAddProductImages();
       setIsAddModalOpen(false);
+      setNewFilterOptionIds([]);
       await Promise.all([fetchProducts(), refreshProducts()]);
     } catch (error: any) {
       setErrorMessage(error?.message || 'Failed to create product.');
@@ -799,32 +897,28 @@ export default function ProductManagementDashboard() {
       tag: product.color,
       image: product.image,
       rating: product.rating != null ? String(product.rating) : '',
+      colorHex: (product as any).colorHex || '#000000',
+      colorName: (product as any).colorName || 'Black',
     });
-    setEditFilterOptionIds(
-      Array.from(
-        new Set(
-          (product.filters || [])
-            .map((item) => String(item?.filterOptionId || '').trim())
-            .filter(Boolean)
-        )
-      )
-    );
+// Extract existing filter option relationships out of the product if present
+    const existingOptionIds = product.filters?.map(f => f.filterOptionId) || [];
+    setEditFilterOptionIds(existingOptionIds);
 
     const normalizedExistingImages =
       product.images.length > 0
         ? product.images.map((image) => ({
-            id: image.id,
-            imagePath: image.image_path,
-            isPrimary: Boolean(image.is_primary),
-          }))
+          id: image.id,
+          imagePath: image.image_path,
+          isPrimary: Boolean(image.is_primary),
+        }))
         : product.image
           ? [
-              {
-                id: '',
-                imagePath: product.image,
-                isPrimary: true,
-              },
-            ]
+            {
+              id: '',
+              imagePath: product.image,
+              isPrimary: true,
+            },
+          ]
           : [];
 
     setEditExistingImages(normalizedExistingImages);
@@ -892,7 +986,7 @@ export default function ProductManagementDashboard() {
         fallbackPathFromExisting ||
         null;
 
-      const response = await fetch(`/api/admin/products/${editingProductId}`, {
+const response = await fetch(`/api/admin/products/${editingProductId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -909,6 +1003,8 @@ export default function ProductManagementDashboard() {
           imagePaths: uploadedPaths.length ? uploadedPaths : undefined,
           removeImageIds: removedEditImageIds,
           removeImagePaths: removedEditImagePaths,
+          colorHex: editProductDetail.colorHex.trim() || '#000000',
+          colorName: editProductDetail.colorName.trim() || 'Unspecified'
         }),
       });
 
@@ -996,9 +1092,11 @@ export default function ProductManagementDashboard() {
           category: 'Bras',
           stock: 25,
           createdAt: '',
-          tag: 'Black',
+          tag: 'New Arrival',
           rating: 4.5,
           sizes: '32B,34B,36C',
+          colorHex: '#000000',
+          colorName: 'Black',
         },
       ],
       { header: IMPORT_TEMPLATE_HEADERS }
@@ -1563,7 +1661,7 @@ export default function ProductManagementDashboard() {
                   <th className="w-44 py-4 px-3 font-bold">Name</th>
                   <th className="w-56 py-4 px-3 font-bold">Description</th>
                   <th className="w-32 py-4 px-3 font-bold">Sizes</th>
-                  <th className="w-24 py-4 px-3 font-bold">Tag</th>
+                  <th className="w-24 py-4 px-3 font-bold">Color Hex</th>
                   <th className="w-24 py-4 px-3 font-bold">Category</th>
                   <th className="w-20 py-4 px-3 font-bold text-right">Rating</th>
                   <th className="w-20 py-4 px-3 font-bold text-right">Price</th>
@@ -1600,11 +1698,25 @@ export default function ProductManagementDashboard() {
                         {p.sizes.length ? p.sizes.join(', ') : 'N/A'}
                       </p>
                     </td>
-                    <td className="py-4 px-3 align-middle whitespace-nowrap">
-                      <span className="bg-neutral-100 px-2.5 py-1 rounded-lg text-[10px] font-bold text-neutral-700">
-                        {p.color}
-                      </span>
-                    </td>
+
+<td className="px-6 py-4 whitespace-nowrap text-xs text-neutral-500">
+  <div className="flex items-center gap-2">
+    {/* Colored bubble indicator */}
+    <div 
+      className="h-3.5 w-3.5 rounded-full border border-neutral-300 shadow-sm shrink-0"
+      style={{ backgroundColor: p.colorHex }}
+      title={p.colorHex}
+    />
+    <div className="flex flex-col">
+      <span className="font-semibold text-neutral-700 capitalize">
+        {p.colorName}
+      </span>
+      <span className="text-[10px] text-neutral-400 font-mono uppercase tracking-tight">
+        {p.colorHex}
+      </span>
+    </div>
+  </div>
+</td>
                     <td className="py-4 px-3 align-middle whitespace-nowrap">{p.category}</td>
                     <td className="py-4 px-3 align-middle text-right font-semibold text-neutral-900">
                       {p.rating != null ? p.rating.toFixed(1) : 'N/A'}
@@ -1899,32 +2011,32 @@ export default function ProductManagementDashboard() {
 
                   {hasDownloadedImportTemplate && (
                     <div>
-                    <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-neutral-400">
-                      EXCEL FILE
-                    </label>
-                    <input
-                      id="import-excel-input"
-                      type="file"
-                      accept=".xlsx,.xls,.csv"
-                      required
-                      onChange={(event) => setImportExcelFile(event.target.files?.[0] || null)}
-                      className="sr-only"
-                    />
+                      <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-neutral-400">
+                        EXCEL FILE
+                      </label>
+                      <input
+                        id="import-excel-input"
+                        type="file"
+                        accept=".xlsx,.xls,.csv"
+                        required
+                        onChange={(event) => setImportExcelFile(event.target.files?.[0] || null)}
+                        className="sr-only"
+                      />
 
-                    <label
-                      htmlFor="import-excel-input"
-                      className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
-                    >
-                      <Upload className="h-3.5 w-3.5" /> Choose XLS File
-                    </label>
+                      <label
+                        htmlFor="import-excel-input"
+                        className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+                      >
+                        <Upload className="h-3.5 w-3.5" /> Choose XLS File
+                      </label>
 
-                    <p className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
-                      {importExcelFile ? importExcelFile.name : 'Upload The downloaded XLS file'}
-                    </p>
+                      <p className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
+                        {importExcelFile ? importExcelFile.name : 'Upload The downloaded XLS file'}
+                      </p>
 
-                    <p className="mt-1 text-[10px] text-neutral-500">
-                      Expected columns: id, name, price, description, image, category, stock, createdAt, tag, rating, sizes.
-                    </p>
+                      <p className="mt-1 text-[10px] text-neutral-500">
+                        Expected columns: id, name, price, description, image, category, stock, createdAt, tag, rating, sizes.
+                      </p>
                     </div>
                   )}
 
@@ -1969,11 +2081,10 @@ export default function ProductManagementDashboard() {
                       onDragOver={handleFolderDragOver}
                       onDragLeave={handleFolderDragLeave}
                       onDrop={handleFolderDrop}
-                      className={`mt-2 rounded-xl border border-dashed p-3 text-xs ${
-                        isFolderDragActive
+                      className={`mt-2 rounded-xl border border-dashed p-3 text-xs ${isFolderDragActive
                           ? 'border-[#840d5c] bg-[#840d5c]/5 text-[#840d5c]'
                           : 'border-neutral-300 bg-neutral-50 text-neutral-600'
-                      }`}
+                        }`}
                     >
                       Drag and drop your image folder here.
                     </div>
@@ -2095,51 +2206,68 @@ export default function ProductManagementDashboard() {
                         ))}
                       </select>
                     </div>
-                    <div>
-                      <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">TAG</label>
+                    {/* <div>
+                      <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">COLOR HEX</label>
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Black"
-                        value={newProductDetail.tag}
-                        onChange={(e) => setNewProductDetail({ ...newProductDetail, tag: e.target.value })}
+                        placeholder="e.g. #000000"
+                        value={newProductDetail.colorHex}
+                        onChange={(e) => setNewProductDetail({ ...newProductDetail, colorHex: e.target.value })}
                         className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
                       />
-                    </div>
+                    </div> */}
                   </div>
 
                   <div>
                     <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">DYNAMIC FILTERS</label>
                     {addFilterGroups.length > 0 ? (
                       <div className="grid grid-cols-1 gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-                        {addFilterGroups.map((group) => {
-                          const selectedOptionId =
-                            group.filterOptions.find((option) => newFilterOptionIds.includes(option.id))?.id || '';
+{addFilterGroups.map((group) => (
+  <div key={group.id} className="mb-4">
+    <p className="text-[10px] font-bold text-[#840d5c] uppercase mb-1">{group.displayName}</p>
+    <div className="flex flex-wrap gap-1.5">
+      {group.filterOptions.map((option) => {
+        const isSelected = newFilterOptionIds.includes(option.id);
+        return (
+          <button
+            type="button"
+            key={option.id}
+onClick={() => {
+  setNewFilterOptionIds((prev) => {
+    // Check if the current group is "Comfort Type"
+    const isSingleSelectGroup = 
+      group.name === 'Comfort Type' || 
+      group.slug === 'comfort-type';
 
-                          return (
-                            <div key={group.id}>
-                              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-neutral-500">
-                                {group.displayName || group.name}
-                              </label>
-                              <select
-                                value={selectedOptionId}
-                                onChange={(e) =>
-                                  setNewFilterOptionIds((current) =>
-                                    applySingleSelect(current, group, e.target.value)
-                                  )
-                                }
-                                className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
-                              >
-                                <option value="">Select {group.displayName || group.name}</option>
-                                {group.filterOptions.map((option) => (
-                                  <option key={option.id} value={option.id}>
-                                    {option.displayLabel}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          );
-                        })}
+    if (isSingleSelectGroup) {
+      // Single-select behavior: Clear previous options from this group and add the new one
+      const groupOptionIds = new Set(group.filterOptions.map((opt) => opt.id));
+      const next = prev.filter((id) => !groupOptionIds.has(id));
+      return [...next, option.id];
+    } else {
+      // Standard multi-select toggle behavior for badges or other tags
+      if (prev.includes(option.id)) {
+        return prev.filter((id) => id !== option.id);
+      } else {
+        return [...prev, option.id];
+      }
+    }
+  });
+}}
+            className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all border ${
+              isSelected
+                ? 'bg-[#840d5c] border-[#840d5c] text-white shadow-sm'
+                : 'bg-white border-neutral-300 text-neutral-600 hover:bg-neutral-100'
+            }`}
+          >
+            {option.displayLabel}
+          </button>
+        );
+      })}
+    </div>
+  </div>
+))}
                       </div>
                     ) : (
                       <p className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 px-3 py-2 text-[11px] text-neutral-500">
@@ -2167,6 +2295,59 @@ export default function ProductManagementDashboard() {
                       className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
                     />
                   </div>
+{/* Hex Color Picker, Color Name, & Color Preview Block */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div>
+                      <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-1">
+                        Color Hex Code
+                      </label>
+                      <div className="flex items-center gap-2 border border-neutral-300 rounded-xl px-3 py-1 bg-neutral-50">
+                        <input
+                          type="color"
+                          value={newProductDetail.colorHex}
+                          onChange={(e) => setNewProductDetail({ ...newProductDetail, colorHex: e.target.value })}
+                          className="w-8 h-8 rounded cursor-pointer border border-neutral-300 p-0 bg-transparent shrink-0"
+                        />
+                        <input
+                          type="text"
+                          value={newProductDetail.colorHex}
+                          onChange={(e) => setNewProductDetail({ ...newProductDetail, colorHex: e.target.value })}
+                          placeholder="#000000"
+                          maxLength={7}
+                          className="w-full bg-transparent text-xs font-mono outline-none text-neutral-700 uppercase"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-1">
+                        Color Name
+                      </label>
+                      <input
+                        type="text"
+                        value={newProductDetail.colorName}
+                        onChange={(e) => setNewProductDetail({ ...newProductDetail, colorName: e.target.value })}
+                        placeholder="e.g. Crimson Red"
+                        className="w-full text-xs font-semibold bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2.5 outline-none focus:border-[#840d5c]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-1">
+                        Color Preview
+                      </label>
+                      <div 
+                        style={{ backgroundColor: newProductDetail.colorHex }}
+                        className="w-full h-9 rounded-xl border border-neutral-300 shadow-inner flex items-center justify-center transition-all duration-200"
+                      >
+                        <span className="text-[9px] font-mono mix-blend-difference text-white font-extrabold uppercase drop-shadow-sm">
+                          {newProductDetail.colorHex}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">PRICE (₹)</label>
@@ -2256,11 +2437,10 @@ export default function ProductManagementDashboard() {
                         setIsAddFolderDragActive(false);
                       }}
                       onDrop={handleAddFolderDrop}
-                      className={`mt-2 rounded-xl border border-dashed p-3 text-xs ${
-                        isAddFolderDragActive
+                      className={`mt-2 rounded-xl border border-dashed p-3 text-xs ${isAddFolderDragActive
                           ? 'border-[#840d5c] bg-[#840d5c]/5 text-[#840d5c]'
                           : 'border-neutral-300 bg-neutral-50 text-neutral-600'
-                      }`}
+                        }`}
                     >
                       Drag and drop image folder here.
                     </div>
@@ -2358,7 +2538,7 @@ export default function ProductManagementDashboard() {
                         ))}
                       </select>
                     </div>
-                    <div>
+                    {/* <div>
                       <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">TAG</label>
                       <input
                         type="text"
@@ -2367,41 +2547,58 @@ export default function ProductManagementDashboard() {
                         onChange={(e) => setEditProductDetail({ ...editProductDetail, tag: e.target.value })}
                         className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
                       />
-                    </div>
+                    </div> */}
                   </div>
 
                   <div>
                     <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">DYNAMIC FILTERS</label>
                     {editFilterGroups.length > 0 ? (
                       <div className="grid grid-cols-1 gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-                        {editFilterGroups.map((group) => {
-                          const selectedOptionId =
-                            group.filterOptions.find((option) => editFilterOptionIds.includes(option.id))?.id || '';
+{editFilterGroups.map((group) => (
+  <div key={group.id} className="mb-4">
+    <p className="text-[10px] font-bold text-[#840d5c] uppercase mb-1">{group.displayName}</p>
+    <div className="flex flex-wrap gap-1.5">
+      {group.filterOptions.map((option) => {
+        const isSelected = editFilterOptionIds.includes(option.id);
+        return (
+          <button
+            type="button"
+            key={option.id}
+onClick={() => {
+  setEditFilterOptionIds((prev) => {
+    // Check if the current group is "Comfort Type"
+    const isSingleSelectGroup = 
+      group.name === 'Comfort Type' || 
+      group.slug === 'comfort-type';
 
-                          return (
-                            <div key={group.id}>
-                              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-neutral-500">
-                                {group.displayName || group.name}
-                              </label>
-                              <select
-                                value={selectedOptionId}
-                                onChange={(e) =>
-                                  setEditFilterOptionIds((current) =>
-                                    applySingleSelect(current, group, e.target.value)
-                                  )
-                                }
-                                className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
-                              >
-                                <option value="">Select {group.displayName || group.name}</option>
-                                {group.filterOptions.map((option) => (
-                                  <option key={option.id} value={option.id}>
-                                    {option.displayLabel}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          );
-                        })}
+    if (isSingleSelectGroup) {
+      // Single-select behavior: Clear previous options from this group and add the new one
+      const groupOptionIds = new Set(group.filterOptions.map((opt) => opt.id));
+      const next = prev.filter((id) => !groupOptionIds.has(id));
+      return [...next, option.id];
+    } else {
+      // Standard multi-select toggle behavior for badges or other tags
+      if (prev.includes(option.id)) {
+        return prev.filter((id) => id !== option.id);
+      } else {
+        return [...prev, option.id];
+      }
+    }
+  });
+}}
+            className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all border ${
+              isSelected
+                ? 'bg-[#840d5c] border-[#840d5c] text-white shadow-sm'
+                : 'bg-white border-neutral-300 text-neutral-600 hover:bg-neutral-100'
+            }`}
+          >
+            {option.displayLabel}
+          </button>
+        );
+      })}
+    </div>
+  </div>
+))}
                       </div>
                     ) : (
                       <p className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 px-3 py-2 text-[11px] text-neutral-500">
@@ -2429,6 +2626,61 @@ export default function ProductManagementDashboard() {
                       className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
                     />
                   </div>
+{/* Hex Color Picker, Color Name, & Color Preview Block (EDIT) */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div>
+                      <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-1">
+                        Color Hex Code
+                      </label>
+                      <div className="flex items-center gap-2 border border-neutral-300 rounded-xl px-3 py-1 bg-neutral-50">
+                        <input
+                          type="color"
+                          value={editProductDetail.colorHex}
+                          onChange={(e) => setEditProductDetail({ ...editProductDetail, colorHex: e.target.value })}
+
+                          className="w-8 h-8 rounded cursor-pointer border border-neutral-300 p-0 bg-transparent shrink-0"
+                        />
+                        <input
+                          type="text"
+                          value={editProductDetail.colorHex}
+                          onChange={(e) => setEditProductDetail({ ...editProductDetail, colorHex: e.target.value })}
+                          placeholder="#000000"
+                          maxLength={7}
+                          className="w-full bg-transparent text-xs font-mono outline-none text-neutral-700 uppercase"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-1">
+                        Color Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editProductDetail.colorName}
+                        onChange={(e) => setEditProductDetail({ ...editProductDetail, colorName: e.target.value })}
+                        placeholder="e.g. Crimson Red"
+                        className="w-full text-xs font-semibold bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2.5 outline-none focus:border-[#840d5c]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-1">
+                        Color Preview
+                      </label>
+                      <div 
+                        style={{ backgroundColor: editProductDetail.colorHex }}
+                        className="w-full h-9 rounded-xl border border-neutral-300 shadow-inner flex items-center justify-center transition-all duration-200"
+                      >
+                        <span className="text-[9px] font-mono mix-blend-difference text-white font-extrabold uppercase drop-shadow-sm">
+                          {editProductDetail.colorHex}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Multi-Select Database Filter Tags Box (EDIT) */}
+
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -2585,11 +2837,10 @@ export default function ProductManagementDashboard() {
                         setIsEditFolderDragActive(false);
                       }}
                       onDrop={handleEditFolderDrop}
-                      className={`mt-2 rounded-xl border border-dashed p-3 text-xs ${
-                        isEditFolderDragActive
+                      className={`mt-2 rounded-xl border border-dashed p-3 text-xs ${isEditFolderDragActive
                           ? 'border-[#840d5c] bg-[#840d5c]/5 text-[#840d5c]'
                           : 'border-neutral-300 bg-neutral-50 text-neutral-600'
-                      }`}
+                        }`}
                     >
                       Drag and drop image folder here.
                     </div>

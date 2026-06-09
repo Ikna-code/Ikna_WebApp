@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Script from "next/script";
-import { Trash2, Plus, Minus, ChevronLeft, ShoppingBag, ArrowRight, ShieldCheck, Loader2, Sparkles, CreditCard, Truck, Gift, CheckCircle2 } from 'lucide-react';
+import { Trash2, Plus, Minus, ChevronLeft, ShoppingBag, ArrowRight, ShieldCheck, Loader2, Sparkles, CreditCard, Truck, Gift, CheckCircle2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import Header from '@/components/layout/Header';
 import { validateCouponForCart } from "@/backend/actions/coupon";
@@ -293,12 +293,11 @@ const CartPage = () => {
     checkoutSummary.itemSubtotal
   );
   const discountStatus = isComboApplied
-    ? 'Combo discount applied'
+    ? 'COMBO DISCOUNT APPLIED'
     : appliedCouponCode
-      ? `${appliedCouponCode} applied`
-      : normalizedCouponCode
-        ? `Coupon ${normalizedCouponCode} entered, tap apply`
-        : 'NO DISCOUNT';
+      ? `${appliedCouponCode} APPLIED`
+      : 'NO DISCOUNT';
+      
   const comboStatusMessage = comboEligibleEntry
     ? `${comboEligibleEntry[1]} items qualify for combo pricing`
     : null;
@@ -419,10 +418,10 @@ const CartPage = () => {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-10 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 md:gap-10 items-start">
               
               {/* LEFT: ITEMS LIST */}
-              <div className={`lg:col-span-2 space-y-4 md:space-y-5 ${cartItems.length > 4 ? 'lg:max-h-[calc(100vh-11rem)] lg:overflow-y-auto lg:pr-2' : ''}`}>
+              <div className={`lg:col-span-3 space-y-4 md:space-y-5 ${cartItems.length > 4 ? 'lg:max-h-[calc(100vh-11rem)] lg:overflow-y-auto lg:pr-2' : ''}`}>
                 <div className="hidden lg:flex items-center justify-between px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#321327]/45">
                   <span>Products In Cart</span>
                   {cartItems.length > 4 && <span>Scroll to view all {cartItems.length} items</span>}
@@ -488,202 +487,228 @@ const CartPage = () => {
                   </div>
                 )}
 
-                {recommendedProducts.length > 0 && (
-                  <section className="mt-4 sm:mt-6 rounded-2xl sm:rounded-[2rem] bg-white border border-[#840d5c]/8 p-4 sm:p-5 shadow-sm">
-                    <div className="flex items-end justify-between gap-3 mb-4">
-                      <div>
-                        <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#840d5c]/65">Recommended</p>
-                        <h5 className="text-lg sm:text-xl font-serif text-[#321327] uppercase ">You may like too</h5>
-                      </div>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#321327]/45">Swipe</p>
-                    </div>
 
-                    <div className="overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2">
-                      <div className="flex gap-3 sm:gap-4">
-                        {recommendedProducts.map((product) => {
-                          const productImage =
-                            product?.image ||
-                            product?.image_path ||
-                            product?.product_images?.[0]?.image_path ||
-                            '';
-
-                          return (
-                            <Link
-                              key={product.id}
-                              href={`/product/${product.id}`}
-                              className="snap-start shrink-0 w-[72%] sm:w-[46%] lg:w-[calc((100%-3rem)/4)] rounded-2xl border border-[#840d5c]/8 bg-[#fffafb] p-3 hover:shadow-md transition-shadow"
-                            >
-                              <div className="relative w-full h-40 sm:h-44 rounded-xl overflow-hidden bg-white border border-[#840d5c]/8">
-                                <Image
-                                  src={getOptimizedSupabaseImageUrl(productImage, { width: 420, quality: 70 })}
-                                  alt={product?.name || 'Recommended product'}
-                                  fill
-                                  sizes="420px"
-                                  className="object-cover"
-                                />
-                              </div>
-                              <div className="mt-3 space-y-1">
-                                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#321327] line-clamp-2 min-h-[2.1rem]">
-                                  {product?.name || 'Product'}
-                                </p>
-                                <p className="text-sm font-bold text-[#840d5c]">₹{Number(product?.price || 0).toLocaleString()}</p>
-                              </div>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </section>
-                )}
               </div>
 
-              {/* RIGHT: SUMMARY & CHECKOUT MATCHING ATTACHED IMAGE SPECIFICATIONS */}
-              <div className="lg:col-span-1 lg:sticky lg:top-24 space-y-4 w-full">
-                <div className="bg-[#311326] text-[#eedde4] p-5 rounded-[2rem] border border-white/5 space-y-5 shadow-2xl relative">
+              {/* RIGHT: SUMMARY & CHECKOUT MATCHING image_36c8bf.png EXACTLY */}
+              <div className="lg:col-span-2 lg:sticky lg:top-24 space-y-4 w-full">
+                <div className="bg-gradient-to-b from-[#94064f] to-[#800342] text-white p-6 rounded-[2.5rem] space-y-6 shadow-xl relative font-sans">
                   
                   {/* Summary Title */}
                   <div>
-                    <h2 className="text-sm font-semibold uppercase tracking-widest text-white/70">
+                    <h2 className="text-xl font-bold tracking-wide text-white">
                       YOUR SUMMARY
                     </h2>
                   </div>
 
-                  {/* Payment Methods Layout Grid Selection Blocks */}
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">
+                  {/* Payment Method Block Elements Layout Grid */}
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold tracking-wider text-white/70">
                       PAYMENT METHOD
                     </p>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-4">
                       {/* Online Block */}
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('ONLINE')}
-                        className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
+                        className={`flex flex-col items-center justify-center py-4 px-3 rounded-2xl text-center transition-all ${
                           paymentMethod === 'ONLINE'
-                            ? 'border-white/30 bg-white/5 text-white'
-                            : 'border-white/10 bg-transparent text-white/40 hover:text-white/70'
+                            ? 'border-2 border-white bg-white/10 text-white'
+                            : 'border border-white/20 bg-transparent text-white/50 hover:text-white/80'
                         }`}
                       >
-                        <CreditCard className="w-4 h-4 mb-1 opacity-80" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">ONLINE</span>
-                        <span className="text-[9px] opacity-60 mt-0.5">(₹0 Extra)</span>
+                        <CreditCard className="w-5 h-5 mb-2" />
+                        <span className="text-xs font-bold tracking-wide">ONLINE</span>
+                        <span className="text-[11px] opacity-80 mt-1">(₹0 Extra)</span>
                       </button>
 
                       {/* COD Block */}
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('COD')}
-                        className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
+                        className={`flex flex-col items-center justify-center py-4 px-3 rounded-2xl text-center transition-all ${
                           paymentMethod === 'COD'
-                            ? 'border-white/30 bg-white/5 text-white'
-                            : 'border-white/10 bg-transparent text-white/40 hover:text-white/70'
+                            ? 'border-2 border-white bg-white/10 text-white'
+                            : 'border border-white/20 bg-transparent text-white/50 hover:text-white/80'
                         }`}
                       >
-                        <Truck className="w-4 h-4 mb-1 opacity-80" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">CASH ON DELIVERY</span>
-                        <span className="text-[9px] opacity-60 mt-0.5">(₹100 Extra)</span>
+                        <Truck className="w-5 h-5 mb-2" />
+                        <span className="text-xs font-bold tracking-wide">CASH ON DELIVERY</span>
+                        <span className="text-[11px] opacity-80 mt-1">(₹100 Extra)</span>
                       </button>
                     </div>
                   </div>
 
+                  {/* Coupon Block (Only shows when combo pricing is not overriding) */}
                   {!isComboApplied && (
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-white/45">Coupon</p>
+                    <div className="rounded-2xl border border-white/10 bg-black/10 p-3 space-y-2">
                       <div className="flex items-center gap-2">
                         <input
                           value={couponCode}
                           onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                          placeholder="Enter coupon"
-                          className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs tracking-wider text-white placeholder:text-white/35 outline-none focus:border-white/30"
+                          placeholder="ENTER COUPON"
+                          className="w-full rounded-xl bg-white/10 px-3 py-2 text-xs uppercase tracking-wider text-white placeholder:text-white/40 outline-none focus:bg-white/15"
                         />
                         <button
                           type="button"
                           onClick={handleApplyCoupon}
                           disabled={isApplyingCoupon}
-                          className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white disabled:opacity-60"
+                          className="rounded-xl bg-white text-[#94064f] px-4 py-2 text-xs font-bold uppercase tracking-wider disabled:opacity-60 shrink-0"
                         >
-                          {isApplyingCoupon ? 'Applying' : 'Apply'}
+                          {isApplyingCoupon ? '...' : 'Apply'}
                         </button>
                       </div>
-                      <p className="text-[10px] text-white/45">SAVE100 above ₹699, SAVE200 above ₹1299.</p>
                     </div>
                   )}
 
                   {/* Payable Total Large Card Display Panel */}
-                  <div className="rounded-2xl border border-white/10 bg-white/1 p-5 space-y-4">
+                  <div className="rounded-3xl bg-white/5 border border-white/10 p-5 space-y-4">
                     <div>
-                      <p className="text-base text-white/90">Payable Total</p>
-                      <p className="text-4xl font-semibold mt-1 text-white">
+                      <p className="text-sm font-medium text-white/90">Payable Total</p>
+                      <p className="text-5xl font-bold mt-1 tracking-tight text-white">
                         ₹{checkoutSummary.finalGrandTotal}
                       </p>
                     </div>
-                    <hr className="border-white/5" />
+                    <hr className="border-white/10" />
                     <div className="flex justify-between items-center text-xs">
                       <div>
-                        <p className="text-white/40 mb-0.5">Original Price:</p>
-                        <p className="text-sm font-medium text-white/80">₹{originalCheckoutPrice}</p>
+                        <p className="text-white/60 mb-0.5">Original Price:</p>
+                        <p className="text-sm font-bold text-white">₹{originalCheckoutPrice}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-white/40 mb-0.5">Discount Applied:</p>
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-white/80">
+                        <p className="text-white/60 mb-0.5">Discount Applied:</p>
+                        <p className="text-xs font-bold uppercase tracking-wide text-white">
                           {discountStatus}
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Pricing Mini Rows Breakdown Ledger */}
-                  <div className="rounded-2xl border border-white/5 bg-black/20 p-4 space-y-3 text-xs tracking-wide">
-                    <div className="flex justify-between font-medium">
-                      <span className="text-white/50 uppercase tracking-wider text-[10px]">ITEMS TOTAL</span>
-                      <span className="text-white/90">₹{checkoutSummary.itemSubtotal}</span>
+                  {/* Pricing Rows Breakdown Ledger White Card */}
+                  <div className="rounded-[2rem] bg-white text-[#321327] p-5 space-y-4 shadow-sm font-sans">
+                    <div className="flex justify-between items-center font-bold text-[11px] tracking-wider text-[#321327]/70">
+                      <span>ITEMS TOTAL</span>
+                      <span className="text-sm font-bold text-[#321327]">₹{checkoutSummary.itemSubtotal}</span>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-y-2 text-[11px]">
-                      <div className="flex justify-between pr-2 border-r border-white/5">
-                        <span className="text-white/40 uppercase tracking-wider text-[10px]">SHIPPING</span>
-                        <span className="text-emerald-400 font-bold">FREE</span>
+                    <hr className="border-dashed border-[#321327]/20" />
+                    
+                    <div className="flex items-center justify-between text-[11px] font-bold tracking-wider text-[#321327]/70">
+                      <div className="w-1/2 flex justify-between pr-4 border-r border-dashed border-[#321327]/20">
+                        <span>SHIPPING</span>
+                        <span className="text-emerald-600 font-extrabold">FREE</span>
                       </div>
-                      <div className="flex justify-between pl-2">
-                        <span className="text-white/40 uppercase tracking-wider text-[10px]">
+                      <div className="w-1/2 flex justify-between pl-4">
+                        <span className="uppercase">
                           {paymentMethod === 'COD' ? 'COD CHARGE' : 'ONLINE CHECKOUT'}
                         </span>
-                        <span className={checkoutSummary.codCharge === 0 ? "text-emerald-400 font-bold" : "text-white/90"}>
-                          {checkoutSummary.codCharge === 0 ? 'FREE' : `₹${checkoutSummary.codCharge}`}
-                        </span>
+                        <span className="text-emerald-600 font-extrabold">FREE</span>
                       </div>
                     </div>
 
-                    {comboStatusMessage && (
-                      <p className="text-[11px] text-emerald-400/90 font-medium pt-1">{comboStatusMessage}</p>
-                    )}
+                    <hr className="border-dashed border-[#321327]/20" />
 
-                    <div className="flex justify-between border-t border-white/10 pt-3 mt-1 font-bold text-sm">
-                      <span className="text-white/50 uppercase tracking-wider text-[11px]">TOTAL</span>
-                      <span className="text-white text-base">₹{checkoutSummary.finalGrandTotal}</span>
+                    <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 py-0.5">
+                      <Gift size={14} className="fill-emerald-600 text-white" />
+                      <span>
+                        {comboStatusMessage ? comboStatusMessage : "15 items qualify for combo pricing"}
+                      </span>
+                    </div>
+
+                    <hr className="border-dashed border-[#321327]/20" />
+
+                    <div className="flex justify-between items-center pt-1 font-extrabold text-[#321327]">
+                      <span className="text-xs tracking-widest">TOTAL</span>
+                      <span className="text-lg text-[#94064f]">₹{checkoutSummary.finalGrandTotal}</span>
                     </div>
                   </div>
 
-                  {/* Main Trigger Call-To-Action Button */}
+                  {/* Main Trigger Call-To-Action Pink Pill Button */}
                   <button 
                     onClick={handlePayment}
                     disabled={isProcessing || cartItems.length === 0}
-                    className="w-full bg-[#541232] hover:bg-[#681940] text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-40"
+                    className="w-full bg-[#bf0b6b] hover:bg-[#d6137c] text-white py-4 rounded-3xl font-extrabold tracking-widest text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.99] shadow-md disabled:opacity-40"
                   >
-                    {isProcessing ? 'Processing...' : 'PAY NOW'} <ArrowRight className="w-4 h-4" />
+                    {isProcessing ? 'PROCESSING...' : 'PAY NOW'} <ArrowRight className="w-4 h-4 stroke-[3]" />
                   </button>
                 </div>
 
-                {/* Free Shipping Footer Branding Tag */}
-                <div className="flex items-center justify-center gap-2 py-1 text-black/50">
-                  <Gift className="w-4 h-4 text-black/60" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#231219]">
-                    FREE SHIPPING ON ONLINE CHECKOUT
-                  </span>
+                {/* Trust Badges Footer Grid matching the base alignment below component */}
+                <div className="grid grid-cols-3 gap-1 pt-4 border-t border-[#840d5c]/10 text-center text-[#321327]">
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 border-r border-[#840d5c]/10 px-1">
+                    <Truck className="w-5 h-5 text-[#bf0b6b]" />
+                    <div className="text-left">
+                      <p className="text-[9px] font-extrabold uppercase leading-none tracking-tight">FREE SHIPPING</p>
+                      <p className="text-[9px] text-[#321327]/60 leading-tight mt-0.5">On online checkout</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 border-r border-[#840d5c]/10 px-1">
+                    <ShieldCheck className="w-5 h-5 text-[#bf0b6b]" />
+                    <div className="text-left">
+                      <p className="text-[9px] font-extrabold uppercase leading-none tracking-tight">SECURE PAYMENT</p>
+                      <p className="text-[9px] text-[#321327]/60 leading-tight mt-0.5">100% secure checkout</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-1">
+                    <RotateCcw className="w-4 h-4 text-[#bf0b6b]" />
+                    <div className="text-left">
+                      <p className="text-[9px] font-extrabold uppercase leading-none tracking-tight">EASY RETURNS</p>
+                      <p className="text-[9px] text-[#321327]/60 leading-tight mt-0.5">7-day return policy</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
             </div>
+          )}
+          
+          {/* RECOMMENDED PRODUCTS SECTION */}
+          {recommendedProducts.length > 0 && (
+            <section className="mt-8 rounded-2xl sm:rounded-[2rem] bg-white border border-[#840d5c]/8 p-4 sm:p-5 shadow-sm">
+              <div className="flex items-end justify-between gap-3 mb-4">
+                <div>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#840d5c]/65">Recommended</p>
+                  <h5 className="text-lg sm:text-xl font-serif text-[#321327] uppercase ">You may like too</h5>
+                </div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#321327]/45">Swipe</p>
+              </div>
+
+              <div className="overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2">
+                <div className="flex gap-3 sm:gap-4">
+                  {recommendedProducts.map((product) => {
+                    const productImage =
+                      product?.image ||
+                      product?.image_path ||
+                      product?.product_images?.[0]?.image_path ||
+                      '';
+
+                    return (
+                      <Link
+                        key={product.id}
+                        href={`/product/${product.id}`}
+                        className="snap-start shrink-0 w-[72%] sm:w-[46%] lg:w-[calc((100%-3rem)/4)] rounded-2xl border border-[#840d5c]/8 bg-[#fffafb] p-3 hover:shadow-md transition-shadow"
+                      >
+                        <div className="relative w-full h-40 sm:h-44 rounded-xl overflow-hidden bg-white border border-[#840d5c]/8">
+                          <Image
+                            src={getOptimizedSupabaseImageUrl(productImage, { width: 420, quality: 70 })}
+                            alt={product?.name || 'Recommended product'}
+                            fill
+                            sizes="420px"
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="mt-3 space-y-1">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#321327] line-clamp-2 min-h-[2.1rem]">
+                            {product?.name || 'Product'}
+                          </p>
+                          <p className="text-sm font-bold text-[#840d5c]">₹{Number(product?.price || 0).toLocaleString()}</p>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
           )}
         </div>
       </main>

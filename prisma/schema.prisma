@@ -198,32 +198,32 @@ model WishlistItem {
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  userId          String
-  totalAmount     Decimal     @db.Decimal(10, 2)
-  status          OrderStatus @default(PENDING)
-  createdAt       DateTime    @default(now())
-  paidAt          DateTime?
-  packedAt        DateTime?
-  shippedAt       DateTime?
-  deliveredAt     DateTime?
-  addressId       String?
-  shippingAddress String?
-  couponAppliedId String?
-  discountAmount  Decimal     @default(0.00) @db.Decimal(10, 2)
-  isFirstOrder    Boolean     @default(false)
-  razorpayOrderId String?     @unique
+  id                String      @id @default(cuid())
+  userId            String
+  totalAmount       Decimal     @db.Decimal(10, 2)
+  status            OrderStatus @default(PENDING)
+  createdAt         DateTime    @default(now())
+  addressId         String?
+  shippingAddress   String?
+  couponAppliedId   String?
+  discountAmount    Decimal     @default(0.00) @db.Decimal(10, 2)
+  isFirstOrder      Boolean     @default(false)
+  paidAt            DateTime?
+  packedAt          DateTime?
+  shippedAt         DateTime?
+  deliveredAt       DateTime?
+  razorpayOrderId   String?     @unique
   shiprocketOrderId String?
-  shipmentId      String?
-  awbCode         String?
-  courierName     String?
-  trackingUrl     String?
-  shiprocketStatus String?
-  orderItems      OrderItem[]
-  address         Address?    @relation(fields: [addressId], references: [id])
-  coupon          Coupon?     @relation(fields: [couponAppliedId], references: [id])
-  user            User        @relation(fields: [userId], references: [id])
-  payment         Payment?
+  shipmentId        String?
+  awbCode           String?
+  courierName       String?
+  trackingUrl       String?
+  shiprocketStatus  String?
+  orderItems        OrderItem[]
+  address           Address?    @relation(fields: [addressId], references: [id])
+  coupon            Coupon?     @relation(fields: [couponAppliedId], references: [id])
+  user              User        @relation(fields: [userId], references: [id])
+  payment           Payment?
 
   @@index([shiprocketOrderId])
   @@index([shipmentId])

@@ -164,7 +164,7 @@ export default function Dashboard() {
     return getPresetRange(timePeriod as BaseTimePeriod, today);
   }, [endDate, isCustomRange, startDate, timePeriod, today]);
 
-  const formattedDateRange = `${formatDate(activeRange.start)} – ${formatDate(activeRange.end)}`;
+  const formattedDateRange = `${formatDate(activeRange.start)} - ${formatDate(activeRange.end)}`;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -241,9 +241,9 @@ export default function Dashboard() {
   );
 
   const businessInsights = [
-    'Revenue run-rate: ' + new Intl.NumberFormat('en-IN').format(Math.round(dailyRunRate)) + '/day, projecting ' + new Intl.NumberFormat('en-IN').format(projectedMonthlyRevenue) + ' for a 30-day cycle.',
+    'Revenue run-rate: ₹' + new Intl.NumberFormat('en-IN').format(Math.round(dailyRunRate)) + '/day, projecting ₹' + new Intl.NumberFormat('en-IN').format(projectedMonthlyRevenue) + ' for a 30-day cycle.',
     topChannel
-      ? topChannel.name + ' contributes ' + topChannel.percentage + ' of sales value (' + new Intl.NumberFormat('en-IN').format(topChannel.value) + ').'
+      ? topChannel.name + ' contributes ' + topChannel.percentage + ' of sales value (₹' + new Intl.NumberFormat('en-IN').format(topChannel.value) + ').'
       : 'Category contribution data is unavailable for this period.',
     String(topThreeShare) + '% of revenue is concentrated in top 3 categories, signaling ' + (topThreeShare >= 75 ? 'high dependency risk' : 'healthy category diversification') + '.',
     fastestGrowingMetric
@@ -252,16 +252,16 @@ export default function Dashboard() {
   ];
 
   const exportSummaryRows = [
-    ['Total Revenue', 'Rs ' + new Intl.NumberFormat('en-IN').format(Math.round(totalRevenueValue))],
-    ['Total Orders', new Intl.NumberFormat('en-IN').format(Math.round(totalOrdersValue))],
-    ['Average Order Value', 'Rs ' + new Intl.NumberFormat('en-IN').format(Math.round(avgOrderValue))],
-    ['Date Range (Days)', String(dateRangeDays)],
-    ['Daily Revenue Run-Rate', 'Rs ' + new Intl.NumberFormat('en-IN').format(Math.round(dailyRunRate))],
-    ['Projected 30-Day Revenue', 'Rs ' + new Intl.NumberFormat('en-IN').format(projectedMonthlyRevenue)],
-    ['Top Category', topChannel ? topChannel.name : 'N/A'],
-    ['Top Category Share', topChannel ? topChannel.percentage : 'N/A'],
-    ['Top 3 Category Share', String(topThreeShare) + '%'],
-    ['Data Source', analytics.source],
+    ['Total Revenue', '₹' + new Intl.NumberFormat('en-IN').format(Math.round(totalRevenueValue)), ''],
+    ['Total Orders', new Intl.NumberFormat('en-IN').format(Math.round(totalOrdersValue)), ''],
+    ['Average Order Value', '₹' + new Intl.NumberFormat('en-IN').format(Math.round(avgOrderValue)), ''],
+    ['Date Range (Days)', String(dateRangeDays), ''],
+    ['Daily Revenue Run-Rate', '₹' + new Intl.NumberFormat('en-IN').format(Math.round(dailyRunRate)), ''],
+    ['Projected 30-Day Revenue', '₹' + new Intl.NumberFormat('en-IN').format(projectedMonthlyRevenue), ''],
+    ['Top Category', topChannel ? topChannel.name : 'N/A', ''],
+    ['Top Category Share', topChannel ? topChannel.percentage : 'N/A', ''],
+    ['Top 3 Category Share', String(topThreeShare) + '%', ''],
+    ['Data Source', analytics.source, ''],
   ];
 
   const reportPreview = {
@@ -269,40 +269,98 @@ export default function Dashboard() {
     metrics: activeMetrics,
     channels: activeChannels,
     insights: businessInsights,
-    summaryRows: exportSummaryRows,
+    summaryRows: exportSummaryRows.map(([label, val]) => [label, val]),
   };
 
   const handleExportReport = () => {
-    const csvContent = [
-      ['Sales Analytics Report'],
-      ['Period', formattedDateRange],
-      ['Time Frame', formatTimePeriodLabel(timePeriod)],
-      ['Data Source', analytics.source],
-      [''],
-      ['Business Summary'],
-      ...exportSummaryRows,
-      [''],
-      ['Metrics'],
-      ...activeMetrics.map((metric) => [metric.title, metric.value, metric.percentage]),
-      [''],
-      ['Sales by Category'],
-      ...activeChannels.map((channel) => [channel.name, 'Rs ' + channel.value.toLocaleString(), channel.percentage]),
-      [''],
-      ['Actionable Insights'],
-      ...businessInsights.map((insight, index) => ['Insight ' + (index + 1), insight]),
-      [''],
-      ['Generated on', new Date().toLocaleString()],
-    ]
-      .map((row) => row.join(','))
-      .join('\n');
+    // Generate styled HTML Table with inline CSS styles
+    const excelHtml = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta http-equiv="content-type" content="text/plain; charset=UTF-8"/>
+        <style>
+          table { border-collapse: collapse; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+          td { border: 1px solid #e2e8f0; padding: 6px 12px; font-size: 11pt; color: #334155; }
+          
+          /* Title styling */
+          .report-title { font-size: 16pt; font-weight: bold; color: #1e293b; padding: 12px 0; }
+          .metadata-label { font-weight: bold; color: #64748b; background-color: #f8fafc; }
+          
+          /* Colored background table headings */
+          .heading-row th { 
+            background-color: #4f46e5; 
+            color: #ffffff; 
+            font-weight: bold; 
+            text-align: left; 
+            padding: 10px 12px; 
+            font-size: 12pt;
+            border: 1px solid #4338ca;
+          }
+          
+          /* Sub-heading / Column metric labels styling */
+          .column-header td {
+            background-color: #e0e7ff;
+            color: #312e81;
+            font-weight: bold;
+            border: 1px solid #c7d2fe;
+          }
+          
+          .insight-label { font-weight: bold; color: #b45309; background-color: #fffbeb; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <tr><td colspan="3" class="report-title">Sales Analytics Report</td></tr>
+          <tr><td class="metadata-label">Period</td><td colspan="2">${formattedDateRange}</td></tr>
+          <tr><td class="metadata-label">Time Frame</td><td colspan="2">${formatTimePeriodLabel(timePeriod)}</td></tr>
+          <tr><td class="metadata-label">Data Source</td><td colspan="2">${analytics.source}</td></tr>
+          <tr><td colspan="3"></td></tr>
+          
+          <tr class="heading-row"><th colspan="3">Business Summary</th></tr>
+          <tr class="column-header"><td>Business Summary Metric</td><td>Value</td><td>Details / Context</td></tr>
+          ${exportSummaryRows.map(row => `
+            <tr><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td></tr>
+          `).join('')}
+          <tr><td colspan="3"></td></tr>
+          
+          <tr class="heading-row"><th colspan="3">Performance Metrics</th></tr>
+          <tr class="column-header"><td>Performance Metrics</td><td>Value</td><td>Growth / Contribution Share</td></tr>
+          ${activeMetrics.map(metric => `
+            <tr><td>${metric.title}</td><td>${metric.value}</td><td>${metric.percentage}</td></tr>
+          `).join('')}
+          <tr><td colspan="3"></td></tr>
+          
+          <tr class="heading-row"><th colspan="3">Sales by Category</th></tr>
+          <tr class="column-header"><td>Category Name</td><td>Revenue Value</td><td>Category Share Percentage</td></tr>
+          ${activeChannels.map(channel => `
+            <tr><td>${channel.name}</td><td>₹${channel.value.toLocaleString('en-IN')}</td><td>${channel.percentage}</td></tr>
+          `).join('')}
+          <tr><td colspan="3"></td></tr>
+          
+          <tr class="heading-row"><th colspan="3">Actionable Business Insights</th></tr>
+          ${businessInsights.map((insight, index) => `
+            <tr><td class="insight-label">Insight ${index + 1}</td><td colspan="2">${insight}</td></tr>
+          `).join('')}
+          <tr><td colspan="3"></td></tr>
+          
+          <tr><td class="metadata-label">Generated on</td><td colspan="2">${new Date().toLocaleString()}</td></tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    // Create file blob out of HTML layout and prompt spreadsheet application download
+    const blob = new Blob([excelHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
 
     const element = document.createElement('a');
-    element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
-    element.setAttribute('download', 'sales_report_' + new Date().getTime() + '.csv');
+    element.setAttribute('href', url);
+    element.setAttribute('download', `sales_report_${new Date().getTime()}.xls`);
     element.style.display = 'none';
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
+    URL.revokeObjectURL(url);
   };
 
   const handleTimePeriodChange = (period: TimePeriod) => {

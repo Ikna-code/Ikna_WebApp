@@ -154,12 +154,7 @@ const ReviewsPage = ({productId}: {productId: string}) => {
         >
           {userId ? 'Write A Review' : 'Login To Review'}
         </button>
-        <button 
-          className="w-full py-4 border border-[#840d5c]/20 text-[#840d5c] text-[10px] font-bold uppercase tracking-[0.2em] rounded-full lg:hover:bg-[#FAF3F5] transition-colors"
-          onClick={() => router.push('/fit-quiz')}
-        >
-          Fit Quiz Support
-        </button>
+
       </div>
     </div>
 
