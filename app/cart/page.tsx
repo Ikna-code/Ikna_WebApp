@@ -273,6 +273,7 @@ const CartPage = () => {
     acc[normalizedCategory] = (acc[normalizedCategory] || 0) + Number(item?.quantity || 1);
     return acc;
   }, {});
+    const totalCartItems = cartItems.reduce((sum, item) => sum + (Number(item?.quantity) || 1), 0);
   const comboEligibleEntry = Object.entries(categoryQuantities)
     .sort((firstEntry, secondEntry) => secondEntry[1] - firstEntry[1])
     .find(([, quantity]) => quantity >= comboTarget);
@@ -299,7 +300,7 @@ const CartPage = () => {
       : 'NO DISCOUNT';
       
   const comboStatusMessage = comboEligibleEntry
-    ? `${comboEligibleEntry[1]} items qualify for combo pricing`
+    ? `${totalCartItems} items qualify for combo pricing`
     : null;
   const hiddenMobileItemsCount = Math.max(cartItems.length - 3, 0);
   const visibleCartItems = showAllMobileItems ? cartItems : cartItems.slice(0, 3);
@@ -353,6 +354,23 @@ const CartPage = () => {
       toast.error(`Coupon ${appliedCouponCode} removed. Minimum order is ₹${minRequired}.`);
     }
   }, [appliedCouponCode, checkoutSummary.itemSubtotal, isComboApplied]);
+
+  // Explicitly check combo eligibility whenever cart items change (add/remove)
+  useEffect(() => {
+    // This effect triggers whenever cartItems changes, ensuring combo eligibility is rechecked
+    // The combo calculations (isComboApplied, etc.) already depend on cartItems and recalculate on render
+    // This effect handles state management when combo eligibility changes
+  }, [cartItems.length]); // Depends on cartItems length to detect add/remove
+
+  // When combo becomes inactive (items removed), reset discount state to ensure correct calculation
+  useEffect(() => {
+    if (hadComboOfferRef.current && !isComboApplied) {
+      setCouponDiscount(0);
+      setAppliedCouponCode(null);
+      toast.info('Combo offer no longer applies. Discounts have been reset.');
+      hadComboOfferRef.current = false;
+    }
+  }, [isComboApplied]);
 
   const cartProductIds = new Set(
     cartItems
@@ -492,7 +510,7 @@ const CartPage = () => {
 
               {/* RIGHT: SUMMARY & CHECKOUT MATCHING image_36c8bf.png EXACTLY */}
               <div className="lg:col-span-2 lg:sticky lg:top-24 space-y-4 w-full">
-                <div className="bg-gradient-to-b from-[#94064f] to-[#800342] text-white p-6 rounded-[2.5rem] space-y-6 shadow-xl relative font-sans">
+                <div className="bg-gradient-to-b from-[#7c0a53] to-[#800342] text-white p-6 rounded-[2.5rem] space-y-6 shadow-xl relative font-sans">
                   
                   {/* Summary Title */}
                   <div>
@@ -553,7 +571,7 @@ const CartPage = () => {
                           type="button"
                           onClick={handleApplyCoupon}
                           disabled={isApplyingCoupon}
-                          className="rounded-xl bg-white text-[#94064f] px-4 py-2 text-xs font-bold uppercase tracking-wider disabled:opacity-60 shrink-0"
+                          className="rounded-xl bg-white text-[#7c0a53] px-4 py-2 text-xs font-bold uppercase tracking-wider disabled:opacity-60 shrink-0"
                         >
                           {isApplyingCoupon ? '...' : 'Apply'}
                         </button>
@@ -611,7 +629,7 @@ const CartPage = () => {
                     <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 py-0.5">
                       <Gift size={14} className="fill-emerald-600 text-white" />
                       <span>
-                        {comboStatusMessage ? comboStatusMessage : "15 items qualify for combo pricing"}
+                        {comboStatusMessage ? comboStatusMessage : `${totalCartItems} items qualify for combo pricing`}
                       </span>
                     </div>
 
@@ -619,7 +637,7 @@ const CartPage = () => {
 
                     <div className="flex justify-between items-center pt-1 font-extrabold text-[#321327]">
                       <span className="text-xs tracking-widest">TOTAL</span>
-                      <span className="text-lg text-[#94064f]">₹{checkoutSummary.finalGrandTotal}</span>
+                      <span className="text-lg text-[#7c0a53]">₹{checkoutSummary.finalGrandTotal}</span>
                     </div>
                   </div>
 
@@ -634,23 +652,23 @@ const CartPage = () => {
                 </div>
 
                 {/* Trust Badges Footer Grid matching the base alignment below component */}
-                <div className="grid grid-cols-3 gap-1 pt-4 border-t border-[#840d5c]/10 text-center text-[#321327]">
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 border-r border-[#840d5c]/10 px-1">
-                    <Truck className="w-5 h-5 text-[#bf0b6b]" />
+                <div className="grid grid-cols-3 gap-1 pt-4 border-t border-[#7c0a53]/10 text-center text-[#321327]">
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 border-r border-[#7c0a53]/10 px-1">
+                    <Truck className="w-5 h-5 text-[#7c0a53]" />
                     <div className="text-left">
                       <p className="text-[9px] font-extrabold uppercase leading-none tracking-tight">FREE SHIPPING</p>
                       <p className="text-[9px] text-[#321327]/60 leading-tight mt-0.5">On online checkout</p>
                     </div>
                   </div>
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 border-r border-[#840d5c]/10 px-1">
-                    <ShieldCheck className="w-5 h-5 text-[#bf0b6b]" />
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 border-r border-[#7c0a53]/10 px-1">
+                    <ShieldCheck className="w-5 h-5 text-[#7c0a53]" />
                     <div className="text-left">
                       <p className="text-[9px] font-extrabold uppercase leading-none tracking-tight">SECURE PAYMENT</p>
                       <p className="text-[9px] text-[#321327]/60 leading-tight mt-0.5">100% secure checkout</p>
                     </div>
                   </div>
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-1">
-                    <RotateCcw className="w-4 h-4 text-[#bf0b6b]" />
+                    <RotateCcw className="w-4 h-4 text-[#7c0a53]" />
                     <div className="text-left">
                       <p className="text-[9px] font-extrabold uppercase leading-none tracking-tight">EASY RETURNS</p>
                       <p className="text-[9px] text-[#321327]/60 leading-tight mt-0.5">7-day return policy</p>

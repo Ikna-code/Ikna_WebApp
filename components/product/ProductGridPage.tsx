@@ -24,6 +24,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   initialCategory = "",
 }) => {
   const user = useStore((state) => state.user);
+  const cartItems = useStore((state) => state.cartItems);
   const wishlistItems = useStore((state) => state.wishlist);
   const toggleWishlist = useStore((state) => state.toggleWishlist);
 
@@ -31,6 +32,31 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
     () => wishlistItems.map((item: any) => item.id),
     [wishlistItems]
   );
+
+  // Calculate combo eligibility by category
+  const comboEligibleCategories = useMemo(() => {
+    const categoryQuantities = cartItems.reduce<Record<string, number>>((acc, item) => {
+      const rawCategory = item?.category || item?.Product?.category || item?.product?.category;
+      const normalizedCategory = typeof rawCategory === 'string' ? rawCategory.trim().toLowerCase() : '';
+      if (!normalizedCategory) return acc;
+      acc[normalizedCategory] = (acc[normalizedCategory] || 0) + Number(item?.quantity || 1);
+      return acc;
+    }, {});
+    
+    // Return set of categories with 3+ items
+    return new Set(
+      Object.entries(categoryQuantities)
+        .filter(([, quantity]) => quantity >= 3)
+        .map(([category]) => category)
+    );
+  }, [cartItems]);
+
+  // Function to check if product is combo eligible
+  const isProductComboEligible = (product: any) => {
+    const rawCategory = product?.category || product?.Product?.category || product?.product?.category;
+    const normalizedCategory = typeof rawCategory === 'string' ? rawCategory.trim().toLowerCase() : '';
+    return comboEligibleCategories.has(normalizedCategory);
+  };
 
   // FILTER + SORT
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
@@ -410,6 +436,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
                             [group.categoryKey]: variantId,
                           }))
                         }
+                        isComboEligible={isProductComboEligible(activeVariant)}
                       />
                     </div>
                   );

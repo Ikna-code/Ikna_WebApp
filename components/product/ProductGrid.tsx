@@ -25,6 +25,7 @@ export const ProductCard = ({
   swatches = [],
   activeSwatchId,
   onSwatchSelect,
+  isComboEligible = false,
 }: {
   product: any;
   isWished: boolean;
@@ -33,6 +34,7 @@ export const ProductCard = ({
   swatches?: Array<{ id: string; label: string; color: string }>;
   activeSwatchId?: string;
   onSwatchSelect?: (id: string) => void;
+  isComboEligible?: boolean;
 }) => {
   const [tooltip, setTooltip] = useState({
     show: false,
@@ -230,6 +232,28 @@ export const ProductCard = ({
             Few Left
           </div>
         )}
+
+        {isComboEligible && (
+          <div
+            className="
+              px-2.5
+              py-1
+              rounded-full
+              text-[8px]
+              font-bold
+              uppercase
+              tracking-[0.12em]
+              text-white
+              shadow-md
+              bg-gradient-to-r
+              from-[#ff6b9d]
+              to-[#ff1493]
+            "
+            title="Get 10% off when you have 3+ items from this category in cart"
+          >
+            Combo Offer
+          </div>
+        )}
       </div>
 
       {/* WISHLIST */}
@@ -374,6 +398,7 @@ export const ProductCard = ({
 
 const ProductGrid = () => {
   const user = useStore((state) => state.user);
+  const cartItems = useStore((state) => state.cartItems);
 
   const isAuthInitialized = useStore(
     (state) => state.isAuthInitialized
@@ -400,6 +425,31 @@ const ProductGrid = () => {
       wishlistItems.map((item: any) => item.id),
     [wishlistItems]
   );
+
+  // Calculate combo eligibility by category
+  const comboEligibleCategories = useMemo(() => {
+    const categoryQuantities = cartItems.reduce<Record<string, number>>((acc, item) => {
+      const rawCategory = item?.category || item?.Product?.category || item?.product?.category;
+      const normalizedCategory = typeof rawCategory === 'string' ? rawCategory.trim().toLowerCase() : '';
+      if (!normalizedCategory) return acc;
+      acc[normalizedCategory] = (acc[normalizedCategory] || 0) + Number(item?.quantity || 1);
+      return acc;
+    }, {});
+    
+    // Return set of categories with 3+ items
+    return new Set(
+      Object.entries(categoryQuantities)
+        .filter(([, quantity]) => quantity >= 3)
+        .map(([category]) => category)
+    );
+  }, [cartItems]);
+
+  // Function to check if product is combo eligible
+  const isProductComboEligible = (product: any) => {
+    const rawCategory = product?.category || product?.Product?.category || product?.product?.category;
+    const normalizedCategory = typeof rawCategory === 'string' ? rawCategory.trim().toLowerCase() : '';
+    return comboEligibleCategories.has(normalizedCategory);
+  };
 
   const router = useRouter();
   const groupedProducts = useMemo(
@@ -517,6 +567,7 @@ const ProductGrid = () => {
                             [group.categoryKey]: variantId,
                           }))
                         }
+                        isComboEligible={isProductComboEligible(activeVariant)}
                       />
                     </div>
                   );
