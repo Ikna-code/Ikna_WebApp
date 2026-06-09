@@ -1,6 +1,75 @@
-import { db } from "@/backend/lib/db";
 import { Prisma } from "@prisma/client";
 
+
+type ComboSelectedProduct = {
+  productId?: string;
+  category?: string | null;
+  subCategory?: string | null;
+  subCategoryName?: string | null;
+  subCategoryId?: string | null;
+  quantity?: number | null;
+};
+
+type ComboQualificationGroup = {
+  key: string;
+  category: string;
+  subCategory: string;
+  quantity: number;
+  productIds: string[];
+  items: ComboSelectedProduct[];
+};
+
+const normalizeComboValue = (value: unknown) => String(value || '').trim().toLowerCase();
+
+export function qualifyProductsForSameSubCategoryCombo(
+  selectedProducts: ComboSelectedProduct[],
+  minimumQuantity = 3
+) {
+  const groups = new Map<string, ComboQualificationGroup>();
+
+  for (const item of selectedProducts) {
+    const normalizedCategory = normalizeComboValue(item?.category);
+    const normalizedSubCategory = normalizeComboValue(
+      item?.subCategoryName || item?.subCategory || item?.subCategoryId
+    );
+
+    if (!normalizedCategory || !normalizedSubCategory) {
+      continue;
+    }
+
+    const key = `${normalizedCategory}::${normalizedSubCategory}`;
+    const quantity = Math.max(Number(item?.quantity) || 1, 1);
+    const existing = groups.get(key);
+
+    if (existing) {
+      existing.quantity += quantity;
+      if (item?.productId) {
+        existing.productIds.push(String(item.productId));
+      }
+      existing.items.push(item);
+      continue;
+    }
+
+    groups.set(key, {
+      key,
+      category: normalizedCategory,
+      subCategory: normalizedSubCategory,
+      quantity,
+      productIds: item?.productId ? [String(item.productId)] : [],
+      items: [item],
+    });
+  }
+
+  const qualifyingGroups = Array.from(groups.values()).filter(
+    (group) => group.quantity >= minimumQuantity
+  );
+
+  return {
+    groups: Array.from(groups.values()),
+    qualifyingGroups,
+    qualifies: qualifyingGroups.length > 0,
+  };
+}
 
 
 
@@ -18,7 +87,17 @@ export async function calculateComboDiscounts(tx: any, cartItems: any[]) {
       ComboProducts: {
         select: {
           Product: {
-            select: { id: true }
+            select: {
+              id: true,
+              category: true,
+              subCategoryId: true,
+              subCategory: {
+                select: {
+                  name: true,
+                  slug: true,
+                },
+              },
+            }
           }
         }
       }
@@ -34,6 +113,25 @@ export async function calculateComboDiscounts(tx: any, cartItems: any[]) {
     const isComboMatched = requiredIds.every((id: string) => cartProductIds.includes(id));
 
     if (isComboMatched) {
+          const selectedComboItems = cartItems
+            .filter((item) => requiredIds.includes(item.productId))
+            .map((item) => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              category: item?.product?.category,
+              subCategoryId: item?.product?.subCategoryId,
+              subCategoryName: item?.product?.subCategory?.name || item?.product?.subCategory?.slug,
+            }));
+
+          const comboQualification = qualifyProductsForSameSubCategoryCombo(
+            selectedComboItems,
+            requiredIds.length
+          );
+
+          if (!comboQualification.qualifies) {
+            continue;
+          }
+
       // Find the items matching this combination and calculate discount distributions
       cartItems.forEach(item => {
         if (requiredIds.includes(item.productId)) {

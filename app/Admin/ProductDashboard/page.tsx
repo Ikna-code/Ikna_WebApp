@@ -24,6 +24,9 @@ interface ProductDetail {
   name: string;
   color: string;
   category: string;
+  productTypeId?: string;
+  subCategoryId?: string;
+  subCategoryName?: string;
   price: number;
   stock: number;
   salesVelocity: string;
@@ -58,6 +61,8 @@ interface DbProduct {
   id: string;
   name: string;
   category: string;
+  productType?: { id: string; name: string; slug: string } | null;
+  subCategory?: { id: string; name: string; slug: string } | null;
   price: number | string;
   stock: number;
   image: string;
@@ -103,11 +108,25 @@ interface ProductFormState {
   description: string;
   sizes: string;
   category: string;
+  subCategoryId: string;
   tag: string;
   image: string;
   rating: string;
   colorHex: string;
   colorName: string;
+}
+
+interface TaxonomySubCategory {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+interface ProductTaxonomyType {
+  id: string;
+  name: string;
+  slug: string;
+  subcategories: TaxonomySubCategory[];
 }
 
 interface DeleteModalState {
@@ -165,6 +184,8 @@ const IMPORT_TEMPLATE_HEADERS = [
 ];
 
 const STOCK_THRESHOLD = 20;
+
+const CATEGORY_OPTIONS = ['Bras', 'Panties', 'Briefs', 'Sets', 'Others'];
 
 const parseSku = (value: string) => {
   const normalized = String(value || '').trim();
@@ -289,6 +310,7 @@ export default function ProductManagementDashboard() {
     description: '',
     sizes: '',
     category: 'Bras',
+    subCategoryId: '',
     tag: 'Black',
     image: '',
     rating: '',
@@ -327,6 +349,7 @@ export default function ProductManagementDashboard() {
     description: '',
     sizes: '',
     category: 'Bras',
+    subCategoryId: '',
     tag: 'Black',
     image: '',
     rating: '',
@@ -338,6 +361,7 @@ export default function ProductManagementDashboard() {
   const [removedEditImageIds, setRemovedEditImageIds] = useState<string[]>([]);
   const [removedEditImagePaths, setRemovedEditImagePaths] = useState<string[]>([]);
   const [filterMetadata, setFilterMetadata] = useState<ProductTypeFilterMeta[]>([]);
+  const [productTaxonomy, setProductTaxonomy] = useState<ProductTaxonomyType[]>([]);
   const [newFilterOptionIds, setNewFilterOptionIds] = useState<string[]>([]);
   const [editFilterOptionIds, setEditFilterOptionIds] = useState<string[]>([]);
   const [dbFilterGroups, setDbFilterGroups] = useState<DBFilterGroup[]>([]);
@@ -445,6 +469,9 @@ const mappedProducts = products.map((product, index) => {
     name: product.name,
     color: product.colorName || product.tag || 'N/A', // Set colorName as primary fallback
     category: product.category,
+    productTypeId: product.productType?.id,
+    subCategoryId: product.subCategory?.id || undefined,
+    subCategoryName: product.subCategory?.name || undefined,
     price,
     stock: product.stock,
     salesVelocity: `${Math.max(0, Math.round(reviewCount / 2))} units/week`,
@@ -511,6 +538,37 @@ const mappedProducts = products.map((product, index) => {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const fetchProductTaxonomy = async () => {
+      try {
+        const response = await fetch('/api/admin/product-taxonomy', { cache: 'no-store' });
+        if (!response.ok) {
+          if (isMounted) {
+            setProductTaxonomy([]);
+          }
+          return;
+        }
+
+        const payload: ProductTaxonomyType[] = await response.json();
+        if (isMounted) {
+          setProductTaxonomy(Array.isArray(payload) ? payload : []);
+        }
+      } catch {
+        if (isMounted) {
+          setProductTaxonomy([]);
+        }
+      }
+    };
+
+    void fetchProductTaxonomy();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     const allowed = new Set(addFilterGroups.flatMap((group) => group.filterOptions.map((option) => option.id)));
     setNewFilterOptionIds((current) => current.filter((id) => allowed.has(id)));
   }, [addFilterGroups]);
@@ -519,6 +577,65 @@ const mappedProducts = products.map((product, index) => {
     const allowed = new Set(editFilterGroups.flatMap((group) => group.filterOptions.map((option) => option.id)));
     setEditFilterOptionIds((current) => current.filter((id) => allowed.has(id)));
   }, [editFilterGroups]);
+
+  const getSubcategoryOptions = useCallback(
+    (category: string) => {
+      const candidateSlugs = getCandidateTypeSlugs(category);
+      const mapped = new Map<string, TaxonomySubCategory>();
+
+      for (const type of productTaxonomy) {
+        const normalizedTypeSlug = normalizeSlug(type.slug || type.name);
+        if (!candidateSlugs.includes(normalizedTypeSlug)) {
+          continue;
+        }
+
+        for (const subcategory of type.subcategories || []) {
+          if (!mapped.has(subcategory.id)) {
+            mapped.set(subcategory.id, subcategory);
+          }
+        }
+      }
+
+      if (mapped.size > 0) {
+        return Array.from(mapped.values());
+      }
+
+      return [] as TaxonomySubCategory[];
+    },
+    [productTaxonomy]
+  );
+
+  const addSubcategoryOptions = useMemo(
+    () => getSubcategoryOptions(newProductDetail.category),
+    [getSubcategoryOptions, newProductDetail.category]
+  );
+
+  const editSubcategoryOptions = useMemo(
+    () => getSubcategoryOptions(editProductDetail.category),
+    [getSubcategoryOptions, editProductDetail.category]
+  );
+
+  useEffect(() => {
+    setNewProductDetail((current) => {
+      if (!current.subCategoryId) {
+        return current;
+      }
+
+      const isAllowed = addSubcategoryOptions.some((option) => option.id === current.subCategoryId);
+      return isAllowed ? current : { ...current, subCategoryId: '' };
+    });
+  }, [addSubcategoryOptions]);
+
+  useEffect(() => {
+    setEditProductDetail((current) => {
+      if (!current.subCategoryId) {
+        return current;
+      }
+
+      const isAllowed = editSubcategoryOptions.some((option) => option.id === current.subCategoryId);
+      return isAllowed ? current : { ...current, subCategoryId: '' };
+    });
+  }, [editSubcategoryOptions]);
 
   useEffect(() => {
     const syncViewport = () => {
@@ -666,6 +783,8 @@ const payload = {
         description: newProductDetail.description.trim(),
         sizes,
         category: newProductDetail.category,
+  subCategoryId: newProductDetail.subCategoryId || undefined,
+  subCategoryName: addSubcategoryOptions.find((option) => option.id === newProductDetail.subCategoryId)?.name || undefined,
         tag: newProductDetail.tag,
         image: newProductDetail.image.trim() || undefined,
         rating: newProductDetail.rating ? Number(newProductDetail.rating) : null,
@@ -721,6 +840,7 @@ const payload = {
         description: '',
         sizes: '',
         category: 'Bras',
+        subCategoryId: '',
         tag: 'New Arrival',
         image: '',
         rating: '',
@@ -894,6 +1014,7 @@ const payload = {
       description: product.description,
       sizes: product.sizes.join(', '),
       category: product.category,
+      subCategoryId: product.subCategoryId || '',
       tag: product.color,
       image: product.image,
       rating: product.rating != null ? String(product.rating) : '',
@@ -996,6 +1117,8 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
           description: editProductDetail.description.trim(),
           sizes,
           category: editProductDetail.category.trim(),
+          subCategoryId: editProductDetail.subCategoryId || null,
+          subCategoryName: editSubcategoryOptions.find((option) => option.id === editProductDetail.subCategoryId)?.name || null,
           tag: editProductDetail.tag.trim(),
           image: resolvedPrimaryImage,
           rating: editProductDetail.rating ? Number(editProductDetail.rating) : null,
@@ -1408,6 +1531,10 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
     if (isUploadingImages) return;
     handleClearAddProductImages();
     setNewFilterOptionIds([]);
+    setNewProductDetail((current) => ({
+      ...current,
+      subCategoryId: '',
+    }));
     setIsAddModalOpen(false);
   };
 
@@ -2193,18 +2320,39 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                       className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs outline-none focus:border-[#840d5c]"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">CATEGORY</label>
                       <select
                         value={newProductDetail.category}
-                        onChange={(e) => setNewProductDetail({ ...newProductDetail, category: e.target.value })}
+                        onChange={(e) => setNewProductDetail({ ...newProductDetail, category: e.target.value, subCategoryId: '' })}
                         className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
                       >
-                        {['Bras', 'Panties', 'Briefs', 'Sets', 'Others'].map((category) => (
+                        {CATEGORY_OPTIONS.map((category) => (
                           <option key={category}>{category}</option>
                         ))}
                       </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">SUBCATEGORY</label>
+                      <select
+                        value={newProductDetail.subCategoryId}
+                        onChange={(e) => setNewProductDetail({ ...newProductDetail, subCategoryId: e.target.value })}
+                        disabled={addSubcategoryOptions.length === 0}
+                        className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs outline-none focus:border-[#840d5c]"
+                      >
+                        <option value="">{addSubcategoryOptions.length > 0 ? 'Select subcategory' : 'No subcategories configured'}</option>
+                        {addSubcategoryOptions.map((subcategory) => (
+                          <option key={subcategory.id} value={subcategory.id}>
+                            {subcategory.name}
+                          </option>
+                        ))}
+                      </select>
+                      {addSubcategoryOptions.length === 0 && (
+                        <p className="mt-1 text-[10px] text-neutral-500">
+                          Add rows in the <span className="font-semibold">sub_categories</span> table for this category to populate this list.
+                        </p>
+                      )}
                     </div>
                     {/* <div>
                       <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">COLOR HEX</label>
@@ -2348,7 +2496,7 @@ onClick={() => {
                   </div>
 
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">PRICE (₹)</label>
                       <input
@@ -2530,13 +2678,34 @@ onClick={() => {
                       <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">CATEGORY</label>
                       <select
                         value={editProductDetail.category}
-                        onChange={(e) => setEditProductDetail({ ...editProductDetail, category: e.target.value })}
+                        onChange={(e) => setEditProductDetail({ ...editProductDetail, category: e.target.value, subCategoryId: '' })}
                         className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
                       >
-                        {['Bras', 'Panties', 'Briefs', 'Sets', 'Others'].map((category) => (
+                        {CATEGORY_OPTIONS.map((category) => (
                           <option key={category}>{category}</option>
                         ))}
                       </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">SUBCATEGORY</label>
+                      <select
+                        value={editProductDetail.subCategoryId}
+                        onChange={(e) => setEditProductDetail({ ...editProductDetail, subCategoryId: e.target.value })}
+                        disabled={editSubcategoryOptions.length === 0}
+                        className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs outline-none focus:border-[#840d5c]"
+                      >
+                        <option value="">{editSubcategoryOptions.length > 0 ? 'Select subcategory' : 'No subcategories configured'}</option>
+                        {editSubcategoryOptions.map((subcategory) => (
+                          <option key={subcategory.id} value={subcategory.id}>
+                            {subcategory.name}
+                          </option>
+                        ))}
+                      </select>
+                      {editSubcategoryOptions.length === 0 && (
+                        <p className="mt-1 text-[10px] text-neutral-500">
+                          Add rows in the <span className="font-semibold">sub_categories</span> table for this category to populate this list.
+                        </p>
+                      )}
                     </div>
                     {/* <div>
                       <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">TAG</label>

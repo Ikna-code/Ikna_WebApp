@@ -21,10 +21,21 @@ import { useStore } from '@/store/useStore';
 import Footer from '@/components/layout/Footer';
 import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
 import {
-  getProductCategoryKey,
   getProductColorLabel,
   getProductSwatchColor,
 } from '@/lib/productVariants';
+
+const getProductSubCategoryKey = (item: any) =>
+  String(
+    item?.subCategory?.id ||
+      item?.subCategoryId ||
+      item?.subCategory?.slug ||
+      item?.subCategory?.name ||
+      item?.subCategoryName ||
+      ''
+  )
+    .trim()
+    .toLowerCase();
 
 /* ---------------- TYPES ---------------- */
 interface ComboSelection {
@@ -51,6 +62,7 @@ const SingleProductPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false); 
   const [selectedSize, setSelectedSize] = useState<string>('');
+  const [selectedVariantId, setSelectedVariantId] = useState<string>('');
 
   /* ---------------- NOTIFICATION STATE ---------------- */
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -137,20 +149,37 @@ const SingleProductPage = () => {
   useEffect(() => {
     if (product) {
       setCurrentComboVariant(product);
+      setSelectedVariantId(String(product.id));
     }
   }, [product]);
 
+  const activeVariant = useMemo(() => {
+    if (!product) return null;
+
+    const normalizedSelectedId = String(selectedVariantId || '').trim();
+    if (!normalizedSelectedId) return product;
+
+    const matched = products.find((item: any) => String(item?.id || '').trim() === normalizedSelectedId);
+    return matched || product;
+  }, [product, products, selectedVariantId]);
+
   const productImages = useMemo(() => {
-    const rows = Array.isArray(productData?.product_images) ? productData.product_images : [];
+    const rows = Array.isArray(activeVariant?.product_images)
+      ? activeVariant.product_images
+      : Array.isArray(activeVariant?.images)
+        ? activeVariant.images
+        : Array.isArray(productData?.product_images)
+          ? productData.product_images
+          : [];
     const filtered = rows
-      .map((row: any) => String(row?.image_path || '').trim())
+      .map((row: any) => String(row?.image_path || row?.image || '').trim())
       .filter(Boolean);
 
     if (filtered.length > 0) return filtered;
 
-    const fallback = String(productData?.image || product?.image || '').trim();
+    const fallback = String(activeVariant?.image || productData?.image || product?.image || '').trim();
     return fallback ? [fallback] : [];
-  }, [productData, product]);
+  }, [activeVariant, productData, product]);
 
   const normalizedActiveIndex = useMemo(() => {
     if (productImages.length === 0) return 0;
@@ -164,12 +193,12 @@ const SingleProductPage = () => {
   }, [productImages]);
 
   const categoryVariants = useMemo(() => {
-    if (!product?.category) return product ? [product] : [];
+    const productSubCategoryKey = getProductSubCategoryKey(product);
+    if (!productSubCategoryKey) return product ? [product] : [];
 
-    const productCategoryKey = getProductCategoryKey(product);
     const variants = products.filter((item: any) => {
       if (!item?.id) return false;
-      return getProductCategoryKey(item) === productCategoryKey;
+      return getProductSubCategoryKey(item) === productSubCategoryKey;
     });
 
     const includesCurrent = variants.some((item: any) => item.id === product.id);
@@ -181,9 +210,9 @@ const SingleProductPage = () => {
   }, [products, product]);
 
   const availableSizes = useMemo(() => {
-    if (!product || !product.sizes || product.sizes.length === 0) return [];
+    if (!activeVariant || !activeVariant.sizes || activeVariant.sizes.length === 0) return [];
     
-    return [...product.sizes].sort((a, b) => {
+    return [...activeVariant.sizes].sort((a, b) => {
       const matchA = a.match(/^(\d+)([A-Z]+)$/);
       const matchB = b.match(/^(\d+)([A-Z]+)$/);
       if (matchA && matchB) {
@@ -194,7 +223,7 @@ const SingleProductPage = () => {
       }
       return a.localeCompare(b);
     });
-  }, [product]);
+  }, [activeVariant]);
 
   const comboTarget = 3;
 
@@ -216,8 +245,8 @@ const SingleProductPage = () => {
       { img: "/images/icons/Soft_Fabric.png", label: "Soft Fabric" },
     ];
 
-    if (!product?.category) return features;
-    const normalizedCategory = product.category.trim().toUpperCase();
+    if (!activeVariant?.category) return features;
+    const normalizedCategory = activeVariant.category.trim().toUpperCase();
 
     if (normalizedCategory === 'COMFY SUPPORTIVE MINIMIZER BRA') {
       features.unshift(
@@ -230,7 +259,7 @@ const SingleProductPage = () => {
       );
     }
     return features;
-  }, [product?.category]);
+  }, [activeVariant?.category]);
 
   const scrollToReviews = () => {
     reviewRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -246,7 +275,7 @@ const SingleProductPage = () => {
       setToast({ message: "Please select a size", type: 'info' });
       return;
     }
-    await addItemToCart(userId, product?.id, selectedSize, 1, product?.category);
+    await addItemToCart(userId, activeVariant?.id, selectedSize, 1, activeVariant?.category);
     if (!useStore.getState().error) {
       setToast({ message: "Added to bag!", type: 'success' });
     }
@@ -416,7 +445,7 @@ const SingleProductPage = () => {
                     Signature Collection
                   </p>
                   <h1 className="text-2xl sm:text-3xl lg:text-4xl font-serif text-[#321327] leading-[1.2] block tracking-normal break-words">
-                    {product?.name}
+                    {activeVariant?.name}
                   </h1>
 
                   {categoryVariants.length > 0 && (
@@ -424,15 +453,18 @@ const SingleProductPage = () => {
                       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#321327]/50 mb-2">Colors</p>
                       <div className="flex flex-wrap items-center gap-2.5">
                         {categoryVariants.map((variant: any, index: number) => {
-                          const isActive = variant.id === product?.id;
+                          const isActive = String(variant.id) === String(activeVariant?.id);
                           const colorLabel = getProductColorLabel(variant, index);
                           return (
                             <button
                               key={variant.id}
                               type="button"
                               onClick={() => {
-                                if (variant.id === product?.id) return;
-                                router.push(`/product/${variant.id}`, { scroll: true });
+                                if (String(variant.id) === String(activeVariant?.id)) return;
+                                setSelectedVariantId(String(variant.id));
+                                setActiveImgIdx(0);
+                                setSelectedSize('');
+                                setCurrentComboVariant(variant);
                               }}
                               className={`h-6 w-6 rounded-full border transition-all ${
                                 isActive ? 'border-[#321327] ring-2 ring-[#321327]/25' : 'border-[#321327]/20 hover:border-[#321327]/45'
@@ -473,7 +505,7 @@ const SingleProductPage = () => {
                 <div className="border-y border-[#840d5c]/10 py-3 space-y-3">
                   <div className="flex items-baseline gap-3">
                     <span className="text-2xl sm:text-3xl font-bold text-[#321327] tracking-tighter">
-                      Rs.{product?.price}
+                      Rs.{activeVariant?.price}
                     </span>
                     <span className="text-xs text-[#321327]/40 line-through">
                       Rs.485.00
@@ -483,7 +515,7 @@ const SingleProductPage = () => {
 
 
                   <p className="text-[12px] text-[#321327]/60 mt-2 leading-relaxed font-medium">
-                    {product?.description || "Crafted with our proprietary seamless technology for a second-skin feel."}
+                    {activeVariant?.description || "Crafted with our proprietary seamless technology for a second-skin feel."}
                   </p>
                 </div>
 

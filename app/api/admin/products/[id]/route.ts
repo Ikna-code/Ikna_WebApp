@@ -72,6 +72,60 @@ async function resolveProductTypeId(body: any) {
   }
 }
 
+async function resolveSubCategoryId(body: any, productTypeId: string) {
+  if (!productTypeId) return '';
+
+  try {
+    const explicitId = typeof body?.subCategoryId === 'string' ? body.subCategoryId.trim() : '';
+    if (explicitId) {
+      const existing = await prismaAny.subCategory.findUnique({ where: { id: explicitId } });
+      if (existing?.id && String(existing.productTypeId) === String(productTypeId)) {
+        return existing.id;
+      }
+    }
+
+    const explicitSlug = typeof body?.subCategorySlug === 'string' ? body.subCategorySlug.trim() : '';
+    if (explicitSlug) {
+      const existingBySlug = await prismaAny.subCategory.findFirst({
+        where: {
+          productTypeId,
+          slug: explicitSlug,
+        },
+      });
+      if (existingBySlug?.id) return existingBySlug.id;
+    }
+
+    const explicitName = typeof body?.subCategoryName === 'string'
+      ? body.subCategoryName.trim()
+      : typeof body?.subCategory === 'string'
+        ? body.subCategory.trim()
+        : '';
+
+    if (!explicitName) return '';
+
+    const existingByName = await prismaAny.subCategory.findFirst({
+      where: {
+        productTypeId,
+        name: explicitName,
+      },
+    });
+    if (existingByName?.id) return existingByName.id;
+
+    const normalizedSlug = slugify(explicitName);
+    if (!normalizedSlug) return '';
+
+    const existingByNormalizedSlug = await prismaAny.subCategory.findFirst({
+      where: {
+        productTypeId,
+        slug: normalizedSlug,
+      },
+    });
+    return existingByNormalizedSlug?.id || '';
+  } catch {
+    return '';
+  }
+}
+
 async function requireAdmin() {
   try {
     const dbUser = await ensureCurrentDbUser();
@@ -254,6 +308,7 @@ export async function PATCH(
       stock?: number;
       category?: string;
       productTypeId?: string;
+      subCategoryId?: string | null;
       image?: string;
       description?: string;
       tag?: string | null;
@@ -269,6 +324,11 @@ export async function PATCH(
     if (typeof body?.category === 'string') updateData.category = body.category;
     const resolvedProductTypeId = await resolveProductTypeId(body);
     if (resolvedProductTypeId) updateData.productTypeId = resolvedProductTypeId;
+    const effectiveProductTypeIdForSubcategory = String(resolvedProductTypeId || existingProduct.productTypeId || '').trim();
+    const resolvedSubCategoryId = await resolveSubCategoryId(body, effectiveProductTypeIdForSubcategory);
+    if (typeof body?.subCategoryId === 'string' || typeof body?.subCategory === 'string' || typeof body?.subCategoryName === 'string') {
+      updateData.subCategoryId = resolvedSubCategoryId || null;
+    }
     if (typeof body?.image === 'string') updateData.image = body.image;
     if (typeof body?.description === 'string') updateData.description = body.description;
     if (typeof body?.tag === 'string' || body?.tag === null) updateData.tag = body.tag;

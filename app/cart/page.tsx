@@ -16,8 +16,10 @@ import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
 
 type CheckoutCartItem = {
   id: string;
+  productId: string;
   price: number;
   quantity: number;
+  isComboEligible: boolean;
 };
 
 type CheckoutSummary = {
@@ -66,13 +68,13 @@ const roundCurrency = (value: number) => Math.round(value * 100) / 100;
 
 export const calculateCheckoutSummary = ({
   cartItems,
-  isComboApplied,
+  comboEligibleSubtotal,
   isFirstTimeUser,
   couponDiscount,
   paymentMethod,
 }: {
   cartItems: CheckoutCartItem[];
-  isComboApplied: boolean;
+  comboEligibleSubtotal: number;
   isFirstTimeUser: boolean;
   couponDiscount: number;
   paymentMethod: string;
@@ -86,7 +88,9 @@ export const calculateCheckoutSummary = ({
   );
 
   // Combo discount and order value discount are mutually exclusive.
-  const comboDiscount = isComboApplied ? roundCurrency(itemSubtotal * 0.1) : 0;
+  // Combo applies only to eligible line items, not the full cart subtotal.
+  const comboDiscount = roundCurrency(Math.max(Number(comboEligibleSubtotal) || 0, 0) * 0.1);
+  const isComboApplied = comboDiscount > 0;
   const subtotalAfterCombo = roundCurrency(itemSubtotal - comboDiscount);
 
   const orderDiscount = isComboApplied ? 0 : Math.max(Number(couponDiscount || 0), 0);
@@ -255,41 +259,46 @@ const CartPage = () => {
   };
 
   // 7. CALCULATIONS: Drive the cart UI from the checkout summary rules.
-  const normalizedCouponCode = couponCode.trim().toUpperCase();
-  const checkoutItems: CheckoutCartItem[] = cartItems.map((item) => ({
-    id: item.id,
-    price: Number(item?.Product?.price || item?.product?.price || item?.price || 0),
-    quantity: Number(item?.quantity || 1),
-  }));
   const comboTarget = 3;
-  const categoryQuantities = cartItems.reduce<Record<string, number>>((acc, item) => {
-    const rawCategory = item?.category || item?.Product?.category || item?.product?.category;
-    const normalizedCategory = typeof rawCategory === 'string' ? rawCategory.trim().toLowerCase() : '';
-
-    if (!normalizedCategory) {
+  const productQuantities = cartItems.reduce<Record<string, number>>((acc, item) => {
+    const productId = item?.productId || item?.Product?.id || item?.product?.id || item?.id;
+    if (!productId) {
       return acc;
     }
 
-    acc[normalizedCategory] = (acc[normalizedCategory] || 0) + Number(item?.quantity || 1);
+    acc[productId] = (acc[productId] || 0) + Number(item?.quantity || 1);
     return acc;
   }, {});
-    const totalCartItems = cartItems.reduce((sum, item) => sum + (Number(item?.quantity) || 1), 0);
-  const comboEligibleEntry = Object.entries(categoryQuantities)
-    .sort((firstEntry, secondEntry) => secondEntry[1] - firstEntry[1])
-    .find(([, quantity]) => quantity >= comboTarget);
-  const isComboApplied = Boolean(comboEligibleEntry);
+
+  const comboEligibleProductIds = new Set(
+    Object.entries(productQuantities)
+      .filter(([, quantity]) => quantity >= comboTarget)
+      .map(([productId]) => productId)
+  );
+
+  const checkoutItems: CheckoutCartItem[] = cartItems.map((item) => ({
+    id: item.id,
+    productId: item?.productId || item?.Product?.id || item?.product?.id || item?.id,
+    price: Number(item?.Product?.price || item?.product?.price || item?.price || 0),
+    quantity: Number(item?.quantity || 1),
+    isComboEligible: comboEligibleProductIds.has(item?.productId || item?.Product?.id || item?.product?.id || item?.id),
+  }));
+  const totalCartItems = cartItems.reduce((sum, item) => sum + (Number(item?.quantity) || 1), 0);
+  const comboEligibleSubtotal = checkoutItems.reduce((acc, item) => {
+    if (!item.isComboEligible) {
+      return acc;
+    }
+
+    return acc + Math.max(item.price, 0) * Math.max(item.quantity, 0);
+  }, 0);
+  const isComboApplied = comboEligibleProductIds.size > 0;
   const checkoutSummary = calculateCheckoutSummary({
     cartItems: checkoutItems,
-    isComboApplied,
+    comboEligibleSubtotal,
     isFirstTimeUser: false,
     couponDiscount,
     paymentMethod,
   });
-  const totalSavings = roundCurrency(
-    checkoutSummary.comboDiscount +
-      checkoutSummary.orderDiscount +
-      checkoutSummary.firstTimeDiscount
-  );
   const originalCheckoutPrice = roundCurrency(
     checkoutSummary.itemSubtotal
   );
@@ -299,8 +308,8 @@ const CartPage = () => {
       ? `${appliedCouponCode} APPLIED`
       : 'NO DISCOUNT';
       
-  const comboStatusMessage = comboEligibleEntry
-    ? `${totalCartItems} items qualify for combo pricing`
+  const comboStatusMessage = isComboApplied
+    ? `Combo active on ${comboEligibleProductIds.size} product${comboEligibleProductIds.size > 1 ? 's' : ''} (${comboTarget}+ qty each)`
     : null;
   const hiddenMobileItemsCount = Math.max(cartItems.length - 3, 0);
   const visibleCartItems = showAllMobileItems ? cartItems : cartItems.slice(0, 3);
@@ -447,6 +456,8 @@ const CartPage = () => {
 
                 {visibleCartItems.map((item) => {
                   const targetProduct = item?.Product || item?.product || item; 
+                  const cartProductId = item?.productId || item?.Product?.id || item?.product?.id || item?.id;
+                  const isComboLineActive = comboEligibleProductIds.has(cartProductId);
                   const fallbackImage = targetProduct?.image || targetProduct?.image_path || '';
                   const fallbackName = targetProduct?.name || 'Product';
                   const fallbackPrice = targetProduct?.price || item?.price || 0;
@@ -467,6 +478,11 @@ const CartPage = () => {
                             <p className="text-[10px] font-bold uppercase tracking-widest text-[#840d5c]/60 mt-1">
                                Size {item.selectedSize || targetProduct?.size || 'M'}
                             </p>
+                            {isComboLineActive && (
+                              <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#ffe4f1] px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-[#a3095b] border border-[#ffb6d8]">
+                                <Sparkles size={10} /> Combo Active
+                              </div>
+                            )}
                           </div>
                           <p className="text-base sm:text-lg font-bold text-[#321327] whitespace-nowrap">₹{fallbackPrice.toLocaleString()}</p>
                         </div>
@@ -487,6 +503,11 @@ const CartPage = () => {
                         <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
                           <CheckCircle2 size={14} className="text-emerald-500" /> In stock
                         </div>
+                        {isComboLineActive && (
+                          <div className="text-[10px] font-semibold text-[#a3095b]">
+                            10% combo discount is applied to this product line.
+                          </div>
+                        )}
                       </div>
 
                     </div>

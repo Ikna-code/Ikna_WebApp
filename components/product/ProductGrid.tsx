@@ -26,6 +26,8 @@ export const ProductCard = ({
   activeSwatchId,
   onSwatchSelect,
   isComboEligible = false,
+  titleOverride,
+  subtitleOverride,
 }: {
   product: any;
   isWished: boolean;
@@ -35,6 +37,8 @@ export const ProductCard = ({
   activeSwatchId?: string;
   onSwatchSelect?: (id: string) => void;
   isComboEligible?: boolean;
+  titleOverride?: string;
+  subtitleOverride?: string;
 }) => {
   const [tooltip, setTooltip] = useState({
     show: false,
@@ -326,8 +330,14 @@ export const ProductCard = ({
             line-clamp-2
           "
         >
-          {product.name}
+          {titleOverride || product.name}
         </h2>
+
+        {subtitleOverride && (
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#840d5c]/70">
+            {subtitleOverride}
+          </p>
+        )}
 
     
 

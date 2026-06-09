@@ -11,13 +11,34 @@ import { useStore } from "@/store/useStore";
 import {
   getProductColorLabel,
   getProductSwatchColor,
-  groupProductsByCategory,
 } from "@/lib/productVariants";
 
 interface ProductGridPageProps {
   products: any[];
   initialCategory?: string;
 }
+
+const normalizeText = (value: unknown) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const getProductTypeLabel = (product: any) =>
+  String(
+    product?.productType?.name ||
+      product?.category?.name ||
+      product?.category ||
+      product?.category_name ||
+      ""
+  ).trim();
+
+const getProductSubCategoryLabel = (product: any) =>
+  String(
+    product?.subCategory?.name ||
+      product?.subCategoryName ||
+      product?.subcategory?.name ||
+      ""
+  ).trim();
 
 const ProductGridPage: React.FC<ProductGridPageProps> = ({
   products = [],
@@ -83,12 +104,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   // UNIQUE CATEGORIES
   const uniqueCategories = useMemo(() => {
     const categories = products
-      .map(
-        (p) =>
-          p.category?.name ||
-          p.category ||
-          p.category_name
-      )
+      .map((p) => getProductTypeLabel(p))
       .filter(Boolean);
     return ["All", ...Array.from(new Set(categories))];
   }, [products]);
@@ -239,8 +255,8 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
 
     if (selectedCategory !== "All") {
       result = result.filter((p) => {
-        const cat = p.category?.name || p.category || p.category_name;
-        return cat === selectedCategory;
+        const productType = getProductTypeLabel(p);
+        return normalizeText(productType) === normalizeText(selectedCategory);
       });
     }
 
@@ -269,10 +285,30 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
     return result;
   }, [products, selectedCategory, selectedDynamicFilters, sortBy]);
 
-  const groupedProducts = useMemo(
-    () => groupProductsByCategory(filteredAndSortedProducts),
-    [filteredAndSortedProducts]
-  );
+  const groupedProducts = useMemo(() => {
+    const groups = new Map<string, { category: string; categoryKey: string; variants: any[] }>();
+
+    for (const product of filteredAndSortedProducts) {
+      const productType = getProductTypeLabel(product) || "Uncategorized";
+      const subCategory = getProductSubCategoryLabel(product) || "Other";
+      const categoryKey = `${normalizeText(productType)}::${normalizeText(subCategory)}`;
+      const category = subCategory;
+
+      const existing = groups.get(categoryKey);
+      if (existing) {
+        existing.variants.push(product);
+        continue;
+      }
+
+      groups.set(categoryKey, {
+        category,
+        categoryKey,
+        variants: [product],
+      });
+    }
+
+    return Array.from(groups.values());
+  }, [filteredAndSortedProducts]);
 
   const [selectedVariantByCategory, setSelectedVariantByCategory] = useState<Record<string, string>>({});
 
@@ -421,6 +457,8 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
                     >
                       <ProductCard
                         product={activeVariant}
+                        titleOverride={group.category}
+                        subtitleOverride={`${group.variants.length} item${group.variants.length > 1 ? 's' : ''}`}
                         isWished={wishlist.includes(activeVariant.id)}
                         onToggleWishlist={handleLocalToggle}
                         userId={user?.id || null}

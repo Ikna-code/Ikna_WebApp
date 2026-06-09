@@ -125,6 +125,64 @@ async function resolveProductTypeId(body: any) {
   }
 }
 
+async function resolveSubCategoryId(body: any, productTypeId: string) {
+  if (!productTypeId) return '';
+
+  try {
+    const explicitId = typeof body?.subCategoryId === 'string' ? body.subCategoryId.trim() : '';
+    if (explicitId) {
+      const byId = await prismaAny.subCategory.findUnique({ where: { id: explicitId } });
+      if (byId?.id && String(byId.productTypeId) === String(productTypeId)) {
+        return byId.id;
+      }
+    }
+
+    const explicitSlug = typeof body?.subCategorySlug === 'string' ? body.subCategorySlug.trim() : '';
+    if (explicitSlug) {
+      const bySlug = await prismaAny.subCategory.findFirst({
+        where: {
+          productTypeId,
+          slug: explicitSlug,
+        },
+      });
+      if (bySlug?.id) return bySlug.id;
+    }
+
+    const explicitName = typeof body?.subCategoryName === 'string'
+      ? body.subCategoryName.trim()
+      : typeof body?.subCategory === 'string'
+        ? body.subCategory.trim()
+        : '';
+
+    if (!explicitName) {
+      return '';
+    }
+
+    const byName = await prismaAny.subCategory.findFirst({
+      where: {
+        productTypeId,
+        name: explicitName,
+      },
+    });
+    if (byName?.id) return byName.id;
+
+    const normalizedSlug = slugify(explicitName);
+    if (!normalizedSlug) {
+      return '';
+    }
+
+    const byNormalizedSlug = await prismaAny.subCategory.findFirst({
+      where: {
+        productTypeId,
+        slug: normalizedSlug,
+      },
+    });
+    return byNormalizedSlug?.id || '';
+  } catch {
+    return '';
+  }
+}
+
 async function getNextSequentialProductId() {
   const products = await prisma.product.findMany({
     select: { id: true },
@@ -228,6 +286,20 @@ async function syncProductFilters(
 export async function GET() {
   const products = await prisma.product.findMany({
     include: {
+      productType: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+      subCategory: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
       reviews: {
         select: { rating: true },
       },
@@ -315,6 +387,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const productTypeId = await resolveProductTypeId(body);
+    const subCategoryId = await resolveSubCategoryId(body, productTypeId);
 
     if (
       !body?.name ||
@@ -368,6 +441,10 @@ export async function POST(request: NextRequest) {
       createPayload.productTypeId = productTypeId;
     }
 
+    if (subCategoryId) {
+      createPayload.subCategoryId = subCategoryId;
+    }
+
     if (!createPayload.productTypeId) {
       return NextResponse.json({ error: 'Unable to resolve product type' }, { status: 500 });
     }
@@ -385,7 +462,7 @@ export async function POST(request: NextRequest) {
         const now = new Date();
         const inserted = await prisma.$queryRaw<Array<Record<string, any>>>`
           INSERT INTO "Product"
-            ("id", "name", "price", "description", "image", "category", "stock", "createdAt", "updatedAt", "tag", "rating", "sizes", "productTypeId", "colorHex", "colorName")
+            ("id", "name", "price", "description", "image", "category", "stock", "createdAt", "updatedAt", "tag", "rating", "sizes", "productTypeId", "subCategoryId", "colorHex", "colorName")
           VALUES
             (
               ${productId},
@@ -401,6 +478,7 @@ export async function POST(request: NextRequest) {
               ${createPayload.rating ?? null},
               ${createPayload.sizes},
               ${String(createPayload.productTypeId)},
+              ${createPayload.subCategoryId ?? null},
               ${String(createPayload.colorHex)},
               ${String(createPayload.colorName)}
             )
