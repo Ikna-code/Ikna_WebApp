@@ -235,6 +235,10 @@ const CartPage = () => {
     await storeRemoveItem(id);
   };
 
+  const removeBundle = async (bundleItemIds: string[]) => {
+    await Promise.all(bundleItemIds.map((id) => storeRemoveItem(id)));
+  };
+
   const handleApplyCoupon = async (couponCode: string) => {
     const userId = user?.id;
     if (!userId) return;
@@ -577,6 +581,7 @@ const CartPage = () => {
                       const targetProduct = item?.Product || item?.product || item;
                       return sum + (Number(targetProduct?.price || item?.price || 0) * Math.max(Number(item?.quantity) || 0, 0));
                     }, 0);
+                    const bundleItemIds = entry.bundle.items.map((item) => item.id);
 
                     return (
                       <div key={entry.bundle.bundleId} className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-[2.3rem] border border-[#ffb6d8] shadow-sm w-full space-y-4">
@@ -587,20 +592,30 @@ const CartPage = () => {
                             </div>
                             <h3 className="mt-2 text-base sm:text-lg font-serif text-[#321327] leading-tight">Completed Combo Bundle</h3>
                             <p className="text-[10px] font-semibold uppercase tracking-widest text-[#840d5c]/70 mt-1">
-                              Quantity is locked. Remove an item to break this bundle.
+                              Quantity is locked. Remove bundle to break this combo.
                             </p>
                           </div>
-                          <p className="text-base sm:text-lg font-bold text-[#321327] whitespace-nowrap">₹{bundlePrice.toLocaleString()}</p>
+                          <div className="flex items-start gap-3">
+                            <p className="text-base sm:text-lg font-bold text-[#321327] whitespace-nowrap">₹{bundlePrice.toLocaleString()}</p>
+                            <button
+                              onClick={() => removeBundle(bundleItemIds)}
+                              className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-red-400 hover:text-red-600 transition-colors py-1"
+                              aria-label="Remove combo bundle"
+                            >
+                              <Trash2 size={13} /> Remove
+                            </button>
+                          </div>
                         </div>
 
-                        <div className="space-y-3">
+                        <div className="overflow-x-auto pb-1 sm:overflow-visible">
+                          <div className="flex gap-3 min-w-max sm:min-w-0 sm:grid sm:grid-cols-3">
                           {entry.bundle.items.map((item) => {
                             const targetProduct = item?.Product || item?.product || item;
                             const fallbackImage = targetProduct?.image || targetProduct?.image_path || '';
                             const fallbackName = targetProduct?.name || 'Product';
                             return (
-                              <div key={item.id} className="flex flex-col sm:flex-row gap-4 sm:gap-5 items-start sm:items-center rounded-2xl bg-[#fff7fb] p-3 border border-[#840d5c]/8">
-                                <div className="relative w-full sm:w-24 h-36 sm:h-28 rounded-xl overflow-hidden shrink-0 border border-[#840d5c]/5 bg-white">
+                              <div key={item.id} className="w-[190px] shrink-0 sm:w-auto sm:min-w-0 sm:shrink rounded-2xl bg-[#fff7fb] p-3 border border-[#840d5c]/8 space-y-2">
+                                <div className="relative w-full h-36 sm:h-32 rounded-xl overflow-hidden border border-[#840d5c]/5 bg-white">
                                   {fallbackImage ? (
                                     <Image src={getOptimizedSupabaseImageUrl(fallbackImage, { width: 400, quality: 70 })} alt={fallbackName} fill sizes="400px" className="object-cover" />
                                   ) : (
@@ -609,28 +624,24 @@ const CartPage = () => {
                                     </div>
                                   )}
                                 </div>
-                                <div className="grow w-full space-y-2">
-                                  <div className="flex justify-between items-start gap-4">
-                                    <div>
-                                      <h4 className="text-sm sm:text-base font-serif text-[#321327] leading-tight">{fallbackName}</h4>
-                                      <p className="text-[10px] font-bold uppercase tracking-widest text-[#840d5c]/60 mt-1">
-                                        Size {item.selectedSize || targetProduct?.size || 'M'}
-                                      </p>
-                                    </div>
-                                    <p className="text-sm font-bold text-[#321327] whitespace-nowrap">₹{Number(targetProduct?.price || item?.price || 0).toLocaleString()}</p>
+                                <div className="space-y-2">
+                                  <div>
+                                    <h4 className="text-sm sm:text-base font-serif text-[#321327] leading-tight">{fallbackName}</h4>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#840d5c]/60 mt-1">
+                                      Size {item.selectedSize || targetProduct?.size || 'M'}
+                                    </p>
                                   </div>
-                                  <div className="flex justify-between items-center pt-2 border-t border-[#840d5c]/5">
+                                  <div className="flex items-center justify-between pt-2 border-t border-[#840d5c]/5">
+                                    <p className="text-sm font-bold text-[#321327] whitespace-nowrap">₹{Number(targetProduct?.price || item?.price || 0).toLocaleString()}</p>
                                     <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#321327] border border-[#840d5c]/10">
                                       Locked Qty {item.quantity || 1}
                                     </div>
-                                    <button onClick={() => removeItem(item.id)} className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-red-400 hover:text-red-600 transition-colors py-1">
-                                      <Trash2 size={13} /> Remove
-                                    </button>
                                   </div>
                                 </div>
                               </div>
                             );
                           })}
+                          </div>
                         </div>
                       </div>
                     );

@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import iknaLogo from '@/public/images/AI_images/logo1_ikna.png';
@@ -13,17 +13,45 @@ const Header = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [announcementIndex, setAnnouncementIndex] = useState(0);
+  const [announcementVisible, setAnnouncementVisible] = useState(true);
+
+  const announcementLines = [
+    <span key="welcome">
+      First time login? <span className="font-bold underline decoration-[#840d5c] underline-offset-4">Unlock ₹100 on your IKNA bra.</span>
+    </span>,
+    <span key="shipping">Shop above ₹349 to avail free delivery.</span>,
+  ];
 
   const { cartItems } = useStore();
   const totalItems = cartItems.reduce((acc, item) => acc + (item.quantity || 0), 0);
 
+  useEffect(() => {
+    const rotateInterval = setInterval(() => {
+      setAnnouncementVisible(false);
+
+      setTimeout(() => {
+        setAnnouncementIndex((previous) => (previous + 1) % announcementLines.length);
+        setAnnouncementVisible(true);
+      }, 300);
+    }, 2800);
+
+    return () => {
+      clearInterval(rotateInterval);
+    };
+  }, [announcementLines.length]);
+
   return (
     <>
       <header className="w-full bg-[#F9F3F5] border-b border-[#840d5c]/10 sticky top-0 z-50">
-        <div className="w-full bg-[#321327] py-2.5 px-4 text-center">
-          <p className="text-[10px] md:text-xs tracking-[0.2em] font-medium uppercase text-[#F9F3F5]">
-            First time login? <span className="font-bold underline cursor-pointer hover:text-[#840d5c] transition-colors decoration-[#840d5c] underline-offset-4">Unlock ₹100 on your IKNA bra.</span>
-          </p>
+        <div className="w-full bg-[#321327] py-2.5 px-4 overflow-hidden">
+          <div className="h-4 md:h-5 flex items-center justify-center">
+            <div
+              className={`text-center text-[10px] md:text-xs tracking-[0.2em] font-medium uppercase text-[#F9F3F5] transition-all duration-300 ${announcementVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}
+            >
+              {announcementLines[announcementIndex]}
+            </div>
+          </div>
         </div>
 
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">

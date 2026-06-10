@@ -138,14 +138,6 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
                   </div>
 
                   <div className="mt-4 flex flex-col gap-2">
-                    <Link
-                      href="/shop"
-                      onClick={handleCloseAll}
-                      className="text-[10px] font-bold tracking-[0.18em] text-[#321327] hover:text-[#840d5c] uppercase px-2 py-2 rounded-lg hover:bg-[#f2e4ea]"
-                    >
-                      All Products
-                    </Link>
-
                     {effectiveShopCategories.map((category) => (
                       <Link
                         key={category}
@@ -193,14 +185,6 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
                     : "absolute top-full left-0 mt-3 min-w-[220px] bg-white border border-[#840d5c]/15 rounded-xl shadow-xl p-3 z-[120] flex flex-col gap-1"
                   }
                 >
-                  <Link
-                    href="/shop"
-                    onClick={handleCloseAll}
-                    className="text-[10px] font-bold tracking-[0.18em] text-[#321327] hover:text-[#840d5c] uppercase px-2 py-1.5 rounded-lg hover:bg-[#f9f3f5]"
-                  >
-                    All Products
-                  </Link>
-
                   {effectiveShopCategories.map((category) => (
                     <Link
                       key={category}
