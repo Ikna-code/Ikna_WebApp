@@ -47,6 +47,35 @@ const slugify = (value: string) =>
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-');
 
+const GLOBAL_BADGE_ID_PREFIX = 'global-product-badge-';
+const GLOBAL_BADGE_LABEL_BY_SLUG: Record<string, string> = {
+  'few-left': 'Few Left',
+  'new-arrival': 'New Arrival',
+  'limited-stock': 'Limited Stock',
+};
+
+function parseGlobalBadgeId(candidateId: string) {
+  const value = String(candidateId || '').trim();
+  if (!value.startsWith(GLOBAL_BADGE_ID_PREFIX)) {
+    return null;
+  }
+
+  const slug = value.slice(GLOBAL_BADGE_ID_PREFIX.length).trim();
+  if (!slug) {
+    return null;
+  }
+
+  const displayLabel = GLOBAL_BADGE_LABEL_BY_SLUG[slug];
+  if (!displayLabel) {
+    return null;
+  }
+
+  return {
+    slug,
+    displayLabel,
+  };
+}
+
 async function resolveProductTypeId(body: any) {
   try {
     const explicitId = typeof body?.productTypeId === 'string' ? body.productTypeId.trim() : '';
@@ -245,14 +274,77 @@ async function syncProductFilters(
     return;
   }
 
-  const candidateOptions = await prisma.$queryRaw<Array<{ id: string; productTypeId: string }>>`
+  const globalBadgeCandidates = candidateIds
+    .map(parseGlobalBadgeId)
+    .filter((item): item is { slug: string; displayLabel: string } => Boolean(item));
+  const dbCandidateIds = candidateIds.filter((id) => !parseGlobalBadgeId(id));
+
+  const candidateOptions = dbCandidateIds.length
+    ? await prisma.$queryRaw<Array<{ id: string; productTypeId: string }>>`
     SELECT fo.id, fg."productTypeId" AS "productTypeId"
     FROM "filter_options" fo
     INNER JOIN "filter_groups" fg ON fg.id = fo."filterGroupId"
     WHERE fo."isActive" = true
       AND fg."isActive" = true
-      AND fo.id IN (${Prisma.join(candidateIds)})
-  `;
+      AND fo.id IN (${Prisma.join(dbCandidateIds)})
+  `
+    : [];
+
+  if (globalBadgeCandidates.length > 0 && productTypeId) {
+    const badgeGroup = await prismaAny.filterGroup.upsert({
+      where: {
+        productTypeId_slug: {
+          productTypeId,
+          slug: 'tags',
+        },
+      },
+      update: {
+        name: 'Product Badges',
+        displayName: 'Product Badges',
+        isActive: true,
+        filterType: 'MULTI_SELECT',
+      },
+      create: {
+        productTypeId,
+        name: 'Product Badges',
+        displayName: 'Product Badges',
+        slug: 'tags',
+        displayOrder: 999,
+        isActive: true,
+        filterType: 'MULTI_SELECT',
+      },
+      select: { id: true },
+    });
+
+    for (const badge of globalBadgeCandidates) {
+      const existingOption = await prismaAny.filterOption.findFirst({
+        where: {
+          filterGroupId: badgeGroup.id,
+          value: badge.slug,
+        },
+        select: { id: true },
+      });
+
+      const optionId = existingOption?.id
+        ? existingOption.id
+        : (
+            await prismaAny.filterOption.create({
+              data: {
+                filterGroupId: badgeGroup.id,
+                value: badge.slug,
+                displayLabel: badge.displayLabel,
+                isActive: true,
+              },
+              select: { id: true },
+            })
+          ).id;
+
+      candidateOptions.push({
+        id: String(optionId),
+        productTypeId: String(productTypeId),
+      });
+    }
+  }
 
   const allowedByType = productTypeId
     ? candidateOptions
@@ -263,7 +355,9 @@ async function syncProductFilters(
   const fallbackAllowed = candidateOptions.map((option) => String(option.id));
   const sourceIds = allowedByType.length > 0 ? allowedByType : fallbackAllowed;
   const allowedIds = new Set(sourceIds);
-  const validOptionIds = candidateIds.filter((id) => allowedIds.has(id));
+  const validOptionIds = candidateOptions
+    .map((option) => String(option.id))
+    .filter((id) => allowedIds.has(id));
 
   if (validOptionIds.length === 0) {
     return;

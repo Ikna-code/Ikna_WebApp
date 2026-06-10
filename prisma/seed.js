@@ -7,6 +7,7 @@ const GROUP_DEFINITIONS = [
     targetSlugs: ['bras'],
     slug: 'comfort-type',
     name: 'Comfort Type',
+    filterType: 'SINGLE_SELECT',
     options: [
       { value: 'padded', displayLabel: 'Padded', displayOrder: 1 },
       { value: 'non-padded', displayLabel: 'Non-Padded', displayOrder: 2 },
@@ -19,10 +20,22 @@ const GROUP_DEFINITIONS = [
     targetSlugs: ['panties', 'briefs'],
     slug: 'rise-type',
     name: 'Rise Type',
+    filterType: 'SINGLE_SELECT',
     options: [
       { value: 'low-rise', displayLabel: 'Low Rise', displayOrder: 1 },
       { value: 'mid-rise', displayLabel: 'Mid Rise', displayOrder: 2 },
       { value: 'high-rise', displayLabel: 'High Rise', displayOrder: 3 },
+    ],
+  },
+  {
+    targetSlugs: ['bras', 'panties', 'briefs', 'sets', 'others'],
+    slug: 'tags',
+    name: 'Product Badges',
+    filterType: 'MULTI_SELECT',
+    options: [
+      { value: 'new-arrival', displayLabel: 'New Arrival', displayOrder: 1 },
+      { value: 'limited-stock', displayLabel: 'Limited Stock', displayOrder: 2 },
+      { value: 'few-left', displayLabel: 'Few Left', displayOrder: 3 },
     ],
   },
 ];
@@ -30,7 +43,6 @@ const GROUP_DEFINITIONS = [
 async function upsertFilterMetadata() {
   const productTypes = await prisma.productType.findMany({
     where: {
-      slug: { in: ['bras', 'panties', 'briefs'] },
       isActive: true,
     },
     select: { id: true, slug: true },
@@ -51,7 +63,7 @@ async function upsertFilterMetadata() {
           name: groupDef.name,
           displayName: groupDef.name,
           isActive: true,
-          filterType: 'SINGLE_SELECT',
+          filterType: groupDef.filterType,
         },
         create: {
           productTypeId: type.id,
@@ -60,7 +72,7 @@ async function upsertFilterMetadata() {
           slug: groupDef.slug,
           displayOrder: 30,
           isActive: true,
-          filterType: 'SINGLE_SELECT',
+          filterType: groupDef.filterType,
         },
       });
 

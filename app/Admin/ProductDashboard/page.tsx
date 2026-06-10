@@ -186,6 +186,8 @@ const IMPORT_TEMPLATE_HEADERS = [
 const STOCK_THRESHOLD = 20;
 
 const CATEGORY_OPTIONS = ['Bras', 'Panties', 'Briefs', 'Sets', 'Others'];
+const REQUIRED_PRODUCT_BADGE_LABELS = ['Few Left', 'New Arrival', 'Limited Stock'];
+const BADGE_GROUP_SLUGS = new Set(['tags', 'badges', 'product-filter']);
 
 const parseSku = (value: string) => {
   const normalized = String(value || '').trim();
@@ -235,6 +237,12 @@ const normalizeSlug = (value: string) =>
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-');
+
+const normalizeLabel = (value: string) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
 
 const getCandidateTypeSlugs = (category: string) => {
   const base = normalizeSlug(category);
@@ -387,9 +395,39 @@ export default function ProductManagementDashboard() {
     (category: string) => {
       const candidateSlugs = getCandidateTypeSlugs(category);
       const groupMap = new Map<string, FilterGroupMeta>();
+      const requiredBadgeLabels = new Set(REQUIRED_PRODUCT_BADGE_LABELS.map(normalizeLabel));
+      const badgeOptionsFromAllTypes = new Map<string, FilterOptionMeta>();
 
       for (const type of filterMetadata) {
         const typeSlug = normalizeSlug(type.slug || type.name);
+
+        for (const group of type.filterGroups || []) {
+          const groupSlug = normalizeSlug(group.slug || '');
+          const groupName = normalizeLabel(group.displayName || group.name || '');
+          const isBadgeGroup =
+            BADGE_GROUP_SLUGS.has(groupSlug) ||
+            groupName.includes('badge') ||
+            groupName.includes('tag') ||
+            groupName.includes('product filter');
+
+          if (!isBadgeGroup) continue;
+
+          for (const option of group.filterOptions || []) {
+            const optionLabel = String(option.displayLabel || option.value || '').trim();
+            const normalizedOptionLabel = normalizeLabel(optionLabel);
+            if (!requiredBadgeLabels.has(normalizedOptionLabel)) continue;
+
+            if (!badgeOptionsFromAllTypes.has(normalizedOptionLabel)) {
+              badgeOptionsFromAllTypes.set(normalizedOptionLabel, {
+                id: option.id,
+                value: option.value,
+                displayLabel: optionLabel,
+                colorHex: option.colorHex ?? null,
+              });
+            }
+          }
+        }
+
         if (!candidateSlugs.includes(typeSlug)) continue;
 
         for (const group of type.filterGroups || []) {
@@ -399,7 +437,41 @@ export default function ProductManagementDashboard() {
         }
       }
 
-      return Array.from(groupMap.values());
+      const groups = Array.from(groupMap.values());
+      const existingBadgeGroup = groups.find((group) => BADGE_GROUP_SLUGS.has(normalizeSlug(group.slug || '')));
+      const targetBadgeGroup: FilterGroupMeta = existingBadgeGroup || {
+        id: 'global-product-badges',
+        name: 'Product Badges',
+        displayName: 'Product Badges',
+        slug: 'tags',
+        filterType: 'multi',
+        filterOptions: [],
+      };
+
+      const existingBadgeOptionLabels = new Set(
+        (targetBadgeGroup.filterOptions || []).map((option) => normalizeLabel(option.displayLabel || option.value || ''))
+      );
+
+      for (const requiredLabel of REQUIRED_PRODUCT_BADGE_LABELS) {
+        const normalizedRequiredLabel = normalizeLabel(requiredLabel);
+        if (existingBadgeOptionLabels.has(normalizedRequiredLabel)) continue;
+
+        const sourceOption = badgeOptionsFromAllTypes.get(normalizedRequiredLabel);
+        targetBadgeGroup.filterOptions.push(
+          sourceOption || {
+            id: `global-product-badge-${normalizeSlug(requiredLabel)}`,
+            value: normalizeSlug(requiredLabel),
+            displayLabel: requiredLabel,
+            colorHex: null,
+          }
+        );
+      }
+
+      if (!existingBadgeGroup) {
+        groups.push(targetBadgeGroup);
+      }
+
+      return groups;
     },
     [filterMetadata]
   );
