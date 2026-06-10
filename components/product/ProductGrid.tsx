@@ -12,7 +12,6 @@ import { getOptimizedSupabaseImageUrl } from "@/lib/supabaseImage";
 import {
   getProductColorLabel,
   getProductSwatchColor,
-  groupProductsByCategory,
 } from "@/lib/productVariants";
 
 // ================= PRODUCT CARD =================
@@ -88,10 +87,28 @@ export const ProductCard = ({
     }
   };
 
-  const isNewArrival = product?.isNewArrival;
-  const isBestSeller = product?.isBestSeller;
-  const isLimitedStock = product?.stock <= 5;
-  const tagInfo = product?.tag;
+  const badgeGroupSlugs = new Set(['badges', 'tags', 'status', 'product-filter']);
+  const badgeGroupNames = new Set(['product filter', 'product filters', 'badges', 'tags', 'status']);
+
+  const productBadges = Array.isArray(product?.filters)
+    ? product.filters
+        .flatMap((filter: any) => {
+          const group = filter?.filterOption?.filterGroup;
+          const groupSlug = String(group?.slug || '').trim().toLowerCase();
+          const groupName = String(group?.displayName || group?.name || '').trim().toLowerCase();
+
+          if (!badgeGroupSlugs.has(groupSlug) && !badgeGroupNames.has(groupName)) {
+            return [];
+          }
+
+          const label = String(
+            filter?.filterOption?.displayLabel || filter?.filterOption?.value || ''
+          ).trim();
+
+          return label ? [label] : [];
+        })
+        .filter(Boolean)
+    : [];
 
   const renderSwatch = (swatch: { id: string; label: string; color: string }) => {
     const isActive = swatch.id === activeSwatchId;
@@ -157,107 +174,32 @@ export const ProductCard = ({
       {/* BADGES */}
       <div className="absolute top-2 left-2 z-40 flex flex-col gap-1.5 max-w-[75%]">
 
-        {isNewArrival && (
-          <div
-            className="
-              px-2.5
-              py-1
-              rounded-full
-              text-[8px]
-              font-bold
-              uppercase
-              tracking-[0.12em]
-              text-[#2d1600]
-              shadow-md
-              bg-[linear-gradient(135deg,#fff6bf_0%,#f7d46b_20%,#d4af37_40%,#fff0a6_60%,#b8860b_100%)]
-            "
-          >
-            New
-          </div>
-        )}
+        {productBadges.map((badge: string, index: number) => {
+          const label = String(badge || '').trim();
+          if (!label) return null;
 
-        {isBestSeller && (
-          <div
-            className="
-              px-2.5
-              py-1
-              rounded-full
-              text-[8px]
-              font-bold
-              uppercase
-              tracking-[0.12em]
-              text-white
-              shadow-md
-              bg-gradient-to-r
-              from-[#840d5c]
-              to-[#d91b95]
-            "
-          >
-            Bestseller
-          </div>
-        )}
+          return (
+            <div
+              key={`${label}-${index}`}
+              className="
+                px-2.5
+                py-1
+                rounded-full
+                text-[8px]
+                font-bold
+                uppercase
+                tracking-[0.12em]
+                text-[#3a2500]
+                shadow-md
+                bg-[linear-gradient(135deg,#fff6bf_0%,#f7d46b_18%,#d4af37_40%,#fff0a6_52%,#c69214_75%,#8b6914_100%)]
+              "
+            >
+              {label}
+            </div>
+          );
+        })}
 
-        {tagInfo && (
-          <div
-            className="
-              px-2.5
-              py-1
-              rounded-full
-              text-[8px]
-              font-bold
-              uppercase
-              tracking-[0.12em]
-              text-[#3a2500]
-              shadow-md
-              bg-[linear-gradient(135deg,#fff6bf_0%,#f7d46b_18%,#d4af37_40%,#fff0a6_52%,#c69214_75%,#8b6914_100%)]
-            "
-          >
-            {tagInfo}
-          </div>
-        )}
 
-        {isLimitedStock && (
-          <div
-            className="
-              px-2.5
-              py-1
-              rounded-full
-              text-[8px]
-              font-bold
-              uppercase
-              tracking-[0.12em]
-              text-white
-              shadow-md
-              bg-gradient-to-r
-              from-red-500
-              to-red-600
-            "
-          >
-            Few Left
-          </div>
-        )}
-
-        {isComboEligible && (
-          <div
-            className="
-              px-2.5
-              py-1
-              rounded-full
-              text-[8px]
-              font-bold
-              uppercase
-              tracking-[0.12em]
-              text-white
-              shadow-md
-              bg-gradient-to-r
-              from-[#ff6b9d]
-              to-[#ff1493]
-            "
-            title="Get 10% off when you have 3+ items from this category in cart"
-          >
-            Combo Offer
-          </div>
-        )}
       </div>
 
       {/* WISHLIST */}
@@ -462,19 +404,61 @@ const ProductGrid = () => {
   };
 
   const router = useRouter();
-  const groupedProducts = useMemo(
-    () => groupProductsByCategory(products),
-    [products]
-  );
+  const normalizeText = (value: unknown) =>
+    String(value || "")
+      .trim()
+      .toLowerCase();
+
+  const getProductTypeLabel = (product: any) =>
+    String(
+      product?.productType?.name ||
+        product?.category?.name ||
+        product?.category ||
+        product?.category_name ||
+        ""
+    ).trim();
+
+  const getProductSubCategoryLabel = (product: any) =>
+    String(
+      product?.subCategory?.name ||
+        product?.subCategoryName ||
+        product?.subcategory?.name ||
+        ""
+    ).trim();
+
+  const groupedProducts = useMemo(() => {
+    const groups = new Map<string, { category: string; categoryKey: string; variants: any[] }>();
+
+    for (const product of products || []) {
+      if (!product?.id) continue;
+
+      const productType = getProductTypeLabel(product) || "Uncategorized";
+      const subCategory = getProductSubCategoryLabel(product) || "Other";
+      const categoryKey = `${normalizeText(productType)}::${normalizeText(subCategory)}`;
+      const category = subCategory;
+
+      const existing = groups.get(categoryKey);
+      if (existing) {
+        existing.variants.push(product);
+        continue;
+      }
+
+      groups.set(categoryKey, {
+        category,
+        categoryKey,
+        variants: [product],
+      });
+    }
+
+    return Array.from(groups.values());
+  }, [products]);
 
   const featuredGroups = useMemo(
     () => groupedProducts.slice(0, 4),
     [groupedProducts]
   );
 
-  const [selectedVariantByCategory, setSelectedVariantByCategory] = useState<
-    Record<string, string>
-  >({});
+  const [selectedVariantByCategory, setSelectedVariantByCategory] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setSelectedVariantByCategory((previous) => {
@@ -536,53 +520,47 @@ const ProductGrid = () => {
                 md:gap-6
               "
             >
-              {featuredGroups
-                .map((group) => {
-                  const activeVariantId = selectedVariantByCategory[group.categoryKey];
-                  const activeVariant =
-                    group.variants.find((variant) => variant.id === activeVariantId) ||
-                    group.variants[0];
+              {featuredGroups.map((group) => {
+                const activeVariantId = selectedVariantByCategory[group.categoryKey];
+                const activeVariant =
+                  group.variants.find((variant) => variant.id === activeVariantId) ||
+                  group.variants[0];
 
-                  if (!activeVariant) return null;
+                if (!activeVariant) return null;
 
-                  return (
-                    <div
-                      key={group.categoryKey}
-                      onClick={() =>
-                        router.push(
-                          `/product/${activeVariant.id}`,
-                          { scroll: true }
-                        )
+                return (
+                  <div
+                    key={group.categoryKey}
+                    onClick={() =>
+                      router.push(
+                        `/product/${activeVariant.id}`,
+                        { scroll: true }
+                      )
+                    }
+                    className="cursor-pointer"
+                  >
+                    <ProductCard
+                      product={activeVariant}
+                      isWished={wishlist.includes(activeVariant.id)}
+                      onToggleWishlist={toggleWishlistInState}
+                      userId={user?.id || null}
+                      swatches={group.variants.map((variant, index) => ({
+                        id: variant.id,
+                        label: getProductColorLabel(variant, index),
+                        color: getProductSwatchColor(variant, index),
+                      }))}
+                      activeSwatchId={activeVariant.id}
+                      onSwatchSelect={(variantId) =>
+                        setSelectedVariantByCategory((previous) => ({
+                          ...previous,
+                          [group.categoryKey]: variantId,
+                        }))
                       }
-                      className="cursor-pointer"
-                    >
-                      <ProductCard
-                        product={activeVariant}
-                        isWished={wishlist.includes(
-                          activeVariant.id
-                        )}
-                        onToggleWishlist={
-                          toggleWishlistInState
-                        }
-                        userId={user?.id || null}
-                        swatches={group.variants.map((variant, index) => ({
-                          id: variant.id,
-                          label: getProductColorLabel(variant, index),
-                          color: getProductSwatchColor(variant, index),
-                        }))}
-                        activeSwatchId={activeVariant.id}
-                        onSwatchSelect={(variantId) =>
-                          setSelectedVariantByCategory((previous) => ({
-                            ...previous,
-                            [group.categoryKey]: variantId,
-                          }))
-                        }
-                        isComboEligible={isProductComboEligible(activeVariant)}
-                      />
-                    </div>
-                  );
-
-                })}
+                      isComboEligible={isProductComboEligible(activeVariant)}
+                    />
+                  </div>
+                );
+              })}
             </div>
 
             {/* VIEW ALL */}
