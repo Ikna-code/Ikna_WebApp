@@ -609,12 +609,21 @@ const CartPage = () => {
 
                         <div className="overflow-x-auto pb-1 sm:overflow-visible">
                           <div className="flex gap-3 min-w-max sm:min-w-0 sm:grid sm:grid-cols-3">
-                          {entry.bundle.items.map((item) => {
+                          {(() => {
+                            const expandedBundleItems = entry.bundle.items.flatMap(item =>
+                              Array.from({ length: item.quantity || 1 }, (_, index) => ({
+                                ...item,
+                                uniqueKey: `${item.id}-${index}`,
+                                quantity: 1,
+                              }))
+                            );
+
+                            return expandedBundleItems.map((item) => {
                             const targetProduct = item?.Product || item?.product || item;
                             const fallbackImage = targetProduct?.image || targetProduct?.image_path || '';
                             const fallbackName = targetProduct?.name || 'Product';
                             return (
-                              <div key={item.id} className="w-[190px] shrink-0 sm:w-auto sm:min-w-0 sm:shrink rounded-2xl bg-[#fff7fb] p-3 border border-[#840d5c]/8 space-y-2">
+                              <div key={item.uniqueKey} className="w-[190px] shrink-0 sm:w-auto sm:min-w-0 sm:shrink rounded-2xl bg-[#fff7fb] p-3 border border-[#840d5c]/8 space-y-2">
                                 <div className="relative w-full h-36 sm:h-32 rounded-xl overflow-hidden border border-[#840d5c]/5 bg-white">
                                   {fallbackImage ? (
                                     <Image src={getOptimizedSupabaseImageUrl(fallbackImage, { width: 400, quality: 70 })} alt={fallbackName} fill sizes="400px" className="object-cover" />
@@ -634,13 +643,14 @@ const CartPage = () => {
                                   <div className="flex items-center justify-between pt-2 border-t border-[#840d5c]/5">
                                     <p className="text-sm font-bold text-[#321327] whitespace-nowrap">₹{Number(targetProduct?.price || item?.price || 0).toLocaleString()}</p>
                                     <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#321327] border border-[#840d5c]/10">
-                                      Locked Qty {item.quantity || 1}
+                                      Locked Qty 1
                                     </div>
                                   </div>
                                 </div>
                               </div>
                             );
-                          })}
+                            });
+                          })()}
                           </div>
                         </div>
                       </div>
