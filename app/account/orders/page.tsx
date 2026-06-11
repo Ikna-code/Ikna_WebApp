@@ -129,17 +129,17 @@ const OrdersPage = () => {
                               <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                                 <div className="relative w-10 h-14 sm:w-12 sm:h-16 bg-white rounded-lg overflow-hidden border border-[#840d5c]/5 flex-shrink-0">
                                   <Image 
-                                    src={getOptimizedSupabaseImageUrl(item.product?.image, { width: 320, quality: 70 })} 
-                                    alt={item.product?.name || "Product Image"} 
+                                    src={getOptimizedSupabaseImageUrl(item.productImage, { width: 320, quality: 70 })} 
+                                    alt={item.productName || 'Product Image'} 
                                     fill 
                                     className="object-cover" 
                                     sizes="48px"
                                   />
                                 </div>
                                 <div className="min-w-0">
-                                  <h5 className="text-xs sm:text-sm font-serif text-[#321327] truncate">{item.product?.name}</h5>
+                                  <h5 className="text-xs sm:text-sm font-serif text-[#321327] truncate">{item.productName || 'Product'}</h5>
                                   <p className="text-[9px] sm:text-[10px] text-[#321327]/60 tracking-wider uppercase mt-0.5">
-                                    Size: {item.selectedSize || 'N/A'} | Qty: {item.quantity}
+                                    Size: {item.productSize || item.selectedSize || 'N/A'} | Qty: {item.quantity}
                                   </p>
                                 </div>
                               </div>

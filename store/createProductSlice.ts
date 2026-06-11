@@ -39,7 +39,7 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
     if (!force && get().isProductsInitialized) return;
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch("/api/admin/products", { cache: "no-store" });
+      const response = await fetch('/api/products', { cache: 'no-store' });
       if (!response.ok) {
         throw new Error("Failed to load products");
       }

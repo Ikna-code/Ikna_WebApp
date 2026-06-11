@@ -21,6 +21,8 @@ const publicRoutes = [
 ] as const;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const dbProductAny = (db as any).product;
+
   const staticEntries: MetadataRoute.Sitemap = publicRoutes.map((route) => ({
     url: `${siteUrl}${route}`,
     lastModified: new Date(),
@@ -29,7 +31,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   try {
-    const products = await db.product.findMany({
+    const products: Array<{ id: string; createdAt?: Date | null }> = await dbProductAny.findMany({
+      where: {
+        isDeleted: false,
+        isActive: true,
+      },
       select: {
         id: true,
         createdAt: true,

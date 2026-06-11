@@ -521,6 +521,9 @@ export async function POST(request: NextRequest) {
       tag: body.tag || null,
       rating: typeof body?.rating === 'number' ? body.rating : null,
       sizes,
+      isActive: typeof body?.isActive === 'boolean' ? body.isActive : true,
+      isDeleted: false,
+      deletedAt: null,
       colorHex:
         typeof body?.colorHex === 'string' && body.colorHex.trim().length > 0
           ? body.colorHex.trim()
@@ -556,7 +559,7 @@ export async function POST(request: NextRequest) {
         const now = new Date();
         const inserted = await prisma.$queryRaw<Array<Record<string, any>>>`
           INSERT INTO "Product"
-            ("id", "name", "price", "description", "image", "category", "stock", "createdAt", "updatedAt", "tag", "rating", "sizes", "productTypeId", "subCategoryId", "colorHex", "colorName")
+            ("id", "name", "price", "description", "image", "category", "stock", "isActive", "isDeleted", "deletedAt", "createdAt", "updatedAt", "tag", "rating", "sizes", "productTypeId", "subCategoryId", "colorHex", "colorName")
           VALUES
             (
               ${productId},
@@ -566,6 +569,9 @@ export async function POST(request: NextRequest) {
               ${String(createPayload.image)},
               ${String(createPayload.category)},
               ${createPayload.stock},
+              ${createPayload.isActive},
+              ${createPayload.isDeleted},
+              ${createPayload.deletedAt},
               ${now},
               ${now},
               ${createPayload.tag ?? null},

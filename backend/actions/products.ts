@@ -2,6 +2,11 @@
   import { db } from "@/backend/lib/db";
   import { revalidatePath } from "next/cache";
   import { extractCloudinaryPublicId } from '@/src/lib/cloudinary';
+  import { ACTIVE_PRODUCT_WHERE, deleteProduct as softDeleteProduct } from '@/backend/services/productDeletion';
+
+  // Use any-cast to work around stale Prisma TS generated types (new isActive/isDeleted columns).
+  // The actual schema and DB are in sync — see migration 20260610110000.
+  const dbProductAny = (db as any).product;
 
   // Sanitize products for safe serialization across server-client boundary
   const sanitizeProduct = (product: any) => {
@@ -74,7 +79,8 @@
 
   // 🔵 READ (Public)
   export async function getAllProducts() {
-    const products = await db.product.findMany({
+    const products = await dbProductAny.findMany({
+      where: ACTIVE_PRODUCT_WHERE,
       include: {
         reviews: {
           select: {
@@ -97,13 +103,16 @@
   // 🔴 DELETE
   export async function deleteProduct(id: string) {
     await verifyAdmin();
-    await db.product.delete({ where: { id } });
+    await softDeleteProduct(id);
     revalidatePath("/");
   }
 
   export const getProductWithImages = async (productId: string) => {
-    const row = await db.product.findUnique({
-      where: { id: productId },
+    const row = await dbProductAny.findFirst({
+      where: {
+        id: productId,
+        ...ACTIVE_PRODUCT_WHERE,
+      },
       include: {
         images: {
           select: {
@@ -137,7 +146,8 @@
   };
 
   export const getAllProductsWithPrimaryImage = async () => {
-    const rows = await db.product.findMany({
+    const rows = await dbProductAny.findMany({
+      where: ACTIVE_PRODUCT_WHERE,
       include: {
         images: {
           select: {

@@ -39,11 +39,11 @@ type BackendOrder = {
     quantity?: number;
     price?: number | string;
     selectedSize?: string | null;
-    product?: {
-      id?: string;
-      name?: string;
-      image?: string | null;
-    };
+    productName?: string | null;
+    productImage?: string | null;
+    productColorName?: string | null;
+    productSize?: string | null;
+    productSlug?: string | null;
   }>;
 };
 
@@ -102,9 +102,9 @@ function mapOrderToUi(order: BackendOrder): Order {
     id: item.id,
     quantity: Number(item.quantity ?? 1),
     price: Number(item.price ?? 0),
-    selectedSize: item.selectedSize || null,
-    productName: item.product?.name || 'Product',
-    productImage: item.product?.image || '',
+    selectedSize: item.productSize || item.selectedSize || null,
+    productName: item.productName || 'Product',
+    productImage: item.productImage || '',
   }));
 
   return {

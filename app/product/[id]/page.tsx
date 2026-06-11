@@ -149,11 +149,16 @@ const SingleProductPage = () => {
   }, [productData, productId]);
 
   useEffect(() => {
-    if (product) {
+    if (product && !product.isDeleted && product.isActive) {
       setCurrentComboVariant(product);
       setSelectedVariantId(String(product.id));
+      return;
     }
-  }, [product]);
+
+    if (isProductsInitialized && productId) {
+      router.replace('/shop');
+    }
+  }, [product, isProductsInitialized, productId, router]);
 
   const activeVariant = useMemo(() => {
     if (!product) return null;
@@ -275,6 +280,10 @@ const SingleProductPage = () => {
     }
     if (!selectedSize) {
       setToast({ message: "Please select a size", type: 'info' });
+      return;
+    }
+    if (!activeVariant || activeVariant.isDeleted || !activeVariant.isActive) {
+      setToast({ message: 'Product is no longer available.', type: 'error' });
       return;
     }
     await addItemToCart(userId, activeVariant?.id, selectedSize, 1, activeVariant?.category, 0, '');

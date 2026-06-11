@@ -22,11 +22,7 @@ export async function GET(request: Request) {
     orderBy: { createdAt: 'desc' },
     include: {
       address: true,
-      orderItems: {
-        include: {
-          product: true,
-        }
-      }
+      orderItems: true
     }
   });
 

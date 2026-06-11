@@ -35,6 +35,9 @@ interface ProductDetail {
   sizes: string[];
   rating: number | null;
   createdAt: string;
+  isActive: boolean;
+  isDeleted: boolean;
+  deletedAt?: string | null;
   images: { id: string; image_path: string; is_primary: boolean | null }[];
   filters: ProductFilterAssignment[];
   colorHex: string;
@@ -69,6 +72,9 @@ interface DbProduct {
   description: string;
   sizes: string[];
   createdAt: string;
+  isActive?: boolean;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
   rating?: number | null;
   tag?: string | null;
   reviews?: { rating: number }[];
@@ -131,7 +137,7 @@ interface ProductTaxonomyType {
 
 interface DeleteModalState {
   isOpen: boolean;
-  mode: 'single' | 'bulk';
+  mode: 'single' | 'bulk' | 'hard';
   productId: string | null;
   count: number;
 }
@@ -184,6 +190,27 @@ const IMPORT_TEMPLATE_HEADERS = [
 ];
 
 const STOCK_THRESHOLD = 20;
+
+const getProductStatus = (product: ProductDetail) => {
+  if (product.isDeleted) {
+    return {
+      label: 'Deleted',
+      className: 'bg-red-100 text-red-700 border-red-200',
+    };
+  }
+
+  if (!product.isActive) {
+    return {
+      label: 'Inactive',
+      className: 'bg-amber-100 text-amber-700 border-amber-200',
+    };
+  }
+
+  return {
+    label: 'Active',
+    className: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  };
+};
 
 const CATEGORY_OPTIONS = ['Bras', 'Panties', 'Briefs', 'Sets', 'Others'];
 const REQUIRED_PRODUCT_BADGE_LABELS = ['Few Left', 'New Arrival', 'Limited Stock'];
@@ -552,9 +579,11 @@ const mappedProducts = products.map((product, index) => {
     sizes: product.sizes || [],
     rating: typeof product.rating === 'number' ? product.rating : null,
     createdAt: product.createdAt,
+    isActive: typeof product.isActive === 'boolean' ? product.isActive : true,
+    isDeleted: typeof product.isDeleted === 'boolean' ? product.isDeleted : false,
+    deletedAt: product.deletedAt || null,
     images: Array.isArray(product.images) ? product.images : [],
     filters: Array.isArray(product.filters) ? product.filters : [],
-    // Add these lines to map into state:
     colorHex: product.colorHex || '#000000',
     colorName: product.colorName || product.tag || 'Unspecified'
   };
@@ -641,6 +670,7 @@ const mappedProducts = products.map((product, index) => {
   }, []);
 
   useEffect(() => {
+    console.log('Derived addFilterGroups:', addFilterGroups);
     const allowed = new Set(addFilterGroups.flatMap((group) => group.filterOptions.map((option) => option.id)));
     setNewFilterOptionIds((current) => current.filter((id) => allowed.has(id)));
   }, [addFilterGroups]);
@@ -1018,6 +1048,36 @@ const payload = {
     });
   };
 
+  const handleRestoreProduct = async (id: string) => {
+    setErrorMessage('');
+
+    try {
+      const response = await fetch(`/api/admin/products/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'restore' }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.error || 'Failed to restore product');
+      }
+
+      await Promise.all([fetchProducts(), refreshProducts()]);
+    } catch (error: any) {
+      setErrorMessage(error?.message || 'Failed to restore product.');
+    }
+  };
+
+  const handleHardDeleteProduct = async (id: string) => {
+    setDeleteModal({
+      isOpen: true,
+      mode: 'hard',
+      productId: id,
+      count: 1,
+    });
+  };
+
   const closeDeleteModal = () => {
     if (isDeleting) return;
 
@@ -1039,6 +1099,7 @@ const payload = {
   };
 
   const confirmDelete = async () => {
+    setErrorMessage('');
     setIsDeleting(true);
 
     try {
@@ -1051,13 +1112,25 @@ const payload = {
           )
         );
         setSelectedProducts([]);
+      } else if (deleteModal.mode === 'hard' && deleteModal.productId) {
+        const response = await fetch(`/api/admin/products/${deleteModal.productId}?mode=hard`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload?.error || 'Failed to permanently delete product');
+        }
+
+        setSelectedProducts((current) => current.filter((item) => item !== deleteModal.productId));
       } else if (deleteModal.productId) {
         const response = await fetch(`/api/admin/products/${deleteModal.productId}`, {
           method: 'DELETE',
         });
 
         if (!response.ok) {
-          throw new Error('Failed to delete product');
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload?.error || 'Failed to temporarily delete product');
         }
 
         setSelectedProducts((current) => current.filter((item) => item !== deleteModal.productId));
@@ -1065,11 +1138,14 @@ const payload = {
 
       resetDeleteModal();
       await Promise.all([fetchProducts(), refreshProducts()]);
-    } catch {
+    } catch (error: any) {
       setErrorMessage(
-        deleteModal.mode === 'bulk'
-          ? 'Failed to delete selected products.'
-          : 'Failed to delete product.'
+        error?.message ||
+          (deleteModal.mode === 'hard'
+            ? 'Failed to permanently delete product.'
+            : deleteModal.mode === 'bulk'
+              ? 'Failed to temporarily delete selected products.'
+              : 'Failed to temporarily delete product.')
       );
     } finally {
       setIsDeleting(false);
@@ -1785,7 +1861,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                 onClick={handleArchiveSelected}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#840d5c] px-3 py-2 text-xs font-semibold text-white hover:bg-[#6d0b4b] lg:w-auto lg:border lg:border-[#e8bfd5] lg:bg-transparent lg:text-[#840d5c] lg:hover:bg-[#f7e8f1]"
               >
-                <Trash2 className="h-3.5 w-3.5" /> Delete Selected
+                <Trash2 className="h-3.5 w-3.5" /> Soft Delete Selected
               </button>
             </div>
           </div>
@@ -1862,6 +1938,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                   <th className="w-32 py-4 px-3 font-bold">Sizes</th>
                   <th className="w-24 py-4 px-3 font-bold">Color Hex</th>
                   <th className="w-24 py-4 px-3 font-bold">Category</th>
+                  <th className="w-24 py-4 px-3 font-bold">Status</th>
                   <th className="w-20 py-4 px-3 font-bold text-right">Rating</th>
                   <th className="w-20 py-4 px-3 font-bold text-right">Price</th>
                   <th className="w-20 py-4 px-3 font-bold text-right">Stock</th>
@@ -1917,6 +1994,13 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
   </div>
 </td>
                     <td className="py-4 px-3 align-middle whitespace-nowrap">{p.category}</td>
+                    <td className="py-4 px-3 align-middle">
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${getProductStatus(p).className}`}
+                      >
+                        {getProductStatus(p).label}
+                      </span>
+                    </td>
                     <td className="py-4 px-3 align-middle text-right font-semibold text-neutral-900">
                       {p.rating != null ? p.rating.toFixed(1) : 'N/A'}
                     </td>
@@ -1937,29 +2021,52 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteProduct(p.id)}
-                          title="Delete product"
-                          aria-label="Delete product"
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#e8bfd5] text-[#840d5c] hover:bg-[#f7e8f1]"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        {p.isDeleted ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleRestoreProduct(p.id)}
+                              title="Restore product"
+                              aria-label="Restore product"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleHardDeleteProduct(p.id)}
+                              title="Hard delete product"
+                              aria-label="Hard delete product"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteProduct(p.id)}
+                            title="Soft delete product"
+                            aria-label="Soft delete product"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#e8bfd5] text-[#840d5c] hover:bg-[#f7e8f1]"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ))}
                 {!isLoading && paginatedProducts.length === 0 && (
                   <tr>
-                    <td colSpan={15} className="py-8 text-center font-semibold text-neutral-400">
+                    <td colSpan={16} className="py-8 text-center font-semibold text-neutral-400">
                       No products found for the selected filters.
                     </td>
                   </tr>
                 )}
                 {isLoading && (
                   <tr>
-                    <td colSpan={15} className="py-8 text-center font-semibold text-neutral-400">
+                    <td colSpan={16} className="py-8 text-center font-semibold text-neutral-400">
                       Loading products...
                     </td>
                   </tr>
@@ -2122,14 +2229,20 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
               <div className="my-8 w-full max-w-md rounded-3xl border border-neutral-200 bg-white p-6 shadow-2xl">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h3 className="text-base font-black text-[#840d5c]">Confirm Delete</h3>
+                    <h3 className="text-base font-black text-[#840d5c]">
+                      {deleteModal.mode === 'hard' ? 'Confirm Permanent Delete' : 'Confirm Temporary Delete'}
+                    </h3>
                     <p className="mt-2 text-sm text-neutral-600">
-                      {deleteModal.mode === 'bulk'
-                        ? `Delete ${deleteModal.count} selected product${deleteModal.count === 1 ? '' : 's'}?`
-                        : 'Delete this product?'}
+                      {deleteModal.mode === 'hard'
+                        ? 'Permanently delete this product and its related removable records?'
+                        : deleteModal.mode === 'bulk'
+                          ? `Temporarily delete ${deleteModal.count} selected product${deleteModal.count === 1 ? '' : 's'}?`
+                          : 'Temporarily delete this product?'}
                     </p>
                     <p className="mt-1 text-xs text-neutral-500">
-                      This action cannot be undone.
+                      {deleteModal.mode === 'hard'
+                        ? 'This is a permanent delete and cannot be restored from the dashboard.'
+                        : 'This is a temporary delete. The product can be restored later from this dashboard.'}
                     </p>
                   </div>
                   <button
@@ -2155,9 +2268,9 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                     type="button"
                     onClick={confirmDelete}
                     disabled={isDeleting}
-                    className="flex-1 rounded-xl bg-[#840d5c] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#6d0b4b] disabled:cursor-not-allowed disabled:opacity-60"
+                    className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 ${deleteModal.mode === 'hard' ? 'bg-red-600 hover:bg-red-700' : 'bg-[#840d5c] hover:bg-[#6d0b4b]'}`}
                   >
-                    {isDeleting ? 'Deleting...' : 'Delete'}
+                    {isDeleting ? 'Deleting...' : deleteModal.mode === 'hard' ? 'Permanent Delete' : 'Temporary Delete'}
                   </button>
                 </div>
               </div>
@@ -2458,7 +2571,9 @@ onClick={() => {
     // Check if the current group is "Comfort Type"
     const isSingleSelectGroup = 
       group.name === 'Comfort Type' || 
-      group.slug === 'comfort-type';
+      group.slug === 'comfort-type' || 
+      group.name=== 'Rise Type' ||
+      group.slug === 'rise-type';
 
     if (isSingleSelectGroup) {
       // Single-select behavior: Clear previous options from this group and add the new one

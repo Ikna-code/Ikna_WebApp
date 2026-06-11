@@ -29,10 +29,15 @@ const staticRoutes = [
 ] as const;
 
 export default async function SiteMapPage() {
+  const dbProductAny = (db as any).product;
   let productLinks: string[] = [];
 
   try {
-    const products = await db.product.findMany({
+    const products: Array<{ id: string }> = await dbProductAny.findMany({
+      where: {
+        isDeleted: false,
+        isActive: true,
+      },
       select: { id: true },
       orderBy: { createdAt: 'desc' },
     });

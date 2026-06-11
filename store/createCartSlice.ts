@@ -192,10 +192,6 @@ removeItem: async (cartItemId: string) => {
                 return {
                   ...existingItem,
                   ...item,
-                  product: {
-                    ...(existingItem?.product || {}),
-                    ...(item?.product || {}),
-                  },
                 };
               }),
             }

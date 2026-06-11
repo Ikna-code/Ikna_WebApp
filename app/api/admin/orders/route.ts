@@ -45,17 +45,7 @@ export async function GET() {
           lastName: true,
         },
       },
-      orderItems: {
-        include: {
-          product: {
-            select: {
-              id: true,
-              name: true,
-              image: true,
-            },
-          },
-        },
-      },
+      orderItems: true,
     },
   });
 

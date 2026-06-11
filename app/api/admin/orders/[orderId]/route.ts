@@ -64,19 +64,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
             lastName: true,
           },
         },
-        orderItems: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                image: true,
-                category: true,
-                price: true,
-              },
-            },
-          },
-        },
+        orderItems: true,
       },
     });
 

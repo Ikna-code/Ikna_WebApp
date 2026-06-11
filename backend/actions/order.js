@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { supabase } from '../lib/supabaseClient';// 🛒 CART ACTIONS
 import { Prisma } from "@prisma/client";
 import { calculateComboDiscounts, validateCouponCode } from "./promotions";
+import { createOrderItemSnapshot } from '@/backend/services/productDeletion';
 
 const toPlainData = (value) => JSON.parse(JSON.stringify(value));
 
@@ -53,11 +54,15 @@ export async function addToCart(
     });
 
     if (!product) {
-      return { success: false, error: "Product not found" };
+      return { success: false, error: 'Product not found' };
+    }
+
+    if (product.isDeleted || !product.isActive) {
+      return { success: false, error: 'Product is no longer available.' };
     }
 
     if (product.stock < quantity) {
-      return { success: false, error: "Insufficient stock" };
+      return { success: false, error: 'Insufficient stock' };
     }
 
     // 2. Perform the Upsert
@@ -98,7 +103,15 @@ export async function addToCart(
 export async function getCartItems(userId) {
   try {
     const items = await db.cartItem.findMany({
-      where: { userId },
+      where: {
+        userId,
+        product: {
+          is: {
+            isDeleted: false,
+            isActive: true,
+          },
+        },
+      },
       include: {
         product: {
           include: {
@@ -333,7 +346,7 @@ export async function createOrder(userId, couponCode = null, options = {}) {
       const preparedOrderItems = cartItems.map((item) => {
         const originalPrice = new Prisma.Decimal(item.product.price);
         const comboMeta = comboDiscounts[item.id];
-        
+
         let finalUnitPrice = originalPrice;
         let appliedComboId = null;
         let lineItemCost = originalPrice.mul(item.quantity);
@@ -348,19 +361,26 @@ export async function createOrder(userId, couponCode = null, options = {}) {
           lineItemCost = lineItemCost.sub(totalLineComboSavings);
           finalUnitPrice = item.quantity > 0 ? lineItemCost.div(item.quantity) : originalPrice;
           appliedComboId = comboMeta.comboOfferId;
-          
+
           // Accumulate line item variance only for discounted combo units.
           totalDiscountAccumulator = totalDiscountAccumulator.add(totalLineComboSavings);
         }
 
         workingSubtotal = workingSubtotal.add(lineItemCost);
 
+        const snapshot = createOrderItemSnapshot(item.product);
+
         return {
           productId: item.productId,
           quantity: item.quantity,
           price: finalUnitPrice, // Record final price after combo mapping
           selectedSize: item.selectedSize,
-          comboOfferId: appliedComboId
+          productName: snapshot.productName,
+          productImage: snapshot.productImage,
+          productColorName: snapshot.productColorName,
+          productSize: item.selectedSize || null,
+          productSlug: snapshot.productSlug,
+          comboOfferId: appliedComboId,
         };
       });
 
@@ -426,13 +446,18 @@ export async function createOrder(userId, couponCode = null, options = {}) {
           couponAppliedId: appliedCouponId,
           isFirstOrder: isFirstTimeOfferApplied,
           orderItems: {
-            create: preparedOrderItems.map(item => ({
+            create: preparedOrderItems.map((item) => ({
               productId: item.productId,
               quantity: item.quantity,
               price: item.price,
               selectedSize: item.selectedSize,
-              comboOfferId: item.comboOfferId
-            }))
+              productName: item.productName,
+              productImage: item.productImage,
+              productColorName: item.productColorName,
+              productSize: item.productSize,
+              productSlug: item.productSlug,
+              comboOfferId: item.comboOfferId,
+            })),
           },
         },
       });
@@ -516,6 +541,10 @@ export async function toggleWishlistAction(userId, productId) {
       return { success: false, error: `Product ID ${productId} does not exist in Prisma Product table.` };
     }
 
+    if (productExists.isDeleted || !productExists.isActive) {
+      return { success: false, error: 'Product is no longer available.' };
+    }
+
     // 2. TOGGLE LOGIC
     const existing = await db.wishlistItem.findUnique({
       where: {
@@ -565,9 +594,11 @@ export async function getWishlist(userId) {
     return await db.product.findMany({
       where: {
         id: {
-          in: productIds
-        }
-      }
+          in: productIds,
+        },
+        isDeleted: false,
+        isActive: true,
+      },
     });
   } catch (error) {
     return [];

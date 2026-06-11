@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma, PrismaClient, Role } from '@prisma/client';
 import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
 import { deleteImage, extractCloudinaryPublicId } from '@/src/lib/cloudinary';
+import { deleteProduct, hardDeleteProduct, restoreProduct } from '@/backend/services/productDeletion';
 
 export const dynamic = 'force-dynamic';
 
@@ -339,6 +340,15 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
+    if (String(body?.action || '').toLowerCase() === 'restore') {
+      const result = await restoreProduct(id);
+      if (!result.success) {
+        return NextResponse.json({ error: result.message }, { status: 400 });
+      }
+
+      return NextResponse.json({ success: true, message: result.message });
+    }
+
     const removeImageIds: string[] = Array.isArray(body?.removeImageIds)
       ? body.removeImageIds.filter((item: unknown) => typeof item === 'string' && item.length > 0)
       : [];
@@ -534,7 +544,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const adminId = await requireAdmin();
@@ -545,10 +555,15 @@ export async function DELETE(
 
   try {
     const { id } = await params;
+    const mode = request.nextUrl.searchParams.get('mode');
 
-    await prisma.product.delete({ where: { id } });
+    const result = mode === 'hard' ? await hardDeleteProduct(id) : await deleteProduct(id);
 
-    return NextResponse.json({ success: true });
+    if (!result.success) {
+      return NextResponse.json({ error: result.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, message: result.message });
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message || 'Failed to delete product' },

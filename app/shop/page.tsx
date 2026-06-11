@@ -40,7 +40,7 @@ export default function Shop() {
 
     const fetchFallbackProducts = async () => {
       try {
-        const response = await fetch('/api/admin/products', { cache: 'no-store' });
+        const response = await fetch('/api/products', { cache: 'no-store' });
         if (!response.ok) return;
 
         const payload = await response.json();

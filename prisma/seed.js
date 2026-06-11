@@ -2,6 +2,48 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
+const LEGACY_PANTIES_PRODUCT_TYPE_ID = 'ed841ce9-157d-4b13-a6c0-10a5df5649f6';
+
+const PRODUCT_TYPE_DEFINITIONS = [
+  {
+    name: 'Bras',
+    slug: 'bras',
+    displayOrder: 1,
+    subcategories: [],
+  },
+  {
+    name: 'Panties',
+    slug: 'panties',
+    displayOrder: 2,
+    fixedId: LEGACY_PANTIES_PRODUCT_TYPE_ID,
+    subcategories: [
+      { name: 'Bikini', slug: 'Bikini', displayOrder: 1 },
+      { name: 'Hipster', slug: 'Hipster', displayOrder: 2 },
+      { name: 'Boy shorts', slug: 'Boy shorts', displayOrder: 3 },
+      { name: 'Thong', slug: 'Thong', displayOrder: 4 },
+      { name: 'Cycling shorts', slug: 'Cycling shorts', displayOrder: 5 },
+    ],
+  },
+  {
+    name: 'Briefs',
+    slug: 'briefs',
+    displayOrder: 3,
+    subcategories: [],
+  },
+  {
+    name: 'Sets',
+    slug: 'sets',
+    displayOrder: 4,
+    subcategories: [],
+  },
+  {
+    name: 'Others',
+    slug: 'others',
+    displayOrder: 5,
+    subcategories: [],
+  },
+];
+
 const GROUP_DEFINITIONS = [
   {
     targetSlugs: ['bras'],
@@ -111,9 +153,83 @@ async function upsertFilterMetadata() {
   }
 }
 
+async function upsertTaxonomy() {
+  for (const definition of PRODUCT_TYPE_DEFINITIONS) {
+    let productType = await prisma.productType.findUnique({
+      where: { slug: definition.slug },
+      select: { id: true, slug: true },
+    });
+
+    if (!productType && definition.fixedId) {
+      productType = await prisma.productType.findUnique({
+        where: { id: definition.fixedId },
+        select: { id: true, slug: true },
+      });
+    }
+
+    if (!productType) {
+      productType = await prisma.productType.create({
+        data: {
+          id: definition.fixedId,
+          name: definition.name,
+          slug: definition.slug,
+          displayOrder: definition.displayOrder,
+          isActive: true,
+        },
+        select: { id: true, slug: true },
+      });
+    } else {
+      productType = await prisma.productType.update({
+        where: { id: productType.id },
+        data: {
+          name: definition.name,
+          slug: definition.slug,
+          displayOrder: definition.displayOrder,
+          isActive: true,
+        },
+        select: { id: true, slug: true },
+      });
+    }
+
+    for (const sub of definition.subcategories) {
+      await prisma.$executeRaw`
+        INSERT INTO "sub_categories" (
+          "id",
+          "productTypeId",
+          "name",
+          "slug",
+          "description",
+          "displayOrder",
+          "isActive",
+          "createdAt",
+          "updatedAt"
+        )
+        VALUES (
+          gen_random_uuid()::text,
+          ${productType.id},
+          ${sub.name},
+          ${sub.slug},
+          NULL,
+          ${sub.displayOrder},
+          true,
+          NOW(),
+          NOW()
+        )
+        ON CONFLICT ("productTypeId", "slug") DO UPDATE
+        SET
+          "name" = EXCLUDED."name",
+          "displayOrder" = EXCLUDED."displayOrder",
+          "isActive" = true,
+          "updatedAt" = NOW()
+      `;
+    }
+  }
+}
+
 async function main() {
+  await upsertTaxonomy();
   await upsertFilterMetadata();
-  console.log('Filter metadata seeded successfully');
+  console.log('Taxonomy and filter metadata seeded successfully');
 }
 
 main()
