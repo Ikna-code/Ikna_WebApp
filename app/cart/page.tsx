@@ -550,9 +550,7 @@ const CartPage = () => {
               </button>
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-serif text-[#321327]">Your Shopping Bag</h1>
             </div>
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-[#321327]/40">
-              {cartItems.length} {cartItems.length === 1 ? 'Item' : 'Items'} Selected
-            </p>
+
           </div>
 
           {cartItems.length === 0 ? (
@@ -570,10 +568,9 @@ const CartPage = () => {
               
               {/* LEFT: ITEMS LIST */}
               <div className={`lg:col-span-3 space-y-4 md:space-y-5 ${cartItems.length > 4 ? 'lg:max-h-[calc(100vh-11rem)] lg:overflow-y-auto lg:pr-2' : ''}`}>
-                <div className="hidden lg:flex items-center justify-between px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#321327]/45">
-                  <span>Products In Cart</span>
+                {/* <div className="hidden lg:flex items-center justify-between px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#321327]/45">
                   {cartDisplayEntries.length > 4 && <span>Scroll to view all {cartDisplayEntries.length} entries</span>}
-                </div>
+                </div> */}
 
                 {visibleCartEntries.map((entry) => {
                   if (entry.type === 'bundle') {
@@ -735,18 +732,19 @@ const CartPage = () => {
 
               {/* RIGHT: SUMMARY & CHECKOUT MATCHING image_36c8bf.png EXACTLY */}
               <div className="lg:col-span-2 lg:sticky lg:top-24 space-y-4 w-full">
-                <div className="bg-gradient-to-b from-[#7c0a53] to-[#800342] text-white p-6 rounded-[2.5rem] space-y-6 shadow-xl relative font-sans">
+                <div className="bg-white border border-[#840d5c]/12 text-[#321327] p-6 rounded-[2.5rem] space-y-6 shadow-xl relative font-sans">
                   
                   {/* Summary Title */}
                   <div>
-                    <h2 className="text-xl font-bold tracking-wide text-white">
+                    
+                    <h2 className="text-xl font-bold tracking-wide text-[#321327]">
                       YOUR SUMMARY
                     </h2>
                   </div>
 
                   {/* Payment Method Block Elements Layout Grid */}
                   <div className="space-y-3">
-                    <p className="text-xs font-bold tracking-wider text-white/70">
+                    <p className="text-xs font-bold tracking-wider text-[#321327]/65">
                       PAYMENT METHOD
                     </p>
                     <div className="grid grid-cols-2 gap-4">
@@ -756,8 +754,8 @@ const CartPage = () => {
                         onClick={() => setPaymentMethod('ONLINE')}
                         className={`flex flex-col items-center justify-center py-4 px-3 rounded-2xl text-center transition-all ${
                           paymentMethod === 'ONLINE'
-                            ? 'border-2 border-white bg-white/10 text-white'
-                            : 'border border-white/20 bg-transparent text-white/50 hover:text-white/80'
+                            ? 'border-2 border-[#840d5c] bg-[#fff0f8] text-[#7c0a53]'
+                            : 'border border-[#840d5c]/20 bg-white text-[#321327]/65 hover:text-[#7c0a53] hover:border-[#840d5c]/40'
                         }`}
                       >
                         <CreditCard className="w-5 h-5 mb-2" />
@@ -771,8 +769,8 @@ const CartPage = () => {
                         onClick={() => setPaymentMethod('COD')}
                         className={`flex flex-col items-center justify-center py-4 px-3 rounded-2xl text-center transition-all ${
                           paymentMethod === 'COD'
-                            ? 'border-2 border-white bg-white/10 text-white'
-                            : 'border border-white/20 bg-transparent text-white/50 hover:text-white/80'
+                            ? 'border-2 border-[#840d5c] bg-[#fff0f8] text-[#7c0a53]'
+                            : 'border border-[#840d5c]/20 bg-white text-[#321327]/65 hover:text-[#7c0a53] hover:border-[#840d5c]/40'
                         }`}
                       >
                         <Truck className="w-5 h-5 mb-2" />
@@ -783,20 +781,20 @@ const CartPage = () => {
                   </div>
 
                   {/* Coupon Ticket Block */}
-                  <div className="rounded-2xl border border-white/10 bg-black/10 p-3 space-y-2">
+                  <div className="rounded-2xl border border-[#840d5c]/15 bg-[#fff7fb] p-3 space-y-2">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-white/80">Available Coupons</p>
+                      <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-[#321327]/75">Available Coupons</p>
                       <button
                         type="button"
                         onClick={() => setShowAllCoupons((previous) => !previous)}
-                        className="rounded-lg border border-white/20 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-white/90 hover:bg-white/10"
+                        className="rounded-lg border border-[#840d5c]/20 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-[#7c0a53] hover:bg-[#ffe8f4]"
                       >
                         {showAllCoupons ? 'Hide Coupons' : 'View All Coupons'}
                       </button>
                     </div>
 
                     {isLoadingCouponTickets ? (
-                      <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] uppercase tracking-widest text-white/60">
+                      <div className="rounded-xl border border-[#840d5c]/12 bg-white px-3 py-2 text-[10px] uppercase tracking-widest text-[#321327]/55">
                         Loading coupons...
                       </div>
                     ) : !showAllCoupons ? (
@@ -807,24 +805,24 @@ const CartPage = () => {
 
                         if (!appliedTicket) {
                           return (
-                            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] uppercase tracking-widest text-white/70">
+                            <div className="rounded-xl border border-[#840d5c]/12 bg-white px-3 py-2 text-[10px] uppercase tracking-widest text-[#321327]/65">
                               No coupon applied. Click view all coupons.
                             </div>
                           );
                         }
 
                         return (
-                          <div className="rounded-xl border border-[#ffd5eb] bg-[#a70f67]/40 px-3 py-2">
+                          <div className="rounded-xl border border-[#f2b7d6] bg-[#ffeaf5] px-3 py-2">
                             <div className="flex items-center justify-between gap-3">
                               <div>
-                                <p className="text-xs font-bold uppercase tracking-wide text-white">{appliedTicket.title}</p>
-                                <p className="text-[10px] text-white/80 mt-0.5">{appliedTicket.description}</p>
-                                <p className="text-[10px] font-semibold text-white/85 mt-0.5">Save ₹{appliedTicket.discountAmount}</p>
+                                <p className="text-xs font-bold uppercase tracking-wide text-[#7c0a53]">{appliedTicket.title}</p>
+                                <p className="text-[10px] text-[#321327]/75 mt-0.5">{appliedTicket.description}</p>
+                                <p className="text-[10px] font-semibold text-[#7c0a53] mt-0.5">Save ₹{appliedTicket.discountAmount}</p>
                               </div>
                               <button
                                 type="button"
                                 onClick={handleRemoveCoupon}
-                                className="rounded-lg border border-white/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-white/10"
+                                className="rounded-lg border border-[#840d5c]/25 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#7c0a53] hover:bg-[#fff3f9]"
                               >
                                 Remove
                               </button>
@@ -835,7 +833,7 @@ const CartPage = () => {
                     ) : (
                       <div className="space-y-2">
                         {couponTickets.length === 0 && (
-                          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] uppercase tracking-widest text-white/70">
+                          <div className="rounded-xl border border-[#840d5c]/12 bg-white px-3 py-2 text-[10px] uppercase tracking-widest text-[#321327]/65">
                             No coupons available right now.
                           </div>
                         )}
@@ -846,24 +844,24 @@ const CartPage = () => {
                           return (
                             <div
                               key={ticket.code}
-                              className={`rounded-xl border px-3 py-2 ${isApplied ? 'border-[#ffd5eb] bg-[#a70f67]/40' : 'border-white/10 bg-white/5'} ${isDisabled ? 'opacity-55' : ''}`}
+                              className={`rounded-xl border px-3 py-2 ${isApplied ? 'border-[#f2b7d6] bg-[#ffeaf5]' : 'border-[#840d5c]/12 bg-white'} ${isDisabled ? 'opacity-55' : ''}`}
                             >
                               <div className="flex items-center justify-between gap-3">
                                 <div>
-                                  <p className="text-xs font-bold uppercase tracking-wide text-white">{ticket.title}</p>
-                                  <p className="text-[10px] text-white/80 mt-0.5">{ticket.description}</p>
-                                  <p className="text-[10px] font-semibold text-white/85 mt-0.5">Save ₹{ticket.discountAmount} {ticket.minSubtotal > 0 ? `(min ₹${ticket.minSubtotal})` : ''}</p>
+                                  <p className="text-xs font-bold uppercase tracking-wide text-[#7c0a53]">{ticket.title}</p>
+                                  <p className="text-[10px] text-[#321327]/75 mt-0.5">{ticket.description}</p>
+                                  <p className="text-[10px] font-semibold text-[#7c0a53] mt-0.5">Save ₹{ticket.discountAmount} {ticket.minSubtotal > 0 ? `(min ₹${ticket.minSubtotal})` : ''}</p>
                                   {ticket.disabledReason && (
-                                    <p className="text-[10px] text-[#ffd7ea] mt-0.5">{ticket.disabledReason}</p>
+                                    <p className="text-[10px] text-[#b03b78] mt-0.5">{ticket.disabledReason}</p>
                                   )}
                                 </div>
                                 {isApplied ? (
                                   <div className="flex items-center gap-2">
-                                    <span className="rounded-full bg-white/15 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-white">Applied</span>
+                                    <span className="rounded-full bg-[#7c0a53]/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-[#7c0a53]">Applied</span>
                                     <button
                                       type="button"
                                       onClick={handleRemoveCoupon}
-                                      className="rounded-lg border border-white/20 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-white hover:bg-white/10"
+                                      className="rounded-lg border border-[#840d5c]/25 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-[#7c0a53] hover:bg-[#fff3f9]"
                                     >
                                       Remove
                                     </button>
@@ -873,7 +871,7 @@ const CartPage = () => {
                                     type="button"
                                     onClick={() => handleApplyCoupon(ticket.code)}
                                     disabled={isDisabled}
-                                    className="rounded-lg bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#7c0a53] disabled:opacity-50"
+                                    className="rounded-lg bg-[#7c0a53] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white disabled:opacity-50"
                                   >
                                     Apply
                                   </button>
@@ -887,14 +885,14 @@ const CartPage = () => {
                   </div>
 
                   {/* Payable Total Large Card Display Panel */}
-                  <div className="rounded-3xl bg-white/5 border border-white/10 p-5 space-y-4">
+                  <div className="rounded-3xl bg-[#7c0a53] p-5 space-y-4">
                     <div>
-                      <p className="text-sm font-medium text-white/90">Payable Total</p>
+                      <p className="text-sm font-medium text-white/85">Payable Total</p>
                       <p className="text-5xl font-bold mt-1 tracking-tight text-white">
                         ₹{checkoutSummary.finalGrandTotal}
                       </p>
                     </div>
-                    <hr className="border-white/10" />
+                    <hr className="border-white/20" />
                     <div className="flex justify-between items-center text-xs">
                       <div>
                         <p className="text-white/60 mb-0.5">Original Price:</p>
@@ -954,7 +952,7 @@ const CartPage = () => {
                   <button 
                     onClick={handlePayment}
                     disabled={isProcessing || cartItems.length === 0}
-                    className="w-full bg-[#bf0b6b] hover:bg-[#d6137c] text-white py-4 rounded-3xl font-extrabold tracking-widest text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.99] shadow-md disabled:opacity-40"
+                    className="w-full bg-[#7c0a53] hover:bg-[#7c0a40] text-white py-4 rounded-3xl font-extrabold tracking-widest text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.99] shadow-md disabled:opacity-40"
                   >
                     {isProcessing ? 'PROCESSING...' : 'PAY NOW'} <ArrowRight className="w-4 h-4 stroke-[3]" />
                   </button>

@@ -81,7 +81,7 @@ export default function RecentOrders({ orders = [], isLoading = false }: RecentO
         <button className="text-xs font-bold text-[#840d5c] hover:underline" onClick={() => router.push('/Admin/OrderDashboard')}>View all</button>
       </div>
 
-      <div className="space-y-3 flex-1 flex flex-col justify-center">
+      <div className="space-y-3 flex-1 flex flex-col justify-start">
         {isLoading ? (
           <div className="text-xs text-[#8a5f79]">Loading recent orders...</div>
         ) : latestOrders.length === 0 ? (
@@ -95,7 +95,7 @@ export default function RecentOrders({ orders = [], isLoading = false }: RecentO
             };
 
             return (
-              <div key={order.id} className="flex items-center justify-between pb-2.5 last:pb-0 border-b border-[#f1deea] last:border-0 text-xs">
+              <div key={order.id} className="flex items-start justify-between  pb-2.5 last:pb-0 border-b border-[#f1deea] last:border-0 text-xs">
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-[#2f1126] tracking-tight">#{order.id.slice(0, 8)}</span>
