@@ -47,7 +47,8 @@ type BackendOrder = {
   }>;
 };
 
-const ITEMS_PER_PAGE = 15;
+// FIX: Changed pagination limit to 10 items per page
+const ITEMS_PER_PAGE = 10;
 const ORDER_STATUSES: Array<Exclude<Order['status'], 'Cancelled'>> = ['Processing', 'Packed', 'In Transit', 'Delivered'];
 
 const statusBadgeClassMap: Record<Order['status'], string> = {
@@ -196,7 +197,7 @@ export default function Orders() {
   // Determine pagination bounds based on currently filtered records
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ITEMS_PER_PAGE));
   
-  // Slice out only the 15 records scoped for the dynamic currentPage index
+  // Slice out only the 10 records scoped for the dynamic currentPage index
   const paginatedOrders = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredOrders.slice(startIndex, startIndex + ITEMS_PER_PAGE);
@@ -208,8 +209,8 @@ export default function Orders() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center flex-wrap gap-4">
+    <div className="h-full flex flex-col gap-6">
+      <div className="shrink-0 flex justify-between items-center flex-wrap gap-4">
         <div>
           <span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">
             Operations
@@ -228,7 +229,7 @@ export default function Orders() {
         </div>
       </div>
 
-      <div className="grid grid-cols-5 gap-2 md:grid-cols-4 md:gap-3">
+      <div className="shrink-0 grid grid-cols-5 gap-2 md:grid-cols-4 md:gap-3">
         {/* Mobile-Only 'All Orders' Card Button */}
         <button
           onClick={() => setStatusFilter('All')}
@@ -281,7 +282,7 @@ export default function Orders() {
       </div>
 
       {/* Desktop Filter Pills Tab-row */}
-      <div className="hidden flex-wrap items-center gap-2 md:flex">
+      <div className="shrink-0 hidden flex-wrap items-center gap-2 md:flex">
         <button
           onClick={() => setStatusFilter('All')}
           className={`rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition ${
@@ -307,95 +308,32 @@ export default function Orders() {
         ))}
       </div>
 
-      {/* Mobile Card Grid View */}
-      <div className="grid grid-cols-2 gap-3 md:hidden">
-        {paginatedOrders.map((o) => (
-          <div key={o.id} className="rounded-3xl border border-neutral-200 bg-white p-3 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-neutral-400">Order</p>
-                <p className="mt-1 font-mono text-[11px] font-bold text-neutral-800">{o.id}</p>
-              </div>
-            </div>
-
-            <div className="mt-2 text-[11px] text-neutral-600">
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-wider text-neutral-400">Customer</p>
-                <p className="mt-1 truncate text-[11px] font-semibold text-neutral-800">{o.customer}</p>
-              </div>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[9px] font-medium text-neutral-600">
-                <span className="rounded-full bg-neutral-100 px-2 py-0.5">{o.items}</span>
-                <span className="ml-auto text-[11px] font-bold text-neutral-900">₹{o.total}</span>
-              </div>
-            </div>
-
-            <div className="relative mt-2 flex items-center gap-2">
-              <button
-                onClick={() => setSelectedOrderDetails(o.id)}
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-[#840d5c] transition hover:bg-[#840d5c]/5"
-                aria-label="View order details"
-                title="View order details"
-              >
-                <Eye className="h-3.5 w-3.5" />
-              </button>
-
-              <button
-                onClick={() => setSelectedStatusOrder(selectedStatusOrder === o.id ? null : o.id)}
-                className={`flex w-full items-center justify-between gap-2 rounded-xl border px-2.5 py-1.5 text-[9px] font-semibold uppercase tracking-wider ${getStatusBadgeClass(o.status)}`}
-              >
-                {o.status}
-                <ChevronDown className="h-3 w-3 text-neutral-400" />
-              </button>
-
-              {selectedStatusOrder === o.id && (
-                <div className="absolute left-0 top-12 z-10 w-full rounded-xl border border-neutral-200 bg-white py-2 shadow-lg">
-                  {ORDER_STATUSES.map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => handleUpdateStatus(o.id, status)}
-                      disabled={isUpdating === o.id}
-                      className="flex w-full items-center justify-between px-4 py-2 text-left text-xs font-medium transition hover:bg-neutral-50"
-                    >
-                      {status}
-                      {o.status === status && <Check className="h-3.5 w-3.5 text-[#840d5c]" />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-
-        {filteredOrders.length === 0 && (
-          <div className="col-span-2 rounded-3xl border border-neutral-200 bg-white py-10 text-center font-semibold text-neutral-400 shadow-sm">
-            No orders found matching your search.
-          </div>
-        )}
-      </div>
-
-      {/* Desktop Table View */}
-      <div className="hidden overflow-x-auto rounded-3xl border border-neutral-200 bg-white shadow-sm md:block">
-        <table className="w-full min-w-180 border-collapse text-left text-xs">
-          <thead>
-            <tr className="border-b border-neutral-200 text-neutral-400 tracking-wider">
-              <th className="py-4 px-6 font-bold">Order ID</th>
-              <th className="py-4 px-4 font-bold">Date</th>
-              <th className="py-4 px-4 font-bold">Customer</th>
-              <th className="py-4 px-4 font-bold">Items</th>
-              <th className="py-4 px-4 font-bold">Total</th>
-              <th className="py-4 px-4 font-bold">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-100 text-neutral-600 font-medium">
-            {paginatedOrders.map((o) => (
-              <tr key={o.id} className="hover:bg-neutral-50 transition">
-                <td className="py-5 px-6 font-mono font-bold text-neutral-800">{o.id}</td>
-                <td className="py-4 px-4">{o.date}</td>
-                <td className="py-4 px-4 text-neutral-800 font-semibold">{o.customer}</td>
-                <td className="py-4 px-4">{o.items}</td>
-                <td className="py-4 px-4 font-semibold text-neutral-900">₹{o.total}</td>
-                <td className="py-4 px-4 relative">
-                  <div className="flex items-center gap-2">
+      {/* Orders Table View */}
+      <div className="rounded-3xl border border-neutral-200 bg-white shadow-sm flex flex-col flex-1 min-h-0 overflow-hidden">
+        {/* FIX: added vertical scrolling tracking if table overflows along with overflow-x safety */}
+        <div className="overflow-x-auto overflow-y-auto grow custom-scrollbar">
+          <table className="w-full min-w-180 border-collapse text-left text-xs table-fixed">
+            <thead className="sticky top-0 bg-white z-10 shadow-[0_1px_0_0_rgba(229,229,229,1)]">
+              <tr className="text-neutral-400 tracking-wider">
+                <th className="py-4 px-6 font-bold w-[17%]">Order ID</th>
+                <th className="py-4 px-4 font-bold w-[13%]">Date</th>
+                <th className="py-4 px-4 font-bold w-[22%]">Customer</th>
+                <th className="py-4 px-4 font-bold w-[10%]">Items</th>
+                <th className="py-4 px-4 font-bold w-[11%]">Total</th>
+                <th className="py-4 px-4 font-bold w-[10%]">View Order</th>
+                <th className="py-4 px-4 font-bold w-[17%]">Status</th>
+              </tr>
+            </thead>
+            {/* FIX: Added safety margin room to the bottom wrapper to ensure the absolute dropdown is completely visible on the last row */}
+            <tbody className={`divide-y divide-neutral-100 text-neutral-600 font-medium transition-all duration-200 ${selectedStatusOrder ? 'pb-32' : ''}`}>
+              {paginatedOrders.map((o) => (
+                <tr key={o.id} className="hover:bg-neutral-50 transition h-[49px]">
+                  <td className="py-3 px-6 font-mono font-bold text-neutral-800 truncate">{o.id}</td>
+                  <td className="py-3 px-4 truncate">{o.date}</td>
+                  <td className="py-3 px-4 text-neutral-800 font-semibold truncate">{o.customer}</td>
+                  <td className="py-3 px-4 truncate">{o.items}</td>
+                  <td className="py-3 px-4 font-semibold text-neutral-900 truncate">₹{o.total}</td>
+                  <td className="py-3 px-4">
                     <button
                       onClick={() => setSelectedOrderDetails(o.id)}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-neutral-200 bg-white text-[#840d5c] transition hover:bg-[#840d5c]/5"
@@ -404,52 +342,54 @@ export default function Orders() {
                     >
                       <Eye className="h-3.5 w-3.5" />
                     </button>
-
-                    <button
-                      onClick={() =>
-                        setSelectedStatusOrder(selectedStatusOrder === o.id ? null : o.id)
-                      }
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border font-semibold hover:bg-neutral-100 cursor-pointer text-[10px] ${getStatusBadgeClass(o.status)}`}
-                    >
-                      {o.status}
-                      <ChevronDown className="w-3 h-3 text-neutral-400" />
-                    </button>
-                  </div>
-
-                  {selectedStatusOrder === o.id && (
-                    <div className="absolute z-10 top-12 left-0 bg-white border border-neutral-200 rounded-xl shadow-lg w-36 py-2">
-                      {ORDER_STATUSES.map((status) => (
-                        <button
-                          key={status}
-                          onClick={() => handleUpdateStatus(o.id, status)}
-                          disabled={isUpdating === o.id}
-                          className="w-full text-left px-4 py-2 hover:bg-neutral-50 text-xs transition flex items-center justify-between font-medium"
-                        >
-                          {status}
-                          {o.status === status && (
-                            <Check className="w-3.5 h-3.5 text-[#840d5c]" />
-                          )}
-                        </button>
-                      ))}
+                  </td>
+                  <td className="py-3 px-4 relative overflow-visible">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() =>
+                          setSelectedStatusOrder(selectedStatusOrder === o.id ? null : o.id)
+                        }
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border font-semibold hover:bg-neutral-100 cursor-pointer text-[10px] ${getStatusBadgeClass(o.status)}`}
+                      >
+                        {o.status}
+                        <ChevronDown className="w-3 h-3 text-neutral-400" />
+                      </button>
                     </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {filteredOrders.length === 0 && (
-              <tr>
-                <td colSpan={6} className="py-8 text-center text-neutral-400 font-semibold">
-                  No orders found matching your search.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
 
-      {/* New Reusable Pagination Control Footer */}
-      {filteredOrders.length > 0 && (
-        <div className="flex flex-col items-center justify-between gap-4 border-t border-neutral-200 pt-4 sm:flex-row">
+                    {selectedStatusOrder === o.id && (
+                      <div className="absolute z-50 top-full mt-1 right-4 bg-white border border-neutral-200 rounded-xl shadow-xl w-36 py-2">
+                        {ORDER_STATUSES.map((status) => (
+                          <button
+                            key={status}
+                            onClick={() => handleUpdateStatus(o.id, status)}
+                            disabled={isUpdating === o.id}
+                            className="w-full text-left px-4 py-2 hover:bg-neutral-50 text-xs transition flex items-center justify-between font-medium"
+                          >
+                            {status}
+                            {o.status === status && (
+                              <Check className="w-3.5 h-3.5 text-[#840d5c]" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {filteredOrders.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-neutral-400 font-semibold">
+                    No orders found matching your search.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination pinned inside the table card */}
+        {filteredOrders.length > 0 && (
+          <div className="shrink-0 flex flex-col items-center justify-between gap-4 border-t border-neutral-200 px-6 py-4 sm:flex-row">
           <p className="text-xs font-semibold text-neutral-500">
             Showing <span className="font-bold text-neutral-800">{Math.min(filteredOrders.length, (currentPage - 1) * ITEMS_PER_PAGE + 1)}</span> to{' '}
             <span className="font-bold text-neutral-800">{Math.min(filteredOrders.length, currentPage * ITEMS_PER_PAGE)}</span> of{' '}
@@ -487,7 +427,8 @@ export default function Orders() {
             </button>
           </div>
         </div>
-      )}
+        )}
+      </div>
 
       {activeOrderDetails && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">

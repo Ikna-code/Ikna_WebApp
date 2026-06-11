@@ -137,7 +137,7 @@ interface ProductTaxonomyType {
 
 interface DeleteModalState {
   isOpen: boolean;
-  mode: 'single' | 'bulk' | 'hard';
+  mode: 'single' | 'bulk';
   productId: string | null;
   count: number;
 }
@@ -1070,12 +1070,27 @@ const payload = {
   };
 
   const handleHardDeleteProduct = async (id: string) => {
-    setDeleteModal({
-      isOpen: true,
-      mode: 'hard',
-      productId: id,
-      count: 1,
-    });
+    const shouldProceed = window.confirm(
+      'This permanently deletes the product and related records. Continue?'
+    );
+    if (!shouldProceed) return;
+
+    setErrorMessage('');
+
+    try {
+      const response = await fetch(`/api/admin/products/${id}?mode=hard`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.error || 'Failed to permanently delete product');
+      }
+
+      await Promise.all([fetchProducts(), refreshProducts()]);
+    } catch (error: any) {
+      setErrorMessage(error?.message || 'Failed to permanently delete product.');
+    }
   };
 
   const closeDeleteModal = () => {
@@ -1099,7 +1114,6 @@ const payload = {
   };
 
   const confirmDelete = async () => {
-    setErrorMessage('');
     setIsDeleting(true);
 
     try {
@@ -1112,25 +1126,13 @@ const payload = {
           )
         );
         setSelectedProducts([]);
-      } else if (deleteModal.mode === 'hard' && deleteModal.productId) {
-        const response = await fetch(`/api/admin/products/${deleteModal.productId}?mode=hard`, {
-          method: 'DELETE',
-        });
-
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload?.error || 'Failed to permanently delete product');
-        }
-
-        setSelectedProducts((current) => current.filter((item) => item !== deleteModal.productId));
       } else if (deleteModal.productId) {
         const response = await fetch(`/api/admin/products/${deleteModal.productId}`, {
           method: 'DELETE',
         });
 
         if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload?.error || 'Failed to temporarily delete product');
+          throw new Error('Failed to delete product');
         }
 
         setSelectedProducts((current) => current.filter((item) => item !== deleteModal.productId));
@@ -1138,14 +1140,11 @@ const payload = {
 
       resetDeleteModal();
       await Promise.all([fetchProducts(), refreshProducts()]);
-    } catch (error: any) {
+    } catch {
       setErrorMessage(
-        error?.message ||
-          (deleteModal.mode === 'hard'
-            ? 'Failed to permanently delete product.'
-            : deleteModal.mode === 'bulk'
-              ? 'Failed to temporarily delete selected products.'
-              : 'Failed to temporarily delete product.')
+        deleteModal.mode === 'bulk'
+          ? 'Failed to delete selected products.'
+          : 'Failed to delete product.'
       );
     } finally {
       setIsDeleting(false);
@@ -1726,9 +1725,9 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
       )}
 
       <div className="space-y-6">
-        {/* Desktop Filter Panel */}
-        <div className="hidden w-full grid-cols-1 gap-4 p-0 sm:p-0 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1.2fr)] lg:items-end">
-          <div className="min-w-0">
+        {/* Desktop Filter Panel - Only shown in bottom sheet on mobile, inline on lg+ */}
+        <div className="hidden w-full p-0 sm:p-0 lg:flex lg:items-end lg:gap-5">
+          <div className="w-40 shrink-0">
             <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-1">
               Category
             </label>
@@ -1743,22 +1742,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
             </select>
           </div>
 
-          <div className="min-w-0">
-            <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-1">
-              Style
-            </label>
-            <select
-              value={activeStyle}
-              onChange={(e) => setActiveStyle(e.target.value)}
-              className="w-full text-xs font-semibold bg-neutral-50 border border-neutral-300 rounded-xl px-3 py-2.5 outline-none focus:border-[#840d5c]"
-            >
-              {styles.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="min-w-0">
+          <div className="w-52 shrink-0">
             <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-1">
               Price Range
             </label>
@@ -1776,7 +1760,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
             </div>
           </div>
 
-          <div className="min-w-0">
+          <div className="w-40 shrink-0">
             <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-1">
               Stock Level
             </label>
@@ -1791,7 +1775,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
             </select>
           </div>
 
-          <div className="min-w-0">
+          <div className="flex-1 min-w-0">
             <label className="block text-[10px] font-black text-neutral-400 uppercase tracking-wider mb-1">
               Global Search
             </label>
@@ -1811,62 +1795,62 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
         <div className="space-y-5">
 
           {/* Actions Toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="shrink-0 flex flex-row items-center justify-between gap-1 rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-sm md:p-3 md:gap-2">
+            <div className="flex flex-nowrap items-center gap-1 overflow-x-auto md:gap-2">
+              <button
+                onClick={() => setIsFilterSheetOpen(true)}
+                title="Open filters"
+                aria-label="Open filters"
+                className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 bg-neutral-50 text-neutral-700 hover:bg-neutral-100 md:h-10 md:w-10 md:rounded-xl"
+              >
+                <Filter className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              </button>
               <button
                 onClick={handleBulkEditPrice}
                 title="Bulk edit price"
                 aria-label="Bulk edit price"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-300 text-neutral-700"
+                className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 text-neutral-700 md:h-10 md:w-10 md:rounded-xl"
               >
-                <Sliders className="h-4 w-4" />
+                <Sliders className="h-3.5 w-3.5 md:h-4 md:w-4" />
               </button>
               <button
                 onClick={handleBulkUpdateStock}
                 title="Bulk update stock"
                 aria-label="Bulk update stock"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-300 text-neutral-700"
+                className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 text-neutral-700 md:h-10 md:w-10 md:rounded-xl"
               >
-                <Upload className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setIsFilterSheetOpen(true)}
-                title="Open filters"
-                aria-label="Open filters"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-300 bg-neutral-50 text-neutral-700 hover:bg-neutral-100 lg:hidden"
-              >
-                <Filter className="h-4 w-4" />
+                <Upload className="h-3.5 w-3.5 md:h-4 md:w-4" />
               </button>
               <button
                 onClick={() => setIsAddModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#840d5c] px-3 py-2 text-xs font-semibold text-white hover:bg-[#840d5c] lg:hidden"
+                className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[#840d5c] px-2 py-2.5 text-[10px] font-semibold text-white hover:bg-[#840d5c] md:rounded-xl md:px-3 md:py-2 md:text-xs lg:hidden"
               >
-                <Plus className="h-3.5 w-3.5" /> Add Product
+                <Plus className="h-3 w-3 md:h-3.5 md:w-3.5" /> Add
               </button>
             </div>
-            <div className="flex w-full flex-wrap items-center gap-2 md:justify-end lg:w-auto">
+            <div className="flex flex-nowrap items-center gap-1 md:gap-2">
               <button
                 onClick={openImportModal}
-                className="inline-flex items-center gap-2 rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
+                className="shrink-0 hidden md:inline-flex items-center gap-2 rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
               >
                 <Upload className="h-3.5 w-3.5" /> Import Excel
               </button>
               <button
                 onClick={() => setIsAddModalOpen(true)}
-                className="hidden items-center gap-2 rounded-xl bg-[#840d5c] px-3 py-2 text-xs font-semibold text-white hover:bg-[#840d5c] lg:inline-flex"
+                className="shrink-0 hidden items-center gap-2 rounded-xl bg-[#840d5c] px-3 py-2 text-xs font-semibold text-white hover:bg-[#840d5c] lg:inline-flex"
               >
                 <Plus className="h-3.5 w-3.5" /> Add Product
               </button>
               <button
                 onClick={handleArchiveSelected}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#840d5c] px-3 py-2 text-xs font-semibold text-white hover:bg-[#6d0b4b] lg:w-auto lg:border lg:border-[#e8bfd5] lg:bg-transparent lg:text-[#840d5c] lg:hover:bg-[#f7e8f1]"
+                className="shrink-0 inline-flex items-center justify-center gap-1 rounded-lg bg-[#840d5c] px-2 py-2.5 text-[10px] font-semibold text-white hover:bg-[#6d0b4b] md:rounded-xl md:px-3 md:py-2 md:text-xs lg:border lg:border-[#e8bfd5] lg:bg-transparent lg:text-[#840d5c] lg:hover:bg-[#f7e8f1]"
               >
-                <Trash2 className="h-3.5 w-3.5" /> Soft Delete Selected
+                <Trash2 className="h-3 w-3 md:h-3.5 md:w-3.5" /> <span className="hidden sm:inline">Soft Delete</span>
               </button>
             </div>
           </div>
 
-          {/* Mobile Product Cards */}
+          {/* Mobile Product Cards - HIDDEN */}
           <div className="hidden space-y-3 md:hidden">
             {!isLoading && paginatedProducts.map((p) => (
               <div key={p.id} className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
@@ -2139,18 +2123,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                   </select>
                 </div>
 
-                <div>
-                  <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-neutral-400">Style</label>
-                  <select
-                    value={activeStyle}
-                    onChange={(e) => setActiveStyle(e.target.value)}
-                    className="w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-[#840d5c]"
-                  >
-                    {styles.map((s) => (
-                      <option key={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
+
 
                 <div>
                   <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-neutral-400">Price Range</label>
@@ -2229,20 +2202,14 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
               <div className="my-8 w-full max-w-md rounded-3xl border border-neutral-200 bg-white p-6 shadow-2xl">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h3 className="text-base font-black text-[#840d5c]">
-                      {deleteModal.mode === 'hard' ? 'Confirm Permanent Delete' : 'Confirm Temporary Delete'}
-                    </h3>
+                    <h3 className="text-base font-black text-[#840d5c]">Confirm Soft Delete</h3>
                     <p className="mt-2 text-sm text-neutral-600">
-                      {deleteModal.mode === 'hard'
-                        ? 'Permanently delete this product and its related removable records?'
-                        : deleteModal.mode === 'bulk'
-                          ? `Temporarily delete ${deleteModal.count} selected product${deleteModal.count === 1 ? '' : 's'}?`
-                          : 'Temporarily delete this product?'}
+                      {deleteModal.mode === 'bulk'
+                        ? `Soft delete ${deleteModal.count} selected product${deleteModal.count === 1 ? '' : 's'}?`
+                        : 'Soft delete this product?'}
                     </p>
                     <p className="mt-1 text-xs text-neutral-500">
-                      {deleteModal.mode === 'hard'
-                        ? 'This is a permanent delete and cannot be restored from the dashboard.'
-                        : 'This is a temporary delete. The product can be restored later from this dashboard.'}
+                      Product can be restored later from this dashboard.
                     </p>
                   </div>
                   <button
@@ -2268,9 +2235,9 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                     type="button"
                     onClick={confirmDelete}
                     disabled={isDeleting}
-                    className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 ${deleteModal.mode === 'hard' ? 'bg-red-600 hover:bg-red-700' : 'bg-[#840d5c] hover:bg-[#6d0b4b]'}`}
+                    className="flex-1 rounded-xl bg-[#840d5c] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#6d0b4b] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {isDeleting ? 'Deleting...' : deleteModal.mode === 'hard' ? 'Permanent Delete' : 'Temporary Delete'}
+                    {isDeleting ? 'Deleting...' : 'Soft Delete'}
                   </button>
                 </div>
               </div>

@@ -36,7 +36,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         className="min-w-0 flex-1 h-full overflow-y-auto overflow-x-hidden px-4 pb-6 pt-20 sm:px-6 sm:pb-8 sm:pt-24 lg:px-8 lg:pb-10 lg:pt-8 overscroll-contain touch-pan-y"
         style={{ WebkitOverflowScrolling: 'touch' }} // Smooth fluid momentum scrolling for iOS safari
       >
-        <div className="mx-auto w-full max-w-400">{children}</div>
+        <div className="mx-auto w-full max-w-400 h-full">{children}</div>
       </main>
 
     </div>
