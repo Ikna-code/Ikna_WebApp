@@ -83,6 +83,7 @@ const Banner = () => {
                 alt={slide.alt}
                 fill
                 priority={slide.id === 0}
+                unoptimized
                 quality={100}
                 sizes="1200px"
                 className="object-contain object-center h-auto w-auto"

@@ -5,8 +5,10 @@ import Sidebar from './Analytics/Sidebar';
 import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
+  let dbUser;
+
   try {
-    const dbUser = await ensureCurrentDbUser();
+    dbUser = await ensureCurrentDbUser();
     if (dbUser.role !== Role.ADMIN) {
       redirect('/');
     }
@@ -22,7 +24,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     */
     <div className="h-screen w-screen bg-[#f8eef4] text-[#2f1126] antialiased flex overflow-hidden overscroll-none isolate">
       
-      <Sidebar />
+      <Sidebar adminUser={dbUser} />
       
       {/* 
         CRITICAL SCROLL ISOLATION:

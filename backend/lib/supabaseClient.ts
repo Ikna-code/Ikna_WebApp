@@ -31,7 +31,11 @@ import { createBrowserClient } from '@supabase/ssr';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-let browserClient: ReturnType<typeof createBrowserClient> | undefined;
+
+declare global {
+  // Keep one browser client across hot reloads in development.
+  var __iknaSupabaseBrowserClient: ReturnType<typeof createBrowserClient> | undefined;
+}
 
 // 1. FOR SERVER ACTIONS (File 1)
 // This is a standard singleton instance for Node.js environments
@@ -40,11 +44,15 @@ export const supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey);
 // 2. FOR CLIENT COMPONENTS (File 2)
 // This uses the SSR package to safely handle browser-side auth and cookies
 export function createClient() {
-  if (!browserClient) {
-    browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
+  if (typeof window === 'undefined') {
+    return createBrowserClient(supabaseUrl, supabaseAnonKey);
   }
 
-  return browserClient;
+  if (!globalThis.__iknaSupabaseBrowserClient) {
+    globalThis.__iknaSupabaseBrowserClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
+  }
+
+  return globalThis.__iknaSupabaseBrowserClient;
 }
 
 
