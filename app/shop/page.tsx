@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 import ProductGridPage from "@/components/product/ProductGridPage";
@@ -76,29 +76,19 @@ export default function Shop() {
 
   const sourceProducts = products.length > 0 ? products : apiFallbackProducts;
 
-  const filteredProducts = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
-
-    return sourceProducts.filter((product: any) => {
-      const name = String(product?.name || '').toLowerCase();
-      const matchesSearch = !normalizedSearch || name.includes(normalizedSearch);
-      return matchesSearch;
-    });
-  }, [sourceProducts, search]);
-
   return (
     <>
       <Header />
       <div id="shop-content" className="shop-content-layer">
         {
           search ? (
-                    <ProductGridPage products={filteredProducts} initialCategory={category} />
+                    <ProductGridPage products={sourceProducts} initialCategory={category} />
 
           ) : (
                   <PerspectiveGallery
-          products={filteredProducts}
+          products={sourceProducts}
         >
-          <ProductGridPage products={filteredProducts} initialCategory={category} />
+          <ProductGridPage products={sourceProducts} initialCategory={category} />
         </PerspectiveGallery>
           )
         }

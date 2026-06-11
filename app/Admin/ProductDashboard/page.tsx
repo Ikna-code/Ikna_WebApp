@@ -1829,12 +1829,12 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
               </button>
             </div>
             <div className="flex flex-nowrap items-center gap-1 md:gap-2">
-              <button
+              {/* <button
                 onClick={openImportModal}
                 className="shrink-0 hidden md:inline-flex items-center gap-2 rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
               >
                 <Upload className="h-3.5 w-3.5" /> Import Excel
-              </button>
+              </button> */}
               <button
                 onClick={() => setIsAddModalOpen(true)}
                 className="shrink-0 hidden items-center gap-2 rounded-xl bg-[#840d5c] px-3 py-2 text-xs font-semibold text-white hover:bg-[#840d5c] lg:inline-flex"

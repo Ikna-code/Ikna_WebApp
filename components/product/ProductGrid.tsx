@@ -133,6 +133,12 @@ export const ProductCard = ({
     );
   };
 
+  const currentPrice = Number(product?.price ?? 0);
+  const originalPriceCandidate = Number(
+    product?.originalPrice ?? product?.mrp ?? product?.compareAtPrice ?? product?.actualPrice ?? 0
+  );
+  const showOriginalPrice = Number.isFinite(originalPriceCandidate) && originalPriceCandidate > currentPrice;
+
   return (
     <div
       className="
@@ -140,15 +146,17 @@ export const ProductCard = ({
         flex
         flex-col
         overflow-hidden
-        rounded-[22px]
+        rounded-[18px]
         bg-white
         border
-        border-[#f0d8e4]
-        shadow-[0_4px_20px_rgba(0,0,0,0.06)]
-        hover:shadow-[0_8px_30px_rgba(132,13,92,0.12)]
+        border-[#d4af37]
+        shadow-[0_4px_18px_rgba(30,10,20,0.06)]
+        hover:shadow-[0_12px_28px_rgba(30,10,20,0.14)]
+        hover:-translate-y-0.5
         transition-all
-        duration-300
-        h-full
+        duration-200
+        w-full
+        group
       "
     >
       {/* TOOLTIP */}
@@ -173,7 +181,6 @@ export const ProductCard = ({
 
       {/* BADGES */}
       <div className="absolute top-2 left-2 z-40 flex flex-col gap-1.5 max-w-[75%]">
-
         {productBadges.map((badge: string, index: number) => {
           const label = String(badge || '').trim();
           if (!label) return null;
@@ -182,24 +189,26 @@ export const ProductCard = ({
             <div
               key={`${label}-${index}`}
               className="
-                px-2.5
-                py-1
+                px-2
+                py-0.5
                 rounded-full
-                text-[8px]
+                text-[9px]
                 font-bold
                 uppercase
-                tracking-[0.12em]
-                text-[#3a2500]
-                shadow-md
-                bg-[linear-gradient(135deg,#fff6bf_0%,#f7d46b_18%,#d4af37_40%,#fff0a6_52%,#c69214_75%,#8b6914_100%)]
+                tracking-[0.08em]
+                text-white
+                shadow-sm
+                border
+                border-[#9d155f]/45
+                bg-[#9d155f]/55
+                backdrop-blur-sm
+                whitespace-nowrap
               "
             >
               {label}
             </div>
           );
         })}
-
-
       </div>
 
       {/* WISHLIST */}
@@ -208,18 +217,18 @@ export const ProductCard = ({
           onClick={handleWishlistClick}
           disabled={isPending}
           className="
-            w-9
-            h-9
+            w-8
+            h-8
             rounded-full
-            bg-white/95
+            bg-white/90
             backdrop-blur-md
-            shadow-lg
+            shadow-md
             flex
             items-center
             justify-center
             transition-all
-            duration-300
-            hover:scale-110
+            duration-200
+            hover:scale-105
           "
         >
           {isWished ? (
@@ -230,116 +239,118 @@ export const ProductCard = ({
         </button>
       </div>
 
-      {/* IMAGE */}
-  <div
-  className="
-    relative
-    w-full
-    h-[150px]
-    sm:h-[220px]
-    overflow-hidden
-    bg-[#fcf8fa]
-  "
->
-  <Image
-    src={getOptimizedSupabaseImageUrl(product?.image, { width: 640, quality: 70 })}
-    alt={product.name}
-    fill
-    sizes="640px"
-    className="
-      object-cover
-      w-full
-      h-full
-      transition-transform
-      duration-500
-      group-hover:scale-105
-    "
-  />
-
-  <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />
-</div>
-      {/* CONTENT */}
-      <div className="flex flex-col flex-1 p-2.5 sm:p-3">
-
-        {/* TITLE */}
-        <h2
+      {/* IMAGE CONTAINER WITH DEFINED ASPECT RATIO */}
+      <div
+        className="
+          relative
+          w-full
+          aspect-[3/3.8]
+          overflow-hidden
+          bg-[#fff7fb]
+          shrink-0
+        "
+      >
+        <Image
+          src={getOptimizedSupabaseImageUrl(product?.image, { width: 640, quality: 70 })}
+          alt={product.name}
+          fill
+          sizes="640px"
           className="
-            text-[#2b1021]
-            text-[12px]
-            sm:text-[15px]
-            font-semibold
-            leading-snug
-            line-clamp-2
+            object-cover
+            object-center
+            w-full
+            h-full
+            transition-transform
+            duration-500
+            group-hover:scale-105
           "
-        >
-          {titleOverride || product.name}
-        </h2>
+          priority
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />
+      </div>
 
-        {subtitleOverride && (
-          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#840d5c]/70">
-            {subtitleOverride}
-          </p>
-        )}
-
-    
-
-        {/* PRICE */}
-        <div className="mt-3">
-          <div
+      {/* CONTENT WITH AUTOMATIC, ACCURATE EXPANSION SPACE */}
+      <div className="flex flex-1 flex-col justify-between p-3 sm:p-4 gap-3 bg-white">
+        
+        {/* TEXT CONTENT WRAPPER */}
+        <div className="flex flex-col gap-1.5">
+          {/* TITLE */}
+          <h2
             className="
-              text-[22px]
-              sm:text-[24px]
-              font-bold
-              text-[#840d5c]
-              leading-none
+              text-[#301425]
+              text-[11px]
+              sm:text-[14px]
+              font-semibold
+              leading-tight
+              line-clamp-2
+              overflow-hidden
             "
           >
-            ₹ {product.price}
+            {titleOverride || product.name}
+          </h2>
+
+          {/* PRICE */}
+          <div className="flex items-baseline gap-1.5 sm:gap-2">
+            <span className="text-[13px] sm:text-[16px] font-bold leading-none text-[#8a0f56]">
+              ₹ {product.price}
+            </span>
+            {showOriginalPrice && (
+              <span className="text-[10px] sm:text-[12px] font-medium leading-none text-[#8e3a66]/55 line-through">
+                ₹ {originalPriceCandidate}
+              </span>
+            )}
           </div>
         </div>
 
+        {/* SWATCHES SECTION */}
         {swatches.length > 0 && (
-          <>
-            <div className="mt-2.5 overflow-x-auto no-scrollbar md:hidden">
-              <div className="flex items-center gap-2 min-w-max pr-1">
+          <div className="w-full">
+            <div className="overflow-x-auto no-scrollbar md:hidden">
+              <div className="flex items-center gap-2 pb-0.5">
                 {swatches.map((swatch) => renderSwatch(swatch))}
               </div>
             </div>
 
-            <div className="mt-2.5 hidden md:flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-1.5 flex-wrap">
               {swatches.slice(0, 6).map((swatch) => renderSwatch(swatch))}
               {swatches.length > 6 && (
-                <span className="text-[10px] font-semibold text-[#321327]/60">
+                <span className="text-[11px] font-semibold text-[#321327]/60 ml-0.5">
                   +{swatches.length - 6}
                 </span>
               )}
             </div>
-          </>
+          </div>
         )}
 
-        {/* BUTTON */}
+        {/* BUTTON ATTACHED WELL TO BOTTOM */}
         <button
+          onClick={(e) => {
+            // Prevent triggering card click navigation when adding to cart
+            e.stopPropagation();
+          }}
           className="
-            mt-2
-            h-9
             w-full
-            rounded-full
-            bg-gradient-to-r
-            from-[#3a001f]
-            via-[#700044]
-            to-[#b0006d]
+            h-9
+            sm:h-10
+            rounded-xl
+            border
+            border-[#a74879]
+            bg-[#8a0f56]
             text-white
             text-[10px]
             sm:text-[11px]
             font-bold
-            tracking-[0.15em]
+            tracking-[0.12em]
+            shadow-sm
             uppercase
             transition-all
-            duration-300
-            hover:brightness-110
+            duration-200
+            hover:bg-[#6f0c45]
+            active:scale-[0.98]
+            mt-auto
           "
         >
-          Add To Cart
+          Add to Cart
         </button>
       </div>
     </div>
@@ -398,7 +409,6 @@ const ProductGrid = () => {
     [wishlistItems]
   );
 
-  // Calculate combo eligibility by category
   const comboEligibleCategories = useMemo(() => {
     const categoryQuantities = cartItems.reduce<Record<string, number>>((acc, item) => {
       const rawCategory = item?.category || item?.Product?.category || item?.product?.category;
@@ -408,7 +418,6 @@ const ProductGrid = () => {
       return acc;
     }, {});
     
-    // Return set of categories with 3+ items
     return new Set(
       Object.entries(categoryQuantities)
         .filter(([, quantity]) => quantity >= 3)
@@ -416,7 +425,6 @@ const ProductGrid = () => {
     );
   }, [cartItems]);
 
-  // Function to check if product is combo eligible
   const isProductComboEligible = (product: any) => {
     const rawCategory = product?.category || product?.Product?.category || product?.product?.category;
     const normalizedCategory = typeof rawCategory === 'string' ? rawCategory.trim().toLowerCase() : '';
@@ -506,26 +514,19 @@ const ProductGrid = () => {
 
   return (
     <section className="bg-[#faf3f5] py-8 md:py-14 min-h-screen">
-
       <div className="max-w-[1440px] mx-auto px-3 md:px-8">
-
         {/* TITLE */}
         <div className="text-center mb-8 md:mb-12">
-
           <h1 className="text-2xl md:text-4xl font-serif text-[#321327]">
             Our Products
           </h1>
-
         </div>
 
         {loading ? (
-
           <div className="flex justify-center py-20">
             <div className="w-10 h-10 border-4 border-[#840d5c] border-t-transparent rounded-full animate-spin"></div>
           </div>
-
         ) : (
-
           <>
             {/* GRID */}
             <div
@@ -534,7 +535,7 @@ const ProductGrid = () => {
                 grid-cols-2
                 md:grid-cols-4
                 lg:grid-cols-4
-                gap-3
+                gap-4
                 md:gap-6
               "
             >
@@ -555,7 +556,7 @@ const ProductGrid = () => {
                         { scroll: true }
                       )
                     }
-                    className="cursor-pointer"
+                    className="cursor-pointer flex h-full"
                   >
                     <ProductCard
                       product={activeVariant}
@@ -584,7 +585,6 @@ const ProductGrid = () => {
             {/* VIEW ALL */}
             {groupedProducts.length > 4 && (
               <div className="text-center mt-8">
-
                 <button
                   onClick={() =>
                     router.push("/shop")
@@ -608,18 +608,14 @@ const ProductGrid = () => {
                 >
                   View All Products
                 </button>
-
               </div>
             )}
 
             {/* EMPTY */}
             {products.length === 0 && (
               <div className="text-center text-gray-500 py-20">
-
                 <PiShirtFolded className="mx-auto mb-4 text-4xl" />
-
                 <p>No products available.</p>
-
               </div>
             )}
           </>

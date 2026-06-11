@@ -81,6 +81,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
 
   // FILTER + SORT
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string>("");
   const [selectedDynamicFilters, setSelectedDynamicFilters] = useState<Record<string, string>>({});
   const [filterMetadata, setFilterMetadata] = useState<any[]>([]);
   const [sortBy, setSortBy] = useState<string>("default");
@@ -110,69 +111,59 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   }, [products]);
 
   const availableDynamicFilterGroups = useMemo(() => {
-    const normalize = (value: string) =>
-      String(value || '')
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-');
-
-    const categorySlug = normalize(selectedCategory);
-    const candidateSlugs =
-      categorySlug === 'all'
-        ? []
-        : categorySlug === 'briefs'
-          ? ['briefs', 'panties']
-          : categorySlug === 'panties'
-            ? ['panties', 'briefs']
-            : [categorySlug];
-
-    if (!candidateSlugs.length) return [] as Array<{
-      id: string;
-      slug: string;
-      name: string;
-      options: Array<{ id: string; label: string }>;
-    }>;
-
-    const groupsMap = new Map<string, { id: string; slug: string; name: string; options: Array<{ id: string; label: string }> }>();
-
-    for (const productType of filterMetadata) {
-      const productTypeSlug = normalize(productType?.slug || productType?.name || '');
-      if (!candidateSlugs.includes(productTypeSlug)) continue;
-
-      const filterGroups = Array.isArray(productType?.filterGroups) ? productType.filterGroups : [];
-      for (const group of filterGroups) {
-        const groupId = String(group?.id || '');
-        if (!groupId) continue;
-
-        const groupEntry = groupsMap.get(groupId) || {
-          id: groupId,
-          slug: String(group?.slug || groupId),
-          name: String(group?.displayName || group?.name || 'Filter'),
-          options: [],
-        };
-
-        const options = Array.isArray(group?.filterOptions) ? group.filterOptions : [];
-        for (const option of options) {
-          const optionId = String(option?.id || '');
-          if (!optionId || groupEntry.options.some((item) => item.id === optionId)) continue;
-
-          groupEntry.options.push({
-            id: optionId,
-            label: String(option?.displayLabel || option?.value || 'Option'),
-          });
-        }
-
-        groupsMap.set(groupId, groupEntry);
-      }
+    // If "All" selected, return empty (no category-specific filters)
+    if (selectedCategory === "All") {
+      return [] as Array<{
+        id: string;
+        slug: string;
+        name: string;
+        options: Array<{ id: string; label: string }>;
+      }>;
     }
 
-    return Array.from(groupsMap.values())
-      .map((group) => ({
-        ...group,
-        options: group.options.sort((a, b) => a.label.localeCompare(b.label)),
+    // Find the product type metadata for selected category
+    const categoryMetadata = filterMetadata.find((type: any) => 
+      normalizeText(type.name) === normalizeText(selectedCategory)
+    );
+
+    if (!categoryMetadata || !Array.isArray(categoryMetadata.filterGroups)) {
+      return [] as Array<{
+        id: string;
+        slug: string;
+        name: string;
+        options: Array<{ id: string; label: string }>;
+      }>;
+    }
+
+    // Convert metadata filter groups to the format we need
+    return categoryMetadata.filterGroups
+      .map((group: any) => ({
+        id: String(group?.id || ''),
+        slug: String(group?.slug || ''),
+        name: String(group?.displayName || group?.name || 'Filter'),
+        options: (Array.isArray(group?.filterOptions) ? group.filterOptions : []).map((option: any) => ({
+          id: String(option?.id || ''),
+          label: String(option?.displayLabel || option?.value || 'Option'),
+        })),
       }))
-      .filter((group) => group.options.length > 0);
+      .filter((group: any) => group.options.length > 0)
+      .sort((a: any, b: any) => a.name.localeCompare(b.name));
+  }, [filterMetadata, selectedCategory]);
+
+  // Get subcategories for the selected category
+  const availableSubCategories = useMemo(() => {
+    if (selectedCategory === "All") return [];
+    
+    // Find the product type metadata for selected category
+    const categoryMetadata = filterMetadata.find((type: any) => 
+      normalizeText(type.name) === normalizeText(selectedCategory)
+    );
+
+    if (!categoryMetadata || !Array.isArray(categoryMetadata.subCategories)) {
+      return [];
+    }
+
+    return categoryMetadata.subCategories.map((sub: any) => sub.name).sort();
   }, [filterMetadata, selectedCategory]);
 
   useEffect(() => {
@@ -233,9 +224,9 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   }, [initialCategory, uniqueCategories]);
 
   useEffect(() => {
-    const validGroups = new Set(availableDynamicFilterGroups.map((group) => group.slug));
+    const validGroups = new Set(availableDynamicFilterGroups.map((group: any) => group.slug));
     const validOptions = new Set(
-      availableDynamicFilterGroups.flatMap((group) => group.options.map((option) => option.id))
+      availableDynamicFilterGroups.flatMap((group: any) => group.options.map((option: any) => option.id))
     );
 
     setSelectedDynamicFilters((current) => {
@@ -257,6 +248,13 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
       result = result.filter((p) => {
         const productType = getProductTypeLabel(p);
         return normalizeText(productType) === normalizeText(selectedCategory);
+      });
+    }
+
+    if (selectedSubCategory) {
+      result = result.filter((p) => {
+        const subCategory = getProductSubCategoryLabel(p);
+        return normalizeText(subCategory) === normalizeText(selectedSubCategory);
       });
     }
 
@@ -283,7 +281,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
     }
 
     return result;
-  }, [products, selectedCategory, selectedDynamicFilters, sortBy]);
+  }, [products, selectedCategory, selectedSubCategory, selectedDynamicFilters, sortBy]);
 
   const groupedProducts = useMemo(() => {
     const groups = new Map<string, { category: string; categoryKey: string; variants: any[] }>();
@@ -334,25 +332,38 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   // Reusable inner markup wrapper for clean rendering across drawers
   const FilterFormControls = ({ isMobile = false }) => (
     <div className="flex flex-col gap-5">
-      {/* Category Filter */}
+      {/* Category Display */}
       <div className="flex flex-col gap-2">
-        <label htmlFor={`filter-${isMobile ? 'mobile' : 'desktop'}`} className="text-xs font-bold tracking-widest text-[#321327] uppercase">
+        <label className="text-xs font-bold tracking-widest text-[#321327] uppercase">
           Product Type
         </label>
-        <select
-          id={`filter-${isMobile ? 'mobile' : 'desktop'}`}
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="bg-[#faf6f8] border border-[#321327]/10 rounded-xl px-3 py-2.5 text-xs text-[#321327] outline-none focus:border-[#840d5c] transition w-full"
-        >
-          {uniqueCategories.map((cat) => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
+        <div className="bg-[#faf6f8] border border-[#321327]/10 rounded-xl px-3 py-2.5 text-xs text-[#321327]">
+          {selectedCategory === "All" ? "All Categories" : selectedCategory}
+        </div>
       </div>
 
+      {/* Subcategory Filter */}
+      {selectedCategory !== "All" && availableSubCategories.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <label htmlFor={`filter-subcategory-${isMobile ? 'mobile' : 'desktop'}`} className="text-xs font-bold tracking-widest text-[#321327] uppercase">
+            Subcategory
+          </label>
+          <select
+            id={`filter-subcategory-${isMobile ? 'mobile' : 'desktop'}`}
+            value={selectedSubCategory}
+            onChange={(e) => setSelectedSubCategory(e.target.value)}
+            className="bg-[#faf6f8] border border-[#321327]/10 rounded-xl px-3 py-2.5 text-xs text-[#321327] outline-none focus:border-[#840d5c] transition w-full"
+          >
+            <option value="">All Subcategories</option>
+            {availableSubCategories.map((subCat: any) => (
+              <option key={subCat} value={subCat}>{subCat}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Dynamic Attributes Filters */}
-      {availableDynamicFilterGroups.map((group) => (
+      {availableDynamicFilterGroups.map((group: any) => (
         <div key={group.id} className="flex flex-col gap-2">
           <label htmlFor={`dynamic-filter-${isMobile ? 'mobile' : 'desktop'}-${group.id}`} className="text-xs font-bold tracking-widest text-[#321327] uppercase">
             {group.name}
@@ -369,7 +380,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
             className="bg-[#faf6f8] border border-[#321327]/10 rounded-xl px-3 py-2.5 text-xs text-[#321327] outline-none focus:border-[#840d5c] transition w-full"
           >
             <option value="">All {group.name}s</option>
-            {group.options.map((option) => (
+            {group.options.map((option: any) => (
               <option key={option.id} value={option.id}>{option.label}</option>
             ))}
           </select>
@@ -457,7 +468,6 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
                     >
                       <ProductCard
                         product={activeVariant}
-                        titleOverride={group.category}
                         subtitleOverride={`${group.variants.length} item${group.variants.length > 1 ? 's' : ''}`}
                         isWished={wishlist.includes(activeVariant.id)}
                         onToggleWishlist={handleLocalToggle}

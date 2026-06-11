@@ -6,7 +6,10 @@ const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-[#2D051A] text-[#faf3f5] border-t border-[#840d5c]/20">
+    <footer
+      className="bg-[#2D051A] border-t border-[#840d5c]/20"
+      style={{ color: 'lab(96.4337% 2.68027 -.0899553 / .8)' }}
+    >
       <div className="max-w-7xl mx-auto px-6 py-8">
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
@@ -21,7 +24,7 @@ const Footer = () => {
               height={50}
               className="mb-4"
             />
-            <h6 className="text-sm italic font-bold mb-2 text-[#ffffff]">
+            <h6 className="text-sm italic font-bold mb-2">
               Hey Beautiful! Embrace Yourself
             </h6>
 
@@ -36,16 +39,16 @@ const Footer = () => {
           {/* Shop Links */}
           <div>
 
-            <h3 className="text-[10px] font-extrabold uppercase tracking-[0.2em] mb-6 text-[#840d5c]">
+            <h3 className="text-[10px] font-extrabold uppercase tracking-[0.2em] mb-6">
               Shop
             </h3>
 
-            <ul className="space-y-3 text-sm text-[#faf3f5]/80 font-medium">
+            <ul className="space-y-3 text-sm font-medium">
 
               <li>
                 <Link
                   href="/shop"
-                  className="hover:text-white hover:translate-x-1 inline-block transition-all duration-300"
+                  className="hover:translate-x-1 inline-block transition-all duration-300"
                 >
                  Bras
                 </Link>
@@ -59,17 +62,17 @@ const Footer = () => {
           {/* Support Links */}
           <div>
 
-            <h3 className="text-[10px] font-extrabold uppercase tracking-[0.2em] mb-6 text-[#840d5c]">
+            <h3 className="text-[10px] font-extrabold uppercase tracking-[0.2em] mb-6">
               Quick Links
             </h3>
 
-            <ul className="space-y-3 text-sm text-[#faf3f5]/80 font-medium">
+            <ul className="space-y-3 text-sm font-medium">
 
 
               <li>
                 <Link
                   href="/about-us"
-                  className="hover:text-white hover:translate-x-1 inline-block transition-all duration-300"
+                  className="hover:translate-x-1 inline-block transition-all duration-300"
                 >
                  About us
                 </Link>
@@ -78,7 +81,7 @@ const Footer = () => {
               <li>
                 <Link
                   href="/FAQs"
-                  className="hover:text-white hover:translate-x-1 inline-block transition-all duration-300"
+                  className="hover:translate-x-1 inline-block transition-all duration-300"
                 >
                  FAQs
                 </Link>
@@ -87,7 +90,7 @@ const Footer = () => {
               <li>
                 <Link
                   href="/privacy-policy"
-                  className="hover:text-white hover:translate-x-1 inline-block transition-all duration-300"
+                  className="hover:translate-x-1 inline-block transition-all duration-300"
                 >
                  Privacy Policy
                 </Link>
@@ -96,7 +99,7 @@ const Footer = () => {
               <li>
                 <Link
                   href="/terms-and-conditions"
-                  className="hover:text-white hover:translate-x-1 inline-block transition-all duration-300"
+                  className="hover:translate-x-1 inline-block transition-all duration-300"
                 >
                  Terms and Conditions
                 </Link>
@@ -105,7 +108,7 @@ const Footer = () => {
               <li>
                 <Link
                   href="/sitemap"
-                  className="hover:text-white hover:translate-x-1 inline-block transition-all duration-300"
+                  className="hover:translate-x-1 inline-block transition-all duration-300"
                 >
                  SiteMap
                 </Link>
@@ -120,7 +123,7 @@ const Footer = () => {
           
 <div>
   {/* CONTACT US */}
-  <h3 className="text-[10px] font-extrabold uppercase tracking-[0.2em] mb-6 text-[#840d5c]">
+  <h3 className="text-[10px] font-extrabold uppercase tracking-[0.2em] mb-6">
     Contact Us
   </h3>
 
@@ -129,7 +132,7 @@ const Footer = () => {
     {/* Phone */}
     <Link
       href="tel:+919840349375"
-      className="flex items-center gap-3 text-white hover:text-[#840d5c] transition-colors duration-300"
+      className="flex items-center gap-3 transition-colors duration-300"
     >
       <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
         <FaPhoneAlt className="text-[#ffffff] text-[16px]" />
@@ -141,7 +144,7 @@ const Footer = () => {
     {/* Email */}
     <Link
       href="mailto:iknaenterprises@gmail.com"
-      className="flex items-center gap-3 text-white hover:text-[#840d5c] transition-colors duration-300"
+      className="flex items-center gap-3 transition-colors duration-300"
     >
       <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
         <FaEnvelope className="text-[#ffffff] text-[16px]" />
@@ -154,7 +157,7 @@ const Footer = () => {
   </div>
 
   {/* STAY CONNECTED */}
-  <h3 className="text-[10px] font-extrabold uppercase tracking-[0.2em] mb-6 text-[#840d5c]">
+  <h3 className="text-[10px] font-extrabold uppercase tracking-[0.2em] mb-6">
     Stay Connected
   </h3>
 
@@ -189,7 +192,7 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="mt-6 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-center items-center gap-4">
 
-          <p className="text-[10px] text-[#faf3f5]/40 font-medium tracking-wide">
+          <p className="text-[10px] font-medium tracking-wide">
             &copy; {currentYear} IKNA. ALL RIGHTS RESERVED.
           </p>
 

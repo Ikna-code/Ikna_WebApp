@@ -67,6 +67,20 @@ export async function GET() {
 
     const filterOptions = filterOptionsRaw.filter((option) => groupIds.has(option.filterGroupId));
 
+    // Fetch subcategories for each product type
+    const subCategoriesRaw = await prisma.$queryRaw<Array<{
+      id: string;
+      productTypeId: string;
+      name: string;
+      slug: string;
+      displayOrder: number;
+    }>>`
+      SELECT id, "productTypeId", name, slug, "displayOrder"
+      FROM "sub_categories"
+      WHERE "isActive" = true
+      ORDER BY "displayOrder" ASC
+    `;
+
     const optionsByGroupId = new Map<string, any[]>();
     for (const option of filterOptions) {
       const list = optionsByGroupId.get(option.filterGroupId) || [];
@@ -77,6 +91,17 @@ export async function GET() {
         colorHex: option.colorHex,
       });
       optionsByGroupId.set(option.filterGroupId, list);
+    }
+
+    const subCategoriesByTypeId = new Map<string, any[]>();
+    for (const subCategory of subCategoriesRaw) {
+      const list = subCategoriesByTypeId.get(subCategory.productTypeId) || [];
+      list.push({
+        id: subCategory.id,
+        name: subCategory.name,
+        slug: subCategory.slug,
+      });
+      subCategoriesByTypeId.set(subCategory.productTypeId, list);
     }
 
     const groupsByTypeId = new Map<string, any[]>();
@@ -97,6 +122,7 @@ export async function GET() {
       id: type.id,
       name: type.name,
       slug: type.slug,
+      subCategories: subCategoriesByTypeId.get(type.id) || [],
       filterGroups: groupsByTypeId.get(type.id) || [],
     }));
 
