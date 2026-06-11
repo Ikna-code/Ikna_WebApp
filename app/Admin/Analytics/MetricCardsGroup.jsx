@@ -1,5 +1,17 @@
 import React from 'react';
-import { ShoppingBag, Users, Box } from 'lucide-react';
+import { Wallet, WalletCards, ShoppingBag, ShoppingCart, Package } from 'lucide-react';
+
+const resolveMetricIcon = (title) => {
+  const normalizedTitle = String(title || '').trim().toLowerCase();
+
+  if (normalizedTitle.includes('total sales')) return Wallet;
+  if (normalizedTitle.includes("today's sales") || normalizedTitle.includes('today sales')) return WalletCards;
+  if (normalizedTitle.includes('orders')) return ShoppingBag;
+  if (normalizedTitle.includes('avg. order value') || normalizedTitle.includes('average order value')) return ShoppingCart;
+  if (normalizedTitle.includes('units sold')) return Package;
+
+  return Package;
+};
 
 function MetricCard({ title, value, percentage, icon: Icon, iconBg, iconColor }) {
   return (
@@ -20,13 +32,17 @@ function MetricCard({ title, value, percentage, icon: Icon, iconBg, iconColor })
 }
 
 export default function MetricCardsGroup({ timePeriod = 'week', onTimePeriodChange, metrics }) {
-  const metricItems = metrics || [
+  const baseMetricItems = metrics || [
     { title: 'Total Sales', value: '₹1,28,450', percentage: '18.6%', iconBg: 'bg-[#f8eaf2]', iconColor: 'text-[#840d5c]' },
     { title: "Today's Sales", value: '₹28,600', percentage: '9.3%', iconBg: 'bg-[#f3ddea]', iconColor: 'text-[#a33c82]' },
-    { title: 'Orders', value: '542', percentage: '12.4%', icon: ShoppingBag, iconBg: 'bg-[#edd4e3]', iconColor: 'text-[#6d0b4b]' },
-    { title: 'Avg. Order Value', value: '₹2,371', percentage: '8.2%', icon: Users, iconBg: 'bg-[#f7e8f1]', iconColor: 'text-[#840d5c]' },
-    { title: 'Units Sold', value: '1,248', percentage: '15.3%', icon: Box, iconBg: 'bg-[#f2dcea]', iconColor: 'text-[#6d0b4b]' },
+    { title: 'Orders', value: '542', percentage: '12.4%', iconBg: 'bg-[#edd4e3]', iconColor: 'text-[#6d0b4b]' },
+    { title: 'Avg. Order Value', value: '₹2,371', percentage: '8.2%', iconBg: 'bg-[#f7e8f1]', iconColor: 'text-[#840d5c]' },
+    { title: 'Units Sold', value: '1,248', percentage: '15.3%', iconBg: 'bg-[#f2dcea]', iconColor: 'text-[#6d0b4b]' },
   ];
+  const metricItems = baseMetricItems.map((item) => ({
+    ...item,
+    icon: resolveMetricIcon(item?.title),
+  }));
   const hasMetrics = metricItems.length > 0;
   const periodOptions = [
     { value: '7d', label: '7D' },
