@@ -69,9 +69,9 @@ const Header = () => {
           
           {/* ACTIONS & MOBILE TRIGGER */}
           <div className="flex items-center space-x-5 md:space-x-7 text-[#321327]">
-            <button className="hidden md:block" aria-label="Search" onClick={() => setIsSearchOpen(true)}>
+            {/* <button className="hidden md:block" aria-label="Search" onClick={() => setIsSearchOpen(true)}>
               <Search size={20} strokeWidth={1.5} />
-            </button>
+            </button> */}
             <button className="hidden md:block" aria-label="Account" onClick={() => setIsProfileOpen(true)}>
               <User size={20} strokeWidth={1.5} />
             </button>
@@ -116,12 +116,12 @@ const Header = () => {
 
             {/* ACTION LINKS (SEARCH, PROFILE, CART) */}
             <div className="mt-8 pt-8 border-t border-[#840d5c]/10 flex flex-col space-y-6">
-              <button 
+              {/* <button 
                 onClick={() => { setIsMobileMenuOpen(false); setIsSearchOpen(true); }}
                 className="flex items-center space-x-4 text-[11px] font-bold tracking-[0.2em] text-[#321327]"
               >
                 <Search size={20} /> <span>SEARCH</span>
-              </button>
+              </button> */}
               
               <button 
                 onClick={() => { setIsMobileMenuOpen(false); setIsProfileOpen(true); }}

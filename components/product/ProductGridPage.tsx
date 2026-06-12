@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { LuFilter, LuX } from "react-icons/lu";
@@ -39,6 +39,66 @@ const getProductSubCategoryLabel = (product: any) =>
       product?.subcategory?.name ||
       ""
   ).trim();
+
+const UpwardSelect = ({
+  value,
+  options,
+  onChange,
+  openDirection = "down",
+}: {
+  value: string;
+  options: Array<{ label: string; value: string }>;
+  onChange: (value: string) => void;
+  openDirection?: "up" | "down";
+}) => {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!containerRef.current) return;
+      if (!containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+  }, []);
+
+  const selectedLabel = options.find((option) => option.value === value)?.label || options[0]?.label || "Select";
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setOpen((previous) => !previous)}
+        className="w-full bg-[#faf6f8] border border-[#321327]/10 rounded-xl px-3 py-2.5 text-xs text-[#321327] outline-none transition flex items-center justify-between"
+      >
+        <span className="truncate pr-3">{selectedLabel}</span>
+        <span className={`transition-transform ${open ? "rotate-180" : ""}`}>▾</span>
+      </button>
+
+      {open && (
+        <div className={`absolute left-0 right-0 z-50 max-h-56 overflow-y-auto rounded-xl border border-[#321327]/10 bg-[#faf6f8] shadow-lg ${openDirection === "up" ? "bottom-full mb-2" : "top-full mt-2"}`}>
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+              className="w-full px-3 py-2.5 text-left text-xs text-[#321327] hover:bg-[#f2e4ea]"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const ProductGridPage: React.FC<ProductGridPageProps> = ({
   products = [],
@@ -345,64 +405,58 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
       {/* Subcategory Filter */}
       {selectedCategory !== "All" && availableSubCategories.length > 0 && (
         <div className="flex flex-col gap-2">
-          <label htmlFor={`filter-subcategory-${isMobile ? 'mobile' : 'desktop'}`} className="text-xs font-bold tracking-widest text-[#321327] uppercase">
+          <label className="text-xs font-bold tracking-widest text-[#321327] uppercase">
             Subcategory
           </label>
-          <select
-            id={`filter-subcategory-${isMobile ? 'mobile' : 'desktop'}`}
+          <UpwardSelect
             value={selectedSubCategory}
-            onChange={(e) => setSelectedSubCategory(e.target.value)}
-            className="bg-[#faf6f8] border border-[#321327]/10 rounded-xl px-3 py-2.5 text-xs text-[#321327] outline-none focus:border-[#840d5c] transition w-full"
-          >
-            <option value="">All Subcategories</option>
-            {availableSubCategories.map((subCat: any) => (
-              <option key={subCat} value={subCat}>{subCat}</option>
-            ))}
-          </select>
+            onChange={setSelectedSubCategory}
+            options={[
+              { label: "All Subcategories", value: "" },
+              ...availableSubCategories.map((subCat: any) => ({ label: subCat, value: subCat })),
+            ]}
+          />
         </div>
       )}
 
       {/* Dynamic Attributes Filters */}
       {availableDynamicFilterGroups.map((group: any) => (
         <div key={group.id} className="flex flex-col gap-2">
-          <label htmlFor={`dynamic-filter-${isMobile ? 'mobile' : 'desktop'}-${group.id}`} className="text-xs font-bold tracking-widest text-[#321327] uppercase">
+          <label className="text-xs font-bold tracking-widest text-[#321327] uppercase">
             {group.name}
           </label>
-          <select
-            id={`dynamic-filter-${isMobile ? 'mobile' : 'desktop'}-${group.id}`}
+          <UpwardSelect
             value={selectedDynamicFilters[group.slug] || ""}
-            onChange={(e) =>
+            onChange={(nextValue) =>
               setSelectedDynamicFilters((current) => ({
                 ...current,
-                [group.slug]: e.target.value,
+                [group.slug]: nextValue,
               }))
             }
-            className="bg-[#faf6f8] border border-[#321327]/10 rounded-xl px-3 py-2.5 text-xs text-[#321327] outline-none focus:border-[#840d5c] transition w-full"
-          >
-            <option value="">All {group.name}s</option>
-            {group.options.map((option: any) => (
-              <option key={option.id} value={option.id}>{option.label}</option>
-            ))}
-          </select>
+            options={[
+              { label: `All ${group.name}s`, value: "" },
+              ...group.options.map((option: any) => ({ label: option.label, value: option.id })),
+            ]}
+          />
         </div>
       ))}
 
       {/* Sort Parameter */}
       <div className="flex flex-col gap-2">
-        <label htmlFor={`sort-${isMobile ? 'mobile' : 'desktop'}`} className="text-xs font-bold tracking-widest text-[#321327] uppercase">
+        <label className="text-xs font-bold tracking-widest text-[#321327] uppercase">
           Sort By
         </label>
-        <select
-          id={`sort-${isMobile ? 'mobile' : 'desktop'}`}
+        <UpwardSelect
           value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          className="bg-[#faf6f8] border border-[#321327]/10 rounded-xl px-3 py-2.5 text-xs text-[#321327] outline-none focus:border-[#840d5c] transition w-full"
-        >
-          <option value="default">Featured</option>
-          <option value="price-low">Price: Low to High</option>
-          <option value="price-high">Price: High to Low</option>
-          <option value="name-az">Name: A-Z</option>
-        </select>
+          onChange={setSortBy}
+          openDirection={isMobile ? "up" : "down"}
+          options={[
+            { label: "Featured", value: "default" },
+            { label: "Price: Low to High", value: "price-low" },
+            { label: "Price: High to Low", value: "price-high" },
+            { label: "Name: A-Z", value: "name-az" },
+          ]}
+        />
       </div>
     </div>
   );
@@ -514,7 +568,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
             onClick={() => setIsFilterDrawerOpen(false)}
           >
             <div
-              className={`absolute bottom-0 left-0 right-0 max-h-[82vh] rounded-t-[28px] bg-[#F9F3F5] shadow-2xl transition-transform duration-300 ease-in-out ${
+              className={`absolute bottom-0 left-0 right-0 max-h-[88vh] rounded-t-[28px] bg-[#F9F3F5] shadow-2xl transition-transform duration-300 ease-in-out flex flex-col ${
                 isFilterDrawerOpen ? "translate-y-0" : "translate-y-full"
               }`}
               onClick={(e) => e.stopPropagation()}
@@ -531,7 +585,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
                   <LuX size={22} />
                 </button>
               </div>
-              <div className="p-5 overflow-y-auto max-h-[calc(82vh-62px)]">
+              <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
                 <FilterFormControls isMobile={true} />
               </div>
             </div>
