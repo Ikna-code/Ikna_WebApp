@@ -56,7 +56,26 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json(products);
+    const productIds = products.map((product: any) => String(product.id));
+    const fabricRows = productIds.length
+      ? await (db as any).$queryRawUnsafe(
+          `SELECT id, "fabricType" AS "fabricType" FROM "Product" WHERE id IN (${productIds
+            .map((_: string, index: number) => `$${index + 1}`)
+            .join(',')})`,
+          ...productIds
+        )
+      : [];
+
+    const fabricById = new Map(
+      (Array.isArray(fabricRows) ? fabricRows : []).map((row: any) => [String(row.id), String(row.fabricType || 'cotton')])
+    );
+
+    const normalizedProducts = products.map((product: any) => ({
+      ...product,
+      fabricType: fabricById.get(String(product.id)) || 'cotton',
+    }));
+
+    return NextResponse.json(normalizedProducts);
   } catch {
     return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
   }

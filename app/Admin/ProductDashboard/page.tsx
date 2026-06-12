@@ -42,6 +42,7 @@ interface ProductDetail {
   filters: ProductFilterAssignment[];
   colorHex: string;
   colorName: string;
+  fabricType: string;
 }
 
 interface ProductFilterAssignment {
@@ -82,6 +83,7 @@ interface DbProduct {
   filters?: ProductFilterAssignment[];
   colorHex?: string | null;
   colorName?: string | null;
+  fabricType?: string | null;
 }
 
 interface FilterOptionMeta {
@@ -120,6 +122,7 @@ interface ProductFormState {
   rating: string;
   colorHex: string;
   colorName: string;
+  fabricType: string;
 }
 
 interface TaxonomySubCategory {
@@ -351,6 +354,7 @@ export default function ProductManagementDashboard() {
     rating: '',
     colorHex: '#000000',
     colorName: 'Black',
+    fabricType: 'cotton',
   });
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -390,6 +394,7 @@ export default function ProductManagementDashboard() {
     rating: '',
     colorHex: '#000000',
     colorName: 'Black',
+    fabricType: 'cotton',
   });
   const [editProductImages, setEditProductImages] = useState<File[]>([]);
   const [editExistingImages, setEditExistingImages] = useState<EditableExistingImage[]>([]);
@@ -585,7 +590,8 @@ const mappedProducts = products.map((product, index) => {
     images: Array.isArray(product.images) ? product.images : [],
     filters: Array.isArray(product.filters) ? product.filters : [],
     colorHex: product.colorHex || '#000000',
-    colorName: product.colorName || product.tag || 'Unspecified'
+    colorName: product.colorName || product.tag || 'Unspecified',
+    fabricType: product.fabricType || 'cotton'
   };
 });
       setProductDetails(mappedProducts);
@@ -895,6 +901,7 @@ const payload = {
         // Exact column map alignment for Postgres table definition
         colorHex: newProductDetail.colorHex.trim() || '#000000',
         colorName: newProductDetail.colorName.trim() || 'Unspecified',
+        fabricType: newProductDetail.fabricType.trim() || 'cotton',
         // productTypeId: newProductDetail.productTypeId || 'default_type_id_here'
       };
 
@@ -948,6 +955,7 @@ const payload = {
         rating: '',
         colorHex: '#000000',
         colorName: 'Black',
+        fabricType: 'cotton',
       });
       setNewFilterOptionIds([]);
       handleClearAddProductImages();
@@ -1167,6 +1175,7 @@ const payload = {
       rating: product.rating != null ? String(product.rating) : '',
       colorHex: (product as any).colorHex || '#000000',
       colorName: (product as any).colorName || 'Black',
+      fabricType: (product as any).fabricType || 'cotton',
     });
 // Extract existing filter option relationships out of the product if present
     const existingOptionIds = product.filters?.map(f => f.filterOptionId) || [];
@@ -1274,7 +1283,8 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
           removeImageIds: removedEditImageIds,
           removeImagePaths: removedEditImagePaths,
           colorHex: editProductDetail.colorHex.trim() || '#000000',
-          colorName: editProductDetail.colorName.trim() || 'Unspecified'
+          colorName: editProductDetail.colorName.trim() || 'Unspecified',
+          fabricType: editProductDetail.fabricType.trim() || 'cotton',
         }),
       });
 
@@ -1880,10 +1890,6 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                     <p className="font-bold uppercase tracking-wider text-neutral-400">Stock</p>
                     <p className="mt-0.5 font-semibold text-neutral-900">{p.stock}</p>
                   </div>
-                  <div>
-                    <p className="font-bold uppercase tracking-wider text-neutral-400">Velocity</p>
-                    <p className="mt-0.5 font-semibold text-neutral-900">{p.salesVelocity}</p>
-                  </div>
                 </div>
               </div>
             ))}
@@ -1927,7 +1933,6 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                   <th className="w-20 py-4 px-3 font-bold text-right">Price</th>
                   <th className="w-20 py-4 px-3 font-bold text-right">Stock</th>
                   <th className="w-36 py-4 px-3 font-bold">Created At</th>
-                  <th className="w-28 py-4 px-3 font-bold">Velocity</th>
                   <th className="w-24 py-4 px-3 font-bold text-center">Actions</th>
                 </tr>
               </thead>
@@ -1993,7 +1998,6 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                     <td className="py-4 px-3 align-middle text-[11px] text-neutral-500 whitespace-nowrap">
                       {new Date(p.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="py-4 px-3 align-middle text-[10px] text-neutral-400 font-semibold whitespace-nowrap">{p.salesVelocity}</td>
                     <td className="py-4 px-3 align-middle">
                       <div className="flex items-center justify-center gap-2">
                         <button
@@ -2588,6 +2592,16 @@ onClick={() => {
                     />
                   </div>
                   <div>
+                    <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">FABRIC TYPE</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. cotton, nylon, spandex"
+                      value={newProductDetail.fabricType}
+                      onChange={(e) => setNewProductDetail({ ...newProductDetail, fabricType: e.target.value })}
+                      className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
+                    />
+                  </div>
+                  <div>
                     <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">SIZES (comma separated)</label>
                     <input
                       type="text"
@@ -2937,6 +2951,17 @@ onClick={() => {
                       value={editProductDetail.description}
                       onChange={(e) => setEditProductDetail({ ...editProductDetail, description: e.target.value })}
                       className="min-h-24 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-[9px] font-black tracking-widest text-neutral-400">FABRIC TYPE</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. cotton, nylon, spandex"
+                      value={editProductDetail.fabricType}
+                      onChange={(e) => setEditProductDetail({ ...editProductDetail, fabricType: e.target.value })}
+                      className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
                     />
                   </div>
 

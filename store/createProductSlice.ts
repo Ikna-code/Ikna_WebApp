@@ -127,7 +127,12 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
           products: state.products.map((product: any) =>
             product?.id === productId
               ? {
+                  ...product,
                   ...data,
+                  fabricType:
+                    typeof data?.fabricType === "string" && data.fabricType.trim().length > 0
+                      ? data.fabricType
+                      : product?.fabricType || "cotton",
                   [FULL_DETAIL_FLAG]: true,
                 }
               : product
@@ -135,7 +140,12 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
           productDetailsById: {
             ...state.productDetailsById,
             [productId]: {
+              ...state.productDetailsById[productId],
               ...data,
+              fabricType:
+                typeof data?.fabricType === "string" && data.fabricType.trim().length > 0
+                  ? data.fabricType
+                  : state.productDetailsById[productId]?.fabricType || "cotton",
               [FULL_DETAIL_FLAG]: true,
             },
           },

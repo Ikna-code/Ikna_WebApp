@@ -406,37 +406,26 @@ export async function PATCH(
     const imagesToDeleteOnly = orderedRemovals.slice(replacementCount);
     const imagePathsToInsert = imagePaths.slice(replacementCount);
 
-    const updateData: {
-      name?: string;
-      price?: number;
-      stock?: number;
-      category?: string;
-      productTypeId?: string;
-      subCategoryId?: string | null;
-      image?: string;
-      description?: string;
-      tag?: string | null;
-      rating?: number | null;
-      sizes?: string[];
-      colorHex?: string | null;
-      colorName?: string | null;
-    } = {};
+    const updateData: Record<string, any> = {};
 
     if (typeof body?.name === 'string') updateData.name = body.name;
     if (typeof body?.price === 'number') updateData.price = body.price;
     if (typeof body?.stock === 'number') updateData.stock = body.stock;
     if (typeof body?.category === 'string') updateData.category = body.category;
     const resolvedProductTypeId = await resolveProductTypeId(body);
-    if (resolvedProductTypeId) updateData.productTypeId = resolvedProductTypeId;
+    if (resolvedProductTypeId) updateData.productType = { connect: { id: resolvedProductTypeId } };
     const effectiveProductTypeIdForSubcategory = String(resolvedProductTypeId || existingProduct.productTypeId || '').trim();
     const resolvedSubCategoryId = await resolveSubCategoryId(body, effectiveProductTypeIdForSubcategory);
     if (typeof body?.subCategoryId === 'string' || typeof body?.subCategory === 'string' || typeof body?.subCategoryName === 'string') {
-      updateData.subCategoryId = resolvedSubCategoryId || null;
+      updateData.subCategory = resolvedSubCategoryId
+        ? { connect: { id: resolvedSubCategoryId } }
+        : { disconnect: true };
     }
     if (typeof body?.image === 'string') updateData.image = body.image;
     if (typeof body?.description === 'string') updateData.description = body.description;
     if (typeof body?.tag === 'string' || body?.tag === null) updateData.tag = body.tag;
     if (typeof body?.rating === 'number' || body?.rating === null) updateData.rating = body.rating;
+    if (typeof body?.fabricType === 'string') updateData.fabricType = body.fabricType;
     if (typeof body?.colorHex === 'string' || body?.colorHex === null) {
       updateData.colorHex = typeof body?.colorHex === 'string' ? body.colorHex.trim() : null;
     }
@@ -502,12 +491,23 @@ export async function PATCH(
       }
     }
 
+    // fabricType is not yet in the stale Prisma client — extract it and persist via raw SQL
+    const fabricTypeValue: string | undefined = typeof updateData.fabricType === 'string' ? updateData.fabricType : undefined;
+    delete updateData.fabricType;
+
     const updatedProduct = await prismaAny.product.update({
       where: { id },
       data: updateData,
     });
 
-    const effectiveProductTypeId = String(updateData.productTypeId || existingProduct.productTypeId || '').trim();
+    if (fabricTypeValue !== undefined) {
+      await prisma.$executeRaw`UPDATE "Product" SET "fabricType" = ${fabricTypeValue} WHERE "id" = ${id}`;
+      (updatedProduct as any).fabricType = fabricTypeValue;
+    }
+
+    const effectiveProductTypeId = String(
+      (updateData.productType as any)?.connect?.id || existingProduct.productTypeId || ''
+    ).trim();
     if (hasFilterUpdates) {
       await syncProductFilters(id, body?.filterOptionIds, effectiveProductTypeId);
     }

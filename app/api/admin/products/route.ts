@@ -409,6 +409,17 @@ export async function GET() {
   });
 
   const productIds = products.map((product) => String(product.id));
+  const fabricRows = productIds.length
+    ? await prisma.$queryRaw<Array<{ id: string; fabricType: string | null }>>`
+        SELECT id, "fabricType" AS "fabricType"
+        FROM "Product"
+        WHERE id IN (${Prisma.join(productIds)})
+      `
+    : [];
+  const fabricById = new Map(
+    fabricRows.map((row) => [String(row.id), String(row.fabricType || 'cotton')])
+  );
+
   const filterRowsRaw = productIds.length
     ? await prisma.$queryRaw<Array<{
         id: string;
@@ -466,6 +477,7 @@ export async function GET() {
   return NextResponse.json(
     products.map((product) => ({
       ...product,
+      fabricType: fabricById.get(String(product.id)) || 'cotton',
       filters: filtersByProduct.get(String(product.id)) || [],
     }))
   );
@@ -532,6 +544,10 @@ export async function POST(request: NextRequest) {
         typeof body?.colorName === 'string' && body.colorName.trim().length > 0
           ? body.colorName.trim()
           : 'Unspecified',
+      fabricType:
+        typeof body?.fabricType === 'string' && body.fabricType.trim().length > 0
+          ? body.fabricType.trim()
+          : 'cotton',
     };
 
     if (productTypeId) {
@@ -559,7 +575,7 @@ export async function POST(request: NextRequest) {
         const now = new Date();
         const inserted = await prisma.$queryRaw<Array<Record<string, any>>>`
           INSERT INTO "Product"
-            ("id", "name", "price", "description", "image", "category", "stock", "isActive", "isDeleted", "deletedAt", "createdAt", "updatedAt", "tag", "rating", "sizes", "productTypeId", "subCategoryId", "colorHex", "colorName")
+            ("id", "name", "price", "description", "image", "category", "stock", "isActive", "isDeleted", "deletedAt", "createdAt", "updatedAt", "tag", "rating", "sizes", "productTypeId", "subCategoryId", "colorHex", "colorName", "fabricType")
           VALUES
             (
               ${productId},
@@ -580,7 +596,8 @@ export async function POST(request: NextRequest) {
               ${String(createPayload.productTypeId)},
               ${createPayload.subCategoryId ?? null},
               ${String(createPayload.colorHex)},
-              ${String(createPayload.colorName)}
+              ${String(createPayload.colorName)},
+              ${String(createPayload.fabricType)}
             )
           RETURNING *
         `;

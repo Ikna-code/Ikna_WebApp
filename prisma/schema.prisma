@@ -95,6 +95,7 @@ model Product {
   sizes              String[]             @default([])
   colorHex           String?              @default("#000000")
   colorName          String?              @default("Unspecified")
+  fabricType         String?              @default("cotton")
   productTypeId      String
   subCategoryId      String?
   category           String?

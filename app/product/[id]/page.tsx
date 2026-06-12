@@ -3,12 +3,45 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Header from '@/components/layout/Header';
+
+function DescriptionAccordion({ description, fabricType }: { description: string; fabricType?: string }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
+        className="mt-1.5 flex items-center gap-1 text-[10px] font-extrabold tracking-widest text-[#840d5c] uppercase hover:opacity-70 transition-opacity"
+      >
+        Product Details
+        <ChevronDown
+          size={12}
+          className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {expanded && (
+        <>
+          <p className="mt-2 text-[12px] text-[#321327]/60 leading-relaxed font-medium whitespace-pre-wrap">
+            {description}
+          </p>
+          {fabricType && (
+            <div className="mt-3 flex items-center gap-2">
+              <span className="text-[9px] font-black tracking-widest text-[#321327]/40 uppercase">Material</span>
+              <span className="text-[11px] font-semibold text-[#321327] capitalize">{fabricType}</span>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 import {
   ShoppingBag,
   Star,
   ShieldCheck,
   Truck,
   ChevronLeft,
+  ChevronDown,
   MessageSquare,
   X,
   XCircle,
@@ -535,9 +568,11 @@ const SingleProductPage = () => {
 
 
 
-                  <p className="text-[12px] text-[#321327]/60 mt-2 leading-relaxed font-medium">
-                    {activeVariant?.description || "Crafted with our proprietary seamless technology for a second-skin feel."}
-                  </p>
+                  {/* DESCRIPTION WITH READ MORE */}
+                  <DescriptionAccordion
+                    description={activeVariant?.description || "Crafted with our proprietary seamless technology for a second-skin feel."}
+                    fabricType={(activeVariant as any)?.fabricType}
+                  />
                 </div>
 
                 {/* SIZES */}
