@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Search,
   Filter,
@@ -143,6 +143,13 @@ interface DeleteModalState {
   mode: 'single' | 'bulk';
   productId: string | null;
   count: number;
+}
+
+interface ConfirmModalState {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  confirmLabel: string;
 }
 
 interface ImportResult {
@@ -370,11 +377,23 @@ export default function ProductManagementDashboard() {
   const [importImageFiles, setImportImageFiles] = useState<File[]>([]);
   const [importImagePreviewItems, setImportImagePreviewItems] = useState<ImportImagePreviewItem[]>([]);
   const [addProductImagePreviewItems, setAddProductImagePreviewItems] = useState<ImportImagePreviewItem[]>([]);
+  const [addPrimaryImagePreviewKey, setAddPrimaryImagePreviewKey] = useState('');
   const [editProductImagePreviewItems, setEditProductImagePreviewItems] = useState<ImportImagePreviewItem[]>([]);
+  const [editPrimaryImagePreviewKey, setEditPrimaryImagePreviewKey] = useState('');
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [editingProductId, setEditingProductId] = useState('');
   const [editingProductSku, setEditingProductSku] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isApiCallInProgress, setIsApiCallInProgress] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState>({
+    isOpen: false,
+    title: 'Confirm Action',
+    message: '',
+    confirmLabel: 'Confirm',
+  });
+  const [isConfirmModalProcessing, setIsConfirmModalProcessing] = useState(false);
+  const apiCallLockRef = useRef(false);
+  const confirmModalActionRef = useRef<null | (() => void | Promise<void>)>(null);
   const [deleteModal, setDeleteModal] = useState<DeleteModalState>({
     isOpen: false,
     mode: 'single',
@@ -852,6 +871,68 @@ const mappedProducts = products.map((product, index) => {
     setCurrentPage(1);
   }, [activeCategory, activeStyle, stockLevel, searchQuery, maxPriceFilter]);
 
+  const beginApiCall = () => {
+    if (apiCallLockRef.current) return false;
+    apiCallLockRef.current = true;
+    setIsApiCallInProgress(true);
+    return true;
+  };
+
+  const endApiCall = () => {
+    apiCallLockRef.current = false;
+    setIsApiCallInProgress(false);
+  };
+
+  const openConfirmModal = ({
+    title,
+    message,
+    confirmLabel,
+    onConfirm,
+  }: {
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    onConfirm: () => void | Promise<void>;
+  }) => {
+    confirmModalActionRef.current = onConfirm;
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmLabel: confirmLabel || 'Confirm',
+    });
+  };
+
+  const closeConfirmModal = () => {
+    if (isConfirmModalProcessing) return;
+    confirmModalActionRef.current = null;
+    setConfirmModal((current) => ({
+      ...current,
+      isOpen: false,
+    }));
+  };
+
+  const confirmModalSubmit = async () => {
+    const action = confirmModalActionRef.current;
+
+    if (!action) {
+      closeConfirmModal();
+      return;
+    }
+
+    try {
+      setIsConfirmModalProcessing(true);
+      await action();
+      confirmModalActionRef.current = null;
+      setConfirmModal((current) => ({
+        ...current,
+        isOpen: false,
+      }));
+    } finally {
+      setIsConfirmModalProcessing(false);
+    }
+  };
+
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
       setSelectedProducts(paginatedProducts.map((p) => p.id));
@@ -870,6 +951,7 @@ const mappedProducts = products.map((product, index) => {
 
   const handleAddProductDetail = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!beginApiCall()) return;
     setErrorMessage('');
     setIsUploadingImages(true);
 
@@ -924,13 +1006,20 @@ const payload = {
 
       if (productImages.length > 0) {
         const uploadedPaths = await uploadImagesForProductId(createdProductId, productImages);
+        const selectedAddPrimaryIndex = addProductImagePreviewItems.findIndex(
+          (item) => item.key === addPrimaryImagePreviewKey
+        );
+        const selectedUploadedPrimary =
+          selectedAddPrimaryIndex >= 0 ? uploadedPaths[selectedAddPrimaryIndex] : '';
+        const resolvedPrimaryUploadedPath = selectedUploadedPrimary || uploadedPaths[0] || '';
 
         if (uploadedPaths.length > 0) {
           const patchResponse = await fetch(`/api/admin/products/${createdProductId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              image: uploadedPaths[0],
+              image: resolvedPrimaryUploadedPath,
+              primaryImagePath: resolvedPrimaryUploadedPath,
               imagePaths: uploadedPaths,
             }),
           });
@@ -958,7 +1047,8 @@ const payload = {
         fabricType: 'cotton',
       });
       setNewFilterOptionIds([]);
-      handleClearAddProductImages();
+      clearAddProductImages();
+      setAddPrimaryImagePreviewKey('');
       setIsAddModalOpen(false);
       setNewFilterOptionIds([]);
       await Promise.all([fetchProducts(), refreshProducts()]);
@@ -966,6 +1056,7 @@ const payload = {
       setErrorMessage(error?.message || 'Failed to create product.');
     } finally {
       setIsUploadingImages(false);
+      endApiCall();
     }
   };
 
@@ -984,6 +1075,8 @@ const payload = {
       return;
     }
 
+    if (!beginApiCall()) return;
+
     try {
       await Promise.all(
         selectedProducts.map((id) =>
@@ -998,6 +1091,8 @@ const payload = {
       setSelectedProducts([]);
     } catch {
       setErrorMessage('Failed to update prices.');
+    } finally {
+      endApiCall();
     }
   };
 
@@ -1016,6 +1111,8 @@ const payload = {
       return;
     }
 
+    if (!beginApiCall()) return;
+
     try {
       await Promise.all(
         selectedProducts.map((id) =>
@@ -1030,6 +1127,8 @@ const payload = {
       setSelectedProducts([]);
     } catch {
       setErrorMessage('Failed to update stock.');
+    } finally {
+      endApiCall();
     }
   };
 
@@ -1057,6 +1156,7 @@ const payload = {
   };
 
   const handleRestoreProduct = async (id: string) => {
+    if (!beginApiCall()) return;
     setErrorMessage('');
 
     try {
@@ -1074,31 +1174,39 @@ const payload = {
       await Promise.all([fetchProducts(), refreshProducts()]);
     } catch (error: any) {
       setErrorMessage(error?.message || 'Failed to restore product.');
+    } finally {
+      endApiCall();
     }
   };
 
   const handleHardDeleteProduct = async (id: string) => {
-    const shouldProceed = window.confirm(
-      'This permanently deletes the product and related records. Continue?'
-    );
-    if (!shouldProceed) return;
+    openConfirmModal({
+      title: 'Confirm Permanent Delete',
+      message: 'This permanently deletes the product and related records. Continue?',
+      confirmLabel: 'Delete Permanently',
+      onConfirm: async () => {
+        if (!beginApiCall()) return;
 
-    setErrorMessage('');
+        setErrorMessage('');
 
-    try {
-      const response = await fetch(`/api/admin/products/${id}?mode=hard`, {
-        method: 'DELETE',
-      });
+        try {
+          const response = await fetch(`/api/admin/products/${id}?mode=hard`, {
+            method: 'DELETE',
+          });
 
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload?.error || 'Failed to permanently delete product');
-      }
+          if (!response.ok) {
+            const payload = await response.json().catch(() => ({}));
+            throw new Error(payload?.error || 'Failed to permanently delete product');
+          }
 
-      await Promise.all([fetchProducts(), refreshProducts()]);
-    } catch (error: any) {
-      setErrorMessage(error?.message || 'Failed to permanently delete product.');
-    }
+          await Promise.all([fetchProducts(), refreshProducts()]);
+        } catch (error: any) {
+          setErrorMessage(error?.message || 'Failed to permanently delete product.');
+        } finally {
+          endApiCall();
+        }
+      },
+    });
   };
 
   const closeDeleteModal = () => {
@@ -1122,6 +1230,7 @@ const payload = {
   };
 
   const confirmDelete = async () => {
+    if (!beginApiCall()) return;
     setIsDeleting(true);
 
     try {
@@ -1156,6 +1265,7 @@ const payload = {
       );
     } finally {
       setIsDeleting(false);
+      endApiCall();
     }
   };
 
@@ -1199,13 +1309,22 @@ const payload = {
           : [];
 
     setEditExistingImages(normalizedExistingImages);
+    const initialPrimary =
+      normalizedExistingImages.find((image) => image.isPrimary)?.imagePath ||
+      normalizedExistingImages[0]?.imagePath ||
+      '';
+    setEditProductDetail((current) => ({
+      ...current,
+      image: initialPrimary,
+    }));
+    setEditPrimaryImagePreviewKey('');
     setRemovedEditImageIds([]);
     setRemovedEditImagePaths([]);
-    handleClearEditProductImages();
+    clearEditProductImages();
     setIsEditModalOpen(true);
   };
 
-  const handleRemoveExistingEditImage = (image: EditableExistingImage) => {
+  const removeExistingEditImage = (image: EditableExistingImage) => {
     setEditExistingImages((current) => {
       const next = current.filter((item) => item.imagePath !== image.imagePath);
 
@@ -1234,10 +1353,20 @@ const payload = {
     }
   };
 
+  const handleRemoveExistingEditImage = (image: EditableExistingImage) => {
+    openConfirmModal({
+      title: 'Remove Linked Image',
+      message: 'Remove this linked image from the product? This change will be applied when you save.',
+      confirmLabel: 'Remove',
+      onConfirm: () => removeExistingEditImage(image),
+    });
+  };
+
   const handleUpdateProductDetail = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!editingProductId) return;
+    if (!beginApiCall()) return;
 
     try {
       const uploadedPaths = await uploadImagesForProductId(editingProductId, editProductImages);
@@ -1247,6 +1376,11 @@ const payload = {
         .filter(Boolean);
 
       const currentPrimaryPath = editProductDetail.image.trim();
+      const selectedEditPrimaryIndex = editProductImagePreviewItems.findIndex(
+        (item) => item.key === editPrimaryImagePreviewKey
+      );
+      const selectedUploadedPrimary =
+        selectedEditPrimaryIndex >= 0 ? uploadedPaths[selectedEditPrimaryIndex] : '';
       const removedPaths = new Set(removedEditImagePaths);
       const primaryWasRemoved = Boolean(currentPrimaryPath && removedPaths.has(currentPrimaryPath));
       const fallbackPrimaryFromExisting = editExistingImages.find(
@@ -1257,8 +1391,9 @@ const payload = {
       )?.imagePath;
 
       const resolvedPrimaryImage =
-        uploadedPaths[0] ||
+        selectedUploadedPrimary ||
         (!primaryWasRemoved && currentPrimaryPath) ||
+        uploadedPaths[0] ||
         fallbackPrimaryFromExisting ||
         fallbackPathFromExisting ||
         null;
@@ -1277,6 +1412,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
           subCategoryName: editSubcategoryOptions.find((option) => option.id === editProductDetail.subCategoryId)?.name || null,
           tag: editProductDetail.tag.trim(),
           image: resolvedPrimaryImage,
+          primaryImagePath: resolvedPrimaryImage,
           rating: editProductDetail.rating ? Number(editProductDetail.rating) : null,
           filterOptionIds: editFilterOptionIds,
           imagePaths: uploadedPaths.length ? uploadedPaths : undefined,
@@ -1300,10 +1436,13 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
       setEditFilterOptionIds([]);
       setRemovedEditImageIds([]);
       setRemovedEditImagePaths([]);
-      handleClearEditProductImages();
+      setEditPrimaryImagePreviewKey('');
+      clearEditProductImages();
       await Promise.all([fetchProducts(), refreshProducts()]);
     } catch (error: any) {
       setErrorMessage(error?.message || 'Failed to update product.');
+    } finally {
+      endApiCall();
     }
   };
 
@@ -1322,6 +1461,8 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
       setErrorMessage('Please choose an Excel file first.');
       return;
     }
+
+    if (!beginApiCall()) return;
 
     setErrorMessage('');
     setImportResult(null);
@@ -1355,6 +1496,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to import products.');
     } finally {
       setIsImporting(false);
+      endApiCall();
     }
   };
 
@@ -1463,6 +1605,11 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
 
       const next = [...current, ...incomingWithUrls];
       setProductImages(next.map((item) => item.file));
+      setAddPrimaryImagePreviewKey((currentKey) =>
+        currentKey && next.some((item) => item.key === currentKey)
+          ? currentKey
+          : next[0]?.key || ''
+      );
       return next;
     });
   };
@@ -1490,6 +1637,11 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
 
       const next = [...current, ...incomingWithUrls];
       setEditProductImages(next.map((item) => item.file));
+      setEditPrimaryImagePreviewKey((currentKey) =>
+        currentKey && next.some((item) => item.key === currentKey)
+          ? currentKey
+          : next[0]?.key || ''
+      );
       return next;
     });
   };
@@ -1623,84 +1775,153 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
     appendEditProductFolderFiles(droppedItems);
   };
 
-  const handleRemoveImportImage = (itemToRemove: ImportImagePreviewItem) => {
-    setImportImagePreviewItems((current) => {
-      const next = current.filter((item) => item.key !== itemToRemove.key);
-      URL.revokeObjectURL(itemToRemove.url);
-      setImportImageFiles(next.map((item) => item.file));
-      return next;
-    });
-  };
-
-  const handleRemoveAddProductImage = (itemToRemove: ImportImagePreviewItem) => {
-    setAddProductImagePreviewItems((current) => {
-      const next = current.filter((item) => item.key !== itemToRemove.key);
-      URL.revokeObjectURL(itemToRemove.url);
-      setProductImages(next.map((item) => item.file));
-      return next;
-    });
-  };
-
-  const handleClearAddProductImages = () => {
+  const clearAddProductImages = () => {
     setAddProductImagePreviewItems((current) => {
       current.forEach((item) => URL.revokeObjectURL(item.url));
       return [];
     });
     setProductImages([]);
+    setAddPrimaryImagePreviewKey('');
   };
 
-  const handleRemoveEditProductImage = (itemToRemove: ImportImagePreviewItem) => {
-    setEditProductImagePreviewItems((current) => {
-      const next = current.filter((item) => item.key !== itemToRemove.key);
-      URL.revokeObjectURL(itemToRemove.url);
-      setEditProductImages(next.map((item) => item.file));
-      return next;
-    });
-  };
-
-  const handleClearEditProductImages = () => {
+  const clearEditProductImages = () => {
     setEditProductImagePreviewItems((current) => {
       current.forEach((item) => URL.revokeObjectURL(item.url));
       return [];
     });
     setEditProductImages([]);
+    setEditPrimaryImagePreviewKey('');
   };
 
-  const handleClearImportImages = () => {
+  const clearImportImages = () => {
     setImportImagePreviewItems((current) => {
       current.forEach((item) => URL.revokeObjectURL(item.url));
       return [];
     });
     setImportImageFiles([]);
+  };
+
+  const handleRemoveImportImage = (itemToRemove: ImportImagePreviewItem) => {
+    openConfirmModal({
+      title: 'Remove Image',
+      message: 'Remove this import image from the list?',
+      confirmLabel: 'Remove',
+      onConfirm: () => {
+        setImportImagePreviewItems((current) => {
+          const next = current.filter((item) => item.key !== itemToRemove.key);
+          URL.revokeObjectURL(itemToRemove.url);
+          setImportImageFiles(next.map((item) => item.file));
+          return next;
+        });
+      },
+    });
+  };
+
+  const handleRemoveAddProductImage = (itemToRemove: ImportImagePreviewItem) => {
+    openConfirmModal({
+      title: 'Remove Image',
+      message: 'Remove this selected image?',
+      confirmLabel: 'Remove',
+      onConfirm: () => {
+        setAddProductImagePreviewItems((current) => {
+          const next = current.filter((item) => item.key !== itemToRemove.key);
+          URL.revokeObjectURL(itemToRemove.url);
+          setProductImages(next.map((item) => item.file));
+          setAddPrimaryImagePreviewKey((currentKey) =>
+            currentKey === itemToRemove.key ? next[0]?.key || '' : currentKey
+          );
+          return next;
+        });
+      },
+    });
+  };
+
+  const handleClearAddProductImages = () => {
+    if (!addProductImagePreviewItems.length) {
+      clearAddProductImages();
+      return;
+    }
+
+    openConfirmModal({
+      title: 'Clear Selected Images',
+      message: 'Clear all selected images?',
+      confirmLabel: 'Clear',
+      onConfirm: () => clearAddProductImages(),
+    });
+  };
+
+  const handleRemoveEditProductImage = (itemToRemove: ImportImagePreviewItem) => {
+    openConfirmModal({
+      title: 'Remove Image',
+      message: 'Remove this selected image?',
+      confirmLabel: 'Remove',
+      onConfirm: () => {
+        setEditProductImagePreviewItems((current) => {
+          const next = current.filter((item) => item.key !== itemToRemove.key);
+          URL.revokeObjectURL(itemToRemove.url);
+          setEditProductImages(next.map((item) => item.file));
+          setEditPrimaryImagePreviewKey((currentKey) =>
+            currentKey === itemToRemove.key ? next[0]?.key || '' : currentKey
+          );
+          return next;
+        });
+      },
+    });
+  };
+
+  const handleClearEditProductImages = () => {
+    if (!editProductImagePreviewItems.length) {
+      clearEditProductImages();
+      return;
+    }
+
+    openConfirmModal({
+      title: 'Clear Selected Images',
+      message: 'Clear all selected images?',
+      confirmLabel: 'Clear',
+      onConfirm: () => clearEditProductImages(),
+    });
+  };
+
+  const handleClearImportImages = () => {
+    if (!importImagePreviewItems.length) {
+      clearImportImages();
+      return;
+    }
+
+    openConfirmModal({
+      title: 'Clear Import Images',
+      message: 'Clear all import images?',
+      confirmLabel: 'Clear',
+      onConfirm: () => clearImportImages(),
+    });
   };
 
   const closeImportModal = () => {
     if (isImporting) return;
-    setImportImagePreviewItems((current) => {
-      current.forEach((item) => URL.revokeObjectURL(item.url));
-      return [];
-    });
-    setImportImageFiles([]);
+    clearImportImages();
     setIsImportModalOpen(false);
   };
 
   const closeAddModal = () => {
     if (isUploadingImages) return;
-    handleClearAddProductImages();
+    clearAddProductImages();
     setNewFilterOptionIds([]);
     setNewProductDetail((current) => ({
       ...current,
       subCategoryId: '',
     }));
+    setAddPrimaryImagePreviewKey('');
     setIsAddModalOpen(false);
   };
 
   const closeEditModal = () => {
-    handleClearEditProductImages();
+    clearEditProductImages();
     setEditExistingImages([]);
     setEditFilterOptionIds([]);
     setRemovedEditImageIds([]);
     setRemovedEditImagePaths([]);
+    setEditPrimaryImagePreviewKey('');
     setIsEditModalOpen(false);
   };
 
@@ -1819,6 +2040,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                 onClick={handleBulkEditPrice}
                 title="Bulk edit price"
                 aria-label="Bulk edit price"
+                disabled={isApiCallInProgress}
                 className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 text-neutral-700 md:h-10 md:w-10 md:rounded-xl"
               >
                 <Sliders className="h-3.5 w-3.5 md:h-4 md:w-4" />
@@ -1827,6 +2049,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                 onClick={handleBulkUpdateStock}
                 title="Bulk update stock"
                 aria-label="Bulk update stock"
+                disabled={isApiCallInProgress}
                 className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-300 text-neutral-700 md:h-10 md:w-10 md:rounded-xl"
               >
                 <Upload className="h-3.5 w-3.5 md:h-4 md:w-4" />
@@ -1853,6 +2076,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
               </button>
               <button
                 onClick={handleArchiveSelected}
+                disabled={isApiCallInProgress}
                 className="shrink-0 inline-flex items-center justify-center gap-1 rounded-lg bg-[#840d5c] px-2 py-2.5 text-[10px] font-semibold text-white hover:bg-[#6d0b4b] md:rounded-xl md:px-3 md:py-2 md:text-xs lg:border lg:border-[#e8bfd5] lg:bg-transparent lg:text-[#840d5c] lg:hover:bg-[#f7e8f1]"
               >
                 <Trash2 className="h-3 w-3 md:h-3.5 md:w-3.5" /> <span className="hidden sm:inline">Soft Delete</span>
@@ -2014,6 +2238,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                             <button
                               type="button"
                               onClick={() => handleRestoreProduct(p.id)}
+                              disabled={isApiCallInProgress}
                               title="Restore product"
                               aria-label="Restore product"
                               className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50"
@@ -2023,6 +2248,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                             <button
                               type="button"
                               onClick={() => handleHardDeleteProduct(p.id)}
+                              disabled={isApiCallInProgress}
                               title="Hard delete product"
                               aria-label="Hard delete product"
                               className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 text-red-700 hover:bg-red-50"
@@ -2034,6 +2260,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                           <button
                             type="button"
                             onClick={() => handleDeleteProduct(p.id)}
+                            disabled={isApiCallInProgress}
                             title="Soft delete product"
                             aria-label="Soft delete product"
                             className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#e8bfd5] text-[#840d5c] hover:bg-[#f7e8f1]"
@@ -2230,7 +2457,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                   <button
                     type="button"
                     onClick={closeDeleteModal}
-                    disabled={isDeleting}
+                    disabled={isDeleting || isApiCallInProgress}
                     className="flex-1 rounded-xl border border-neutral-300 px-4 py-2.5 text-sm font-semibold text-neutral-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Cancel
@@ -2238,10 +2465,58 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                   <button
                     type="button"
                     onClick={confirmDelete}
-                    disabled={isDeleting}
+                    disabled={isDeleting || isApiCallInProgress}
                     className="flex-1 rounded-xl bg-[#840d5c] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#6d0b4b] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isDeleting ? 'Deleting...' : 'Soft Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {confirmModal.isOpen && (
+          <>
+            <button
+              type="button"
+              aria-label="Close confirmation modal"
+              onClick={closeConfirmModal}
+              className="fixed inset-0 z-[90] bg-neutral-900/50"
+            />
+            <div className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto p-4">
+              <div className="my-8 w-full max-w-md rounded-3xl border border-neutral-200 bg-white p-6 shadow-2xl">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-base font-black text-[#840d5c]">{confirmModal.title}</h3>
+                    <p className="mt-2 text-sm text-neutral-600">{confirmModal.message}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeConfirmModal}
+                    disabled={isConfirmModalProcessing}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-300 text-neutral-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="mt-6 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={closeConfirmModal}
+                    disabled={isConfirmModalProcessing}
+                    className="flex-1 rounded-xl border border-neutral-300 px-4 py-2.5 text-sm font-semibold text-neutral-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmModalSubmit}
+                    disabled={isConfirmModalProcessing}
+                    className="flex-1 rounded-xl bg-[#840d5c] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#6d0b4b] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isConfirmModalProcessing ? 'Processing...' : confirmModal.confirmLabel}
                   </button>
                 </div>
               </div>
@@ -2432,7 +2707,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
 
                   <button
                     type="submit"
-                    disabled={isImporting || !hasDownloadedImportTemplate || !importExcelFile}
+                    disabled={isApiCallInProgress || isImporting || !hasDownloadedImportTemplate || !importExcelFile}
                     className="w-full rounded-xl bg-[#840d5c] py-3 text-xs font-extrabold text-white hover:bg-[#840d5c] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isImporting ? 'Importing...' : 'Import Product Data'}
@@ -2776,17 +3051,28 @@ onClick={() => {
                               alt={item.file.name || `Selected image ${index + 1}`}
                               className="h-16 w-full object-cover"
                             />
-                            <div className="flex items-center justify-between gap-1 px-1.5 py-1">
+                            <div className="space-y-1 px-1.5 py-1">
                               <p className="truncate text-[9px] text-neutral-500" title={item.relativePath}>
                                 {item.relativePath}
                               </p>
+                              {addPrimaryImagePreviewKey === item.key ? (
+                                <p className="text-[9px] font-semibold text-[#840d5c]">Primary image</p>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setAddPrimaryImagePreviewKey(item.key)}
+                                  className="inline-flex h-5 w-full items-center justify-center rounded border border-neutral-300 text-[9px] font-semibold text-neutral-600 hover:bg-neutral-100"
+                                >
+                                  Set as Primary
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 aria-label="Remove image"
                                 onClick={() => handleRemoveAddProductImage(item)}
-                                className="inline-flex h-4 w-4 items-center justify-center rounded border border-neutral-300 text-neutral-500 hover:bg-neutral-100"
+                                className="inline-flex h-5 w-full items-center justify-center rounded border border-neutral-300 text-[9px] font-semibold text-neutral-500 hover:bg-neutral-100"
                               >
-                                <X className="h-2.5 w-2.5" />
+                                Remove
                               </button>
                             </div>
                           </div>
@@ -2796,7 +3082,7 @@ onClick={() => {
                   </div>
                   <button
                     type="submit"
-                    disabled={isUploadingImages}
+                    disabled={isApiCallInProgress || isUploadingImages}
                     className="mt-4 w-full rounded-xl bg-[#840d5c] py-3 text-xs font-extrabold text-white hover:bg-[#840d5c] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isUploadingImages ? 'Uploading Images + Creating SKU...' : 'Create and Launch SKU'}
@@ -3126,6 +3412,27 @@ onClick={() => {
                                 {image.isPrimary && (
                                   <p className="text-[9px] font-semibold text-[#840d5c]">Primary image</p>
                                 )}
+                                {!image.isPrimary && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditProductDetail((current) => ({
+                                        ...current,
+                                        image: image.imagePath,
+                                      }));
+                                      setEditExistingImages((current) =>
+                                        current.map((item) => ({
+                                          ...item,
+                                          isPrimary: item.imagePath === image.imagePath,
+                                        }))
+                                      );
+                                      setEditPrimaryImagePreviewKey('');
+                                    }}
+                                    className="inline-flex h-5 w-full items-center justify-center rounded border border-neutral-300 text-[9px] font-semibold text-neutral-600 hover:bg-neutral-100"
+                                  >
+                                    Set as Primary
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveExistingEditImage(image)}
@@ -3213,17 +3520,37 @@ onClick={() => {
                               alt={item.file.name || `Selected image ${index + 1}`}
                               className="h-16 w-full object-cover"
                             />
-                            <div className="flex items-center justify-between gap-1 px-1.5 py-1">
+                            <div className="space-y-1 px-1.5 py-1">
                               <p className="truncate text-[9px] text-neutral-500" title={item.relativePath}>
                                 {item.relativePath}
                               </p>
+                              {editPrimaryImagePreviewKey === item.key ? (
+                                <p className="text-[9px] font-semibold text-[#840d5c]">Primary image</p>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditPrimaryImagePreviewKey(item.key);
+                                    setEditProductDetail((current) => ({
+                                      ...current,
+                                      image: '',
+                                    }));
+                                    setEditExistingImages((current) =>
+                                      current.map((existing) => ({ ...existing, isPrimary: false }))
+                                    );
+                                  }}
+                                  className="inline-flex h-5 w-full items-center justify-center rounded border border-neutral-300 text-[9px] font-semibold text-neutral-600 hover:bg-neutral-100"
+                                >
+                                  Set as Primary
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 aria-label="Remove image"
                                 onClick={() => handleRemoveEditProductImage(item)}
-                                className="inline-flex h-4 w-4 items-center justify-center rounded border border-neutral-300 text-neutral-500 hover:bg-neutral-100"
+                                className="inline-flex h-5 w-full items-center justify-center rounded border border-neutral-300 text-[9px] font-semibold text-neutral-500 hover:bg-neutral-100"
                               >
-                                <X className="h-2.5 w-2.5" />
+                                Remove
                               </button>
                             </div>
                           </div>
@@ -3234,6 +3561,7 @@ onClick={() => {
 
                   <button
                     type="submit"
+                    disabled={isApiCallInProgress}
                     className="mt-4 w-full rounded-xl bg-[#840d5c] py-3 text-xs font-extrabold text-white hover:bg-[#840d5c]"
                   >
                     Save Product Changes

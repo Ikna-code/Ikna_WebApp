@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { createHash } from 'node:crypto';
 import { v2 as cloudinary } from 'cloudinary';
 
 type CloudinaryUploadInput = File | Buffer | Uint8Array | ArrayBuffer;
@@ -33,6 +34,28 @@ const toBuffer = async (input: CloudinaryUploadInput) => {
   if (input instanceof Uint8Array) return Buffer.from(input);
   if (input instanceof ArrayBuffer) return Buffer.from(input);
   return Buffer.from(await input.arrayBuffer());
+};
+
+const sanitizePathSegment = (value: string) =>
+  String(value || '')
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]/g, '_');
+
+const toDeterministicFilePath = (value: string) => {
+  const normalized = String(value || '').trim().replace(/\\/g, '/');
+  const segments = normalized
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => sanitizePathSegment(segment))
+    .filter(Boolean);
+
+  if (!segments.length) return '';
+
+  const lastIndex = segments.length - 1;
+  const withoutExtension = segments[lastIndex].replace(/\.[^.]+$/, '');
+  segments[lastIndex] = withoutExtension || segments[lastIndex];
+
+  return segments.join('/');
 };
 
 const uploadBuffer = async (
@@ -83,18 +106,15 @@ export async function uploadImage(
 ) {
   const buffer = await toBuffer(file);
   const folder = options.folder || (options.productId ? `product_photos/${options.productId}` : 'product_photos');
-  const safeFileName = String(options.fileName || '')
-    .trim()
-    .replace(/[^a-zA-Z0-9._-]/g, '_');
+  const safeFileName = toDeterministicFilePath(options.fileName || '');
+  const bufferHash = createHash('sha1').update(buffer).digest('hex').slice(0, 16);
 
-  const publicId = safeFileName
-    ? `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeFileName}`
-    : undefined;
+  const publicId = `${folder}/${safeFileName || bufferHash}`.replace(/\/+/g, '/');
 
   return uploadBuffer(buffer, {
     publicId,
-    overwrite: false,
-    invalidate: false,
+    overwrite: true,
+    invalidate: true,
   });
 }
 

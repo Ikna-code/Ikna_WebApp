@@ -39,6 +39,33 @@ const isDuplicateProductIdError = (error: any) => {
   );
 };
 
+function toStoragePath(pathOrUrl: string) {
+  const value = String(pathOrUrl || '').trim();
+  if (!value) return '';
+
+  if (value.startsWith('http://') || value.startsWith('https://')) {
+    const markers = [
+      '/storage/v1/object/public/products/',
+      '/storage/v1/object/products/',
+    ];
+
+    for (const marker of markers) {
+      const markerIndex = value.indexOf(marker);
+      if (markerIndex >= 0) {
+        return value.slice(markerIndex + marker.length);
+      }
+    }
+  }
+
+  return value.replace(/^\/+/, '');
+}
+
+function toImageKey(pathOrUrl: string) {
+  const cloudinaryPublicId = extractCloudinaryPublicId(pathOrUrl);
+  if (cloudinaryPublicId) return `cld:${cloudinaryPublicId}`;
+  return `supa:${toStoragePath(pathOrUrl)}`;
+}
+
 const slugify = (value: string) =>
   String(value || '')
     .trim()
@@ -508,11 +535,17 @@ export async function POST(request: NextRequest) {
       ? body.imagePaths.filter((item: unknown) => typeof item === 'string' && item.length > 0)
       : [];
 
+    const requestedPrimaryImagePath =
+      typeof body?.primaryImagePath === 'string' && body.primaryImagePath.trim().length > 0
+        ? body.primaryImagePath.trim()
+        : typeof body?.image === 'string' && body.image.trim().length > 0
+          ? body.image.trim()
+          : '';
+
     const primaryImagePath =
-      typeof body?.image === 'string' && body.image.length > 0
-        ? body.image
-        : imagePaths[0] ||
-          'https://images.unsplash.com/photo-1567016549366-5f3194bab37b?w=400&auto=format&fit=crop';
+      requestedPrimaryImagePath ||
+      imagePaths[0] ||
+      'https://images.unsplash.com/photo-1567016549366-5f3194bab37b?w=400&auto=format&fit=crop';
 
     const sizes: string[] = Array.isArray(body?.sizes)
       ? body.sizes.filter((item: unknown) => typeof item === 'string' && item.length > 0)
@@ -627,13 +660,18 @@ export async function POST(request: NextRequest) {
 
     if (imagePaths.length) {
       try {
+        const primaryImageKey = toImageKey(primaryImagePath);
+        const hasMatchingPrimary = imagePaths.some((path) => toImageKey(path) === primaryImageKey);
+
         await prismaAny.productImage.createMany({
           data: imagePaths.map((path: string, index: number) => ({
             id: createImageId(),
             product_id: product.id,
             image_path: path,
             public_id: extractCloudinaryPublicId(path) || null,
-            is_primary: index === 0,
+            is_primary: hasMatchingPrimary
+              ? toImageKey(path) === primaryImageKey
+              : index === 0,
           })),
         });
       } catch (imgError: any) {

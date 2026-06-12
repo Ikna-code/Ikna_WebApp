@@ -358,6 +358,12 @@ export async function PATCH(
     const imagePaths: string[] = Array.isArray(body?.imagePaths)
       ? body.imagePaths.filter((item: unknown) => typeof item === 'string' && item.length > 0)
       : [];
+    const requestedPrimaryImagePath =
+      typeof body?.primaryImagePath === 'string' && body.primaryImagePath.trim().length > 0
+        ? body.primaryImagePath.trim()
+        : typeof body?.image === 'string' && body.image.trim().length > 0
+          ? body.image.trim()
+          : '';
 
     const existingProduct = await prisma.product.findUnique({
       where: { id },
@@ -422,6 +428,7 @@ export async function PATCH(
         : { disconnect: true };
     }
     if (typeof body?.image === 'string') updateData.image = body.image;
+    if (requestedPrimaryImagePath) updateData.image = requestedPrimaryImagePath;
     if (typeof body?.description === 'string') updateData.description = body.description;
     if (typeof body?.tag === 'string' || body?.tag === null) updateData.tag = body.tag;
     if (typeof body?.rating === 'number' || body?.rating === null) updateData.rating = body.rating;
@@ -491,6 +498,10 @@ export async function PATCH(
       }
     }
 
+    if (!updateData.image && requestedPrimaryImagePath) {
+      updateData.image = requestedPrimaryImagePath;
+    }
+
     // fabricType is not yet in the stale Prisma client — extract it and persist via raw SQL
     const fabricTypeValue: string | undefined = typeof updateData.fabricType === 'string' ? updateData.fabricType : undefined;
     delete updateData.fabricType;
@@ -531,6 +542,26 @@ export async function PATCH(
         }
       } catch {
         // Storage cleanup failure should not block successful product updates.
+      }
+    }
+
+    if (requestedPrimaryImagePath) {
+      const primaryKey = toImageKey(requestedPrimaryImagePath);
+      const latestImages = await prisma.productImage.findMany({
+        where: { product_id: id },
+        select: { id: true, image_path: true },
+      });
+      const matchedPrimary = latestImages.find((image) => toImageKey(image.image_path) === primaryKey);
+
+      if (matchedPrimary) {
+        await prisma.productImage.updateMany({
+          where: { product_id: id },
+          data: { is_primary: false },
+        });
+        await prisma.productImage.update({
+          where: { id: matchedPrimary.id },
+          data: { is_primary: true },
+        });
       }
     }
 
