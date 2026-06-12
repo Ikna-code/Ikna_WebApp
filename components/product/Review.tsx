@@ -60,7 +60,7 @@ const ReviewSection = () => {
   };
 
   return (
-    <div className="w-full space-y-12 py-16 px-6 md:px-12 bg-[#faf3f5] rounded-[3rem] border border-[#840d5c]/5">
+    <div className="w-full space-y-7 md:space-y-12 py-8 md:py-16 px-4 md:px-12 bg-[#faf3f5] rounded-[3rem] border border-[#840d5c]/5">
       
       {/* --- EXTERNAL REVIEW MODAL --- */}
       {/* {showModal && (
@@ -71,11 +71,11 @@ const ReviewSection = () => {
       )} */}
 
       {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-[#840d5c]/10 pb-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6 border-b border-[#840d5c]/10 pb-5 md:pb-8">
         <div className="space-y-2">
           <h3 className="text-[10px] tracking-[0.3em] font-bold uppercase text-[#840d5c]">Testimonials</h3>
-          <h2 className="text-4xl font-serif text-[#321327]">Customer Reviews</h2>
-          <div className="flex items-center gap-4 mt-4">
+          <h2 className="text-2xl md:text-4xl font-serif text-[#321327]">Customer Reviews</h2>
+          <div className="flex items-center gap-4 mt-2 md:mt-4">
             <div className="flex text-[#840d5c]">
               {[...Array(5)].map((_, i) => (
                 <Star key={i} size={20} fill="currentColor" strokeWidth={0} />
@@ -116,16 +116,16 @@ const ReviewSection = () => {
         <div 
           ref={carouselRef}
           onScroll={handleScroll}
-          className="flex gap-6 overflow-x-auto pb-8 snap-x snap-mandatory no-scrollbar"
+          className="flex gap-4 md:gap-6 overflow-x-auto pb-4 md:pb-8 snap-x snap-mandatory no-scrollbar"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {reviews.map((review) => (
             <div 
               key={review.id} 
-              className="min-w-[100%] md:min-w-[calc(50%-12px)] snap-center bg-white p-8 md:p-10 rounded-[2.5rem] shadow-[0_10px_40px_rgba(132,13,92,0.03)] border border-white space-y-6"
+              className="min-w-[100%] md:min-w-[calc(50%-12px)] snap-center bg-white p-5 md:p-10 rounded-[2.5rem] shadow-[0_10px_40px_rgba(132,13,92,0.03)] border border-white space-y-4 md:space-y-6"
             >
               <div className="flex justify-between items-start">
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2 md:gap-3">
                   <div className="flex text-[#840d5c]">
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} size={14} fill={i < review.rating ? "currentColor" : "none"} strokeWidth={1} />
@@ -143,7 +143,7 @@ const ReviewSection = () => {
                 <span className="text-[10px] font-bold text-[#840d5c]/30 tracking-widest">{review.date}</span>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 <h4 className="text-lg font-bold text-[#321327] leading-tight">{review.title}</h4>
                 <p className="text-[14px] leading-relaxed text-[#522d42] italic opacity-80 font-medium">"{review.content}"</p>
               </div>

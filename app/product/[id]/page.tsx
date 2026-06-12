@@ -13,7 +13,7 @@ function DescriptionAccordion({ description, fabricType }: { description: string
         onClick={() => setExpanded((prev) => !prev)}
         className="mt-1.5 flex items-center gap-1 text-[10px] font-extrabold tracking-widest text-[#840d5c] uppercase hover:opacity-70 transition-opacity"
       >
-        Product Details
+        Product Description
         <ChevronDown
           size={12}
           className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
@@ -299,26 +299,60 @@ const SingleProductPage = () => {
   }, [originalComboTotal]);
 
   const braFeatures = useMemo(() => {
-    const features = [
+    const baseFeatures = [
       { img: "/images/icons/Double_Layered_Cloth.png", label: "Double Layered" },
       { img: "/images/icons/Soft_Fabric.png", label: "Soft Fabric" },
     ];
 
-    if (!activeVariant?.category) return features;
-    const normalizedCategory = activeVariant.category.trim().toUpperCase();
+    const productSignals = [
+      activeVariant?.category,
+      activeVariant?.subCategory?.name,
+      (activeVariant as any)?.subCategoryName,
+      activeVariant?.name,
+    ]
+      .map((value) => String(value || '').trim().toUpperCase())
+      .filter(Boolean)
+      .join(' | ');
 
-    if (normalizedCategory === 'COMFY SUPPORTIVE MINIMIZER BRA') {
-      features.unshift(
-        { img: "/images/icons/Broad_Strap_3_Hook.png", label: "Broad Strap 3 Hook" },
-        { img: "/images/icons/Minimizer_Moulded_Cups.png", label: "Moulded Cups" }
-      );
-    } else if (normalizedCategory === 'SIDE NET COVERAGE BRA') {
-      features.unshift(
-        { img: "/images/icons/Netted_Mesh.png", label: "Netted Mesh" }
+    const isMinimizer =
+      productSignals.includes('COMFY SUPPORTIVE MINIMIZER BRA') ||
+      productSignals.includes('MINIMIZER');
+    const isSideNetCoverage = productSignals.includes('SIDE NET COVERAGE BRA');
+    const isBarelyThere = productSignals.includes('BARELY THERE - LIGHT PADDED, NON-WIRED COTTON BRA');
+    const isEverydayWearComfy = productSignals.includes('EVERYDAY WEAR COMFY BRA');
+    const isPaddedBra = productSignals.includes('PADDED BRA');
+
+    const conditionalFeatures: { img: string; label: string }[] = [];
+
+    if (isMinimizer) {
+      conditionalFeatures.push(
+        { img: "/images/icons/Minimizer_Moulded_Cups.png", label: "Moulded Cups" },
+        { img: "/images/icons/Broad_Strap_3_Hook.png", label: "Broad Strap 3 Hook" }
       );
     }
-    return features;
-  }, [activeVariant?.category]);
+
+    if (isSideNetCoverage) {
+      conditionalFeatures.push({ img: "/images/icons/Netted_Mesh.png", label: "Netted Mesh" });
+    }
+
+    if (isBarelyThere || isEverydayWearComfy) {
+      conditionalFeatures.push({ img: "/images/icons/detachable_strap.png", label: "Detachable Strap" });
+    }
+
+    if (isBarelyThere) {
+      conditionalFeatures.push({ img: "/images/icons/Light_fine_padded.jpeg", label: "Light Fine Padded" });
+    }
+
+    if (isPaddedBra) {
+      conditionalFeatures.push({ img: "/images/icons/Foam_Padding.jpeg", label: "Foam Padding" });
+    }
+
+    const deduped = [...conditionalFeatures, ...baseFeatures].filter(
+      (feature, index, array) => array.findIndex((item) => item.img === feature.img) === index
+    );
+
+    return deduped;
+  }, [activeVariant]);
 
   const scrollToReviews = () => {
     reviewRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -471,7 +505,7 @@ const SingleProductPage = () => {
           <div className="flex flex-col lg:flex-row gap-8 bg-white p-4 lg:p-8 rounded-[3rem] shadow-sm border border-[#840d5c]/5 items-center lg:items-start overflow-hidden">
             
             {/* THUMBNAILS */}
-            <div className="flex flex-row md:flex-col gap-3 overflow-x-auto md:overflow-y-auto no-scrollbar w-full md:w-24 lg:max-h-[550px] flex-shrink-0 py-0.5">
+            <div className="order-2 lg:order-1 flex flex-row md:flex-col gap-3 overflow-x-auto md:overflow-y-auto no-scrollbar w-full md:w-24 lg:max-h-[550px] flex-shrink-0 py-0.5">
               {productImages.map((imagePath: string, index: number) => {
                 const thumbSrc = getOptimizedSupabaseImageUrl(imagePath, { width: 220, quality: 70 });
                 if (!thumbSrc) return null;
@@ -492,7 +526,7 @@ const SingleProductPage = () => {
             </div>
 
             {/* MAIN IMAGE CONTAINER */}
-            <div className="relative flex-shrink-0 w-full md:w-[80%] lg:w-[500px] aspect-[4/5] lg:h-[550px] rounded-[2rem] overflow-hidden group bg-neutral-50/40">
+            <div className="order-1 lg:order-2 relative flex-shrink-0 w-full md:w-[80%] lg:w-[500px] aspect-[4/5] lg:h-[550px] rounded-[2rem] overflow-hidden group bg-neutral-50/40">
               <div className="absolute top-0 bottom-0 right-2 md:right-4 z-20 flex flex-col justify-center gap-5 my-auto">
                 {braFeatures.map((feature, i) => (
                   <div key={i} className="group/feat relative flex items-center justify-center">
@@ -524,7 +558,7 @@ const SingleProductPage = () => {
             </div>
 
             {/* TEXT DETAILS PANEL */}
-            <div className="w-full flex-grow flex flex-col justify-center lg:pl-4">
+            <div className="order-3 w-full flex-grow flex flex-col justify-center lg:pl-4">
               <div className="space-y-5 py-1">
                 <header className="space-y-1.5">
                   <p className="text-[10px] font-bold tracking-[0.4em] text-[#840d5c] uppercase opacity-70">

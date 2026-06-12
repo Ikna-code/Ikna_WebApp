@@ -44,13 +44,13 @@ export default function Home() {
       <ProductGrid />
    
 
-      <main className="flex-grow container mx-auto px-4 py-8 lg:py-12 relative">
+      <main className="flex-grow container mx-auto px-4 py-5 md:py-8 lg:py-12 relative">
         
         {/* Main Grid: This is a strict 2-column grid on desktop, 1 on mobile */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 xl:gap-20">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-7 md:gap-10 xl:gap-20">
           
           {/* --- LEFT PANEL (Sticky Image Section) --- */}
-          <div className="lg:sticky lg:top-32 lg:h-fit relative space-y-8 z-10">
+          <div className="lg:sticky lg:top-32 lg:h-fit relative space-y-5 md:space-y-8 z-10">
                        {/* <ProductSelection /> */}
 
             <ProductHero />
@@ -59,15 +59,15 @@ export default function Home() {
           </div>
 
           {/* --- RIGHT PANEL (Details & Utilities) --- */}
-          <div className="space-y-12">
+          <div className="space-y-7 md:space-y-10 lg:space-y-12">
             
             {/* Main Product Info Section */}
             {/* Added 'relative' and 'overflow-hidden' to clip the ribbon if necessary, and 'p-8' for spacing */}
 
 
             {/* Fit Finder Utility Section */}
-            <section className="space-y-6">
-              <h2 className="text-2xl font-serif text-center lg:text-left text-[#321327]">Find Your Perfect Size</h2>
+            <section className="space-y-4 md:space-y-6">
+              <h2 className="text-xl md:text-2xl font-serif text-center lg:text-left text-[#321327]">Find Your Perfect Size</h2>
               <div className="grid md:grid-cols-1 gap-6 items-start">
                 <QuizCard />
                 {/* <ProductHero /> */}
@@ -77,7 +77,7 @@ export default function Home() {
 
  {/* <ProductSelection />   */}
             {/* Problem Solver Section */}
-            <section className="pt-8 border-t border-ikna-brown-light/30">
+            <section className="pt-6 md:pt-8 border-t border-ikna-brown-light/30">
               <ProblemSolver />
             </section>
             
@@ -86,7 +86,7 @@ export default function Home() {
         </div>
 
         {/* Customer Reviews Section */}
-        <section className="pt-16 mt-16 border-t border-ikna-brown-light/30">
+        <section className="pt-10 mt-10 md:pt-16 md:mt-16 border-t border-ikna-brown-light/30">
           <Review />
         </section>
       </main>

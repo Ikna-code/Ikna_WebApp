@@ -6,6 +6,7 @@ import { MdVerified } from "react-icons/md";
 import { FaHeart, FaRegHeart } from "react-icons/fa";
 import { PiShirtFolded } from "react-icons/pi";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { useStore } from "@/store/useStore";
 import { getOptimizedSupabaseImageUrl } from "@/lib/supabaseImage";
@@ -39,26 +40,7 @@ export const ProductCard = ({
   titleOverride?: string;
   subtitleOverride?: string;
 }) => {
-  const [tooltip, setTooltip] = useState({
-    show: false,
-    msg: "",
-  });
-
   const [isPending, setIsPending] = useState(false);
-
-  const showTooltip = (msg: string) => {
-    setTooltip({
-      show: true,
-      msg,
-    });
-
-    setTimeout(() => {
-      setTooltip({
-        show: false,
-        msg: "",
-      });
-    }, 2200);
-  };
 
   const handleWishlistClick = async (
     e: React.MouseEvent
@@ -66,7 +48,7 @@ export const ProductCard = ({
     e.stopPropagation();
 
     if (!userId) {
-      showTooltip("Please login first");
+      toast.warning("Please login first to add items to your wishlist.");
       return;
     }
 
@@ -74,14 +56,8 @@ export const ProductCard = ({
 
     try {
       await onToggleWishlist(product.id);
-
-      showTooltip(
-        !isWished
-          ? "Added to Wishlist"
-          : "Removed from Wishlist"
-      );
     } catch {
-      showTooltip("Something went wrong");
+      toast.error("Something went wrong");
     } finally {
       setIsPending(false);
     }
@@ -217,26 +193,6 @@ export const ProductCard = ({
         group
       "
     >
-      {/* TOOLTIP */}
-      {tooltip.show && (
-        <div className="absolute top-0 left-0 right-0 z-50">
-          <div
-            className="
-              bg-[#321327]
-              text-[#f7d46b]
-              text-[9px]
-              py-2
-              text-center
-              uppercase
-              tracking-[0.15em]
-              font-semibold
-            "
-          >
-            {tooltip.msg}
-          </div>
-        </div>
-      )}
-
       {/* WISHLIST */}
       <div className="absolute top-2 right-2 z-40">
         <button
