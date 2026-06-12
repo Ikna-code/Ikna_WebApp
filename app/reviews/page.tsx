@@ -13,7 +13,6 @@ interface Review {
   rating: number;
   title: string | null;
   comment: string;
-  fitExperience: string | null;
   isVerified: boolean;
   createdAt: string;
   helpful: number;

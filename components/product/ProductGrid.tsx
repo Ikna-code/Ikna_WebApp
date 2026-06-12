@@ -110,6 +110,64 @@ export const ProductCard = ({
         .filter(Boolean)
     : [];
 
+  const getBadgeClassName = (badge: string) => {
+    const normalized = String(badge || '').trim().toLowerCase();
+
+    if (normalized === 'new arrival') {
+      return `
+        px-2.5
+        py-0.5
+        rounded-full
+        text-[9px]
+        font-bold
+        uppercase
+        tracking-[0.08em]
+        text-[#2f1c06]
+        shadow-sm
+        border
+        border-[#d4af37]/80
+        bg-[linear-gradient(135deg,#f8e08a_0%,#e0b84a_45%,#b88722_100%)]
+        whitespace-nowrap
+      `;
+    }
+
+    if (normalized === 'few left') {
+      return `
+        px-2
+        py-0.5
+        rounded-full
+        text-[9px]
+        font-bold
+        uppercase
+        tracking-[0.08em]
+        text-white
+        shadow-sm
+        border
+        border-[#9d155f]/45
+        bg-[#9d155f]/55
+        backdrop-blur-sm
+        whitespace-nowrap
+      `;
+    }
+
+    return `
+      px-2
+      py-0.5
+      rounded-full
+      text-[9px]
+      font-bold
+      uppercase
+      tracking-[0.08em]
+      text-white
+      shadow-sm
+      border
+      border-[#9d155f]/45
+      bg-[#9d155f]/55
+      backdrop-blur-sm
+      whitespace-nowrap
+    `;
+  };
+
   const renderSwatch = (swatch: { id: string; label: string; color: string }) => {
     const isActive = swatch.id === activeSwatchId;
 
@@ -179,38 +237,6 @@ export const ProductCard = ({
         </div>
       )}
 
-      {/* BADGES */}
-      <div className="absolute top-2 left-2 z-40 flex flex-col gap-1.5 max-w-[75%]">
-        {productBadges.map((badge: string, index: number) => {
-          const label = String(badge || '').trim();
-          if (!label) return null;
-
-          return (
-            <div
-              key={`${label}-${index}`}
-              className="
-                px-2
-                py-0.5
-                rounded-full
-                text-[9px]
-                font-bold
-                uppercase
-                tracking-[0.08em]
-                text-white
-                shadow-sm
-                border
-                border-[#9d155f]/45
-                bg-[#9d155f]/55
-                backdrop-blur-sm
-                whitespace-nowrap
-              "
-            >
-              {label}
-            </div>
-          );
-        })}
-      </div>
-
       {/* WISHLIST */}
       <div className="absolute top-2 right-2 z-40">
         <button
@@ -266,6 +292,23 @@ export const ProductCard = ({
           "
           priority
         />
+        {productBadges.length > 0 && (
+          <div className="absolute bottom-2 right-2 z-30 flex flex-col items-end gap-1.5 max-w-[80%]">
+            {productBadges.map((badge: string, index: number) => {
+              const label = String(badge || '').trim();
+              if (!label) return null;
+
+              return (
+                <div
+                  key={`${label}-${index}`}
+                  className={getBadgeClassName(label)}
+                >
+                  {label}
+                </div>
+              );
+            })}
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />
       </div>
 

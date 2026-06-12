@@ -35,9 +35,8 @@ function getIssueLabel(review: {
   rating: number;
   title: string | null;
   comment: string;
-  fitExperience: string | null;
 }) {
-  const text = `${review.title ?? ''} ${review.comment} ${review.fitExperience ?? ''}`.toLowerCase();
+  const text = `${review.title ?? ''} ${review.comment}`.toLowerCase();
   const hasKeyword = seriousKeywords.some((keyword) => text.includes(keyword));
 
   if (review.rating <= 2 || hasKeyword) {

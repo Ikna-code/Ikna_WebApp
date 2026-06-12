@@ -13,13 +13,25 @@ interface ReviewModalProps {
   onClose: () => void;
 }
 
+const PREDEFINED_REVIEW_TITLES = [
+  'Best fit ever',
+  'Great comfort',
+  'Perfect quality',
+  'Excellent support',
+  'Runs true to size',
+  'Very satisfied',
+  'Highly recommended',
+  'Good value',
+  'Comfortable all day',
+  'Beautiful design'
+];
+
 const ReviewModal = ({ isOpen, reviewData, productId, userId, onClose }: ReviewModalProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     rating: 0,
     author: '',
-    fit: 'True to Size',
     title: '',
     content: ''
   });
@@ -36,7 +48,6 @@ const ReviewModal = ({ isOpen, reviewData, productId, userId, onClose }: ReviewM
       setFormData({
         rating: reviewData.rating || 0,
         author: reviewData.user?.email || '',
-        fit: reviewData.fitExperience || 'True to Size',
         title: reviewData.title || '',
         content: reviewData.comment || ''
       });
@@ -44,7 +55,6 @@ const ReviewModal = ({ isOpen, reviewData, productId, userId, onClose }: ReviewM
       setFormData({
         rating: 0,
         author: '',
-        fit: 'True to Size',
         title: '',
         content: ''
       });
@@ -119,7 +129,6 @@ const handleSubmit = async (e: React.FormEvent) => {
             rating: Number(formData.rating),
             title: formData.title,
             comment: formData.content,
-            fitExperience: formData.fit,
           }
         );
       } else {
@@ -130,7 +139,6 @@ const handleSubmit = async (e: React.FormEvent) => {
             rating: Number(formData.rating),
             title: formData.title,
             comment: formData.content,
-            fitExperience: formData.fit,
             isVerified: false,
           }
         );
@@ -141,7 +149,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         setSubmitted(false);
         setImages([]);
         setPreviews([]);
-        setFormData({ rating: 0, author: '', fit: 'True to Size', title: '', content: '' });
+        setFormData({ rating: 0, author: '', title: '', content: '' });
         onClose();
       }, 2500);
     } catch (err: any) {
@@ -200,46 +208,40 @@ const handleSubmit = async (e: React.FormEvent) => {
                 {error && <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider">{error}</p>}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold uppercase text-[#321327]/40 ml-2">Name</label>
-                  <input 
-                    required 
-                    name="author" 
-                    value={formData.author} 
-                    onChange={handleChange} 
-                    type="text" 
-                    placeholder="Your Name" 
-                    className="w-full px-5 py-3 rounded-2xl bg-[#FAF3F5] text-[#321327] font-medium text-sm outline-none focus:ring-2 ring-[#840d5c]/10 transition-all placeholder:text-[#321327]/30" 
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold uppercase text-[#321327]/40 ml-2">Fit</label>
-                  <div className="relative">
-                    <select 
-                      name="fit" 
-                      value={formData.fit} 
-                      onChange={handleChange} 
-                      className="w-full px-5 py-3 rounded-2xl bg-[#FAF3F5] text-[#321327] font-medium text-sm outline-none appearance-none cursor-pointer focus:ring-2 ring-[#840d5c]/10"
-                    >
-                      <option>True to Size</option>
-                      <option>Runs Small</option>
-                      <option>Runs Large</option>
-                    </select>
-                  </div>
-                </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold uppercase text-[#321327]/40 ml-2">Name</label>
+                <input 
+                  required 
+                  name="author" 
+                  value={formData.author} 
+                  onChange={handleChange} 
+                  type="text" 
+                  placeholder="Your Name" 
+                  className="w-full px-5 py-3 rounded-2xl bg-[#FAF3F5] text-[#321327] font-medium text-sm outline-none focus:ring-2 ring-[#840d5c]/10 transition-all placeholder:text-[#321327]/30" 
+                />
               </div>
 
               <div className="space-y-1">
-                <label className="text-[9px] font-bold uppercase text-[#321327]/40 ml-2">Title</label>
-                <input 
-                  required 
-                  name="title" 
-                  value={formData.title} 
-                  onChange={handleChange} 
-                  placeholder="Summary of your experience" 
-                  className="w-full px-5 py-3 rounded-2xl bg-[#FAF3F5] text-[#321327] font-medium text-sm outline-none focus:ring-2 ring-[#840d5c]/10 transition-all placeholder:text-[#321327]/30" 
-                />
+                <label className="text-[9px] font-bold uppercase text-[#321327]/40 ml-2">Review Category</label>
+                <div className="relative">
+                  <select 
+                    required 
+                    name="title" 
+                    value={formData.title} 
+                    onChange={handleChange} 
+                    className="w-full px-5 py-3 rounded-2xl bg-[#FAF3F5] text-[#321327] font-medium text-sm outline-none appearance-none cursor-pointer focus:ring-2 ring-[#840d5c]/10 transition-all"
+                  >
+                    <option value="">Select a review category...</option>
+                    {PREDEFINED_REVIEW_TITLES.map((title) => (
+                      <option key={title} value={title}>{title}</option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#321327]">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-1">

@@ -31,14 +31,14 @@ function SidebarContent({ adminUser, isSigningOut, onLogout, onNavigate, pathnam
   return (
     <>
       <div>
-        <div className="mb-6 flex items-center gap-3 px-2 sm:mb-8">
+        <Link href="/" onClick={onNavigate} className="mb-6 flex items-center gap-3 px-2 sm:mb-8">
           <div className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#f7e8f1] text-xl font-bold text-[#840d5c] shadow-sm">
             <Image src="/images/AI_images/logo1_ikna.png" alt="Ikna Logo" fill className="object-cover" sizes="36px" />
           </div>
           <div>
             <span className="text-[10px] uppercase tracking-[0.24em] text-[#e7cfe0]">Admin Console</span>
           </div>
-        </div>
+        </Link>
 
         <nav className="space-y-1.5">
           {navItems.map((item) => {

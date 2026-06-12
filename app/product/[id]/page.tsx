@@ -70,6 +70,20 @@ const getProductSubCategoryKey = (item: any) =>
     .trim()
     .toLowerCase();
 
+const getProductSubCategoryName = (item: any) =>
+  String(
+    item?.subCategory?.name ||
+      item?.subCategoryName ||
+      ''
+  )
+    .trim()
+    .toUpperCase();
+
+const COMBO_ELIGIBLE_SUBCATEGORIES = new Set([
+  'COMFY SUPPORTIVE MINIMIZER BRA',
+  'EVERYDAY WEAR COMFY BRA',
+]);
+
   const createComboBundleId = () => `combo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
 /* ---------------- TYPES ---------------- */
@@ -265,6 +279,11 @@ const SingleProductPage = () => {
     });
   }, [activeVariant]);
 
+  const isComboEligible = useMemo(() => {
+    const subCategoryName = getProductSubCategoryName(activeVariant || product);
+    return COMBO_ELIGIBLE_SUBCATEGORIES.has(subCategoryName);
+  }, [activeVariant, product]);
+
   const comboTarget = 3;
 
   /* ---------------- FIXED DYNAMIC PRICE MATH ---------------- */
@@ -327,11 +346,24 @@ const SingleProductPage = () => {
 
   /* ---------------- COMBO ENGINE ACTIONS ---------------- */
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isComboEligible) {
+      setIsComboChecked(false);
+      return;
+    }
+
     setIsComboChecked(e.target.checked);
     if (e.target.checked) {
       setIsComboModalOpen(true);
     }
   };
+
+  useEffect(() => {
+    if (isComboEligible) return;
+
+    if (isComboChecked) setIsComboChecked(false);
+    if (isComboModalOpen) setIsComboModalOpen(false);
+    if (comboItems.length > 0) setComboItems([]);
+  }, [isComboEligible, isComboChecked, isComboModalOpen, comboItems.length]);
 
   const addComboItemSlot = () => {
     if (!currentComboSize || !currentComboVariant) {
@@ -541,18 +573,20 @@ const SingleProductPage = () => {
                       824 Reviews
                     </span>
                   </button>
-                                    <label className="flex items-center gap-3 bg-[#840d5c]/5 border border-[#840d5c]/20 rounded-xl p-3 cursor-pointer select-none hover:bg-[#840d5c]/10 transition-colors max-w-sm">
-                    <input 
-                      type="checkbox"
-                      checked={isComboChecked}
-                      onChange={handleCheckboxChange}
-                      className="w-4 h-4 rounded border-gray-300 text-[#840d5c] focus:ring-[#840d5c]"
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold text-[#321327]">Select pack of 3 & get combo</span>
-                      <span className="text-[10px] text-[#840d5c] font-medium font-serif">Get 10% off on your bundle selection!</span>
-                    </div>
-                  </label>
+                  {isComboEligible && (
+                    <label className="flex items-center gap-3 bg-[#840d5c]/5 border border-[#840d5c]/20 rounded-xl p-3 cursor-pointer select-none hover:bg-[#840d5c]/10 transition-colors max-w-sm">
+                      <input 
+                        type="checkbox"
+                        checked={isComboChecked}
+                        onChange={handleCheckboxChange}
+                        className="w-4 h-4 rounded border-gray-300 text-[#840d5c] focus:ring-[#840d5c]"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-[#321327]">Select pack of 3 & get combo</span>
+                        <span className="text-[10px] text-[#840d5c] font-medium font-serif">Get 10% off on your bundle selection!</span>
+                      </div>
+                    </label>
+                  )}
                 </header>
 
                 {/* PRICING & COMBO SELECTION */}
@@ -649,7 +683,7 @@ const SingleProductPage = () => {
       </main>
 
       {/* ---------------- PACK OF 3 DYNAMIC COMBO MODAL ---------------- */}
-      {isComboModalOpen && (
+      {isComboModalOpen && isComboEligible && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-[2rem] w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
             

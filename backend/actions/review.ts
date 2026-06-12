@@ -51,7 +51,6 @@ export async function createReview(
     rating: number;
     title?: string;
     comment: string;
-    fitExperience?: string;
     isVerified?: boolean;
   }
 ) {
@@ -64,7 +63,6 @@ export async function createReview(
         title: data.title,
         comment: data.comment,
         isVerified: data.isVerified || false,
-        fitExperience: data.fitExperience,
         userId: authenticatedUserId,
         productId: data.productId,
       },
@@ -83,7 +81,6 @@ export async function updateReview(
     rating?: number;
     title?: string;
     comment?: string;
-    fitExperience?: string;
   }
 ) {
   try {
