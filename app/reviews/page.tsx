@@ -19,6 +19,8 @@ interface Review {
   user: {
     id: string;
     email: string;
+    firstName?: string | null;
+    lastName?: string | null;
   };
 }
 
@@ -88,6 +90,13 @@ const ReviewsPage = ({productId}: {productId: string}) => {
   };
 
   const activeCount = reviews.length;
+
+  const getReviewerName = (review: Review) => {
+    const first = String(review.user?.firstName || '').trim();
+    const last = String(review.user?.lastName || '').trim();
+    const fullName = `${first} ${last}`.trim();
+    return fullName || 'Anonymous';
+  };
 
   return (
 <div className="bg-[#FAF3F5] min-h-screen">
@@ -189,7 +198,7 @@ const ReviewsPage = ({productId}: {productId: string}) => {
                 ))}
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-bold text-[#321327] break-all">{review.user.email}</span>
+                <span className="text-xs font-bold text-[#321327] break-all">{getReviewerName(review)}</span>
                 {review.isVerified && (
                   <span className="text-[8px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter flex items-center gap-1 whitespace-nowrap">
                     <CheckCircle2 size={10} /> Verified

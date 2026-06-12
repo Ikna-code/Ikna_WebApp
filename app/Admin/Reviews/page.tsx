@@ -246,7 +246,7 @@ function ReviewCard({
     createdAt: Date;
     helpful: number;
     user: { id: string; email: string };
-    product: { id: string; name: string; category: string; image: string };
+    product: { id: string; name: string; category: string | null; image: string };
     images: { id: string; url: string }[];
   };
   highlighted?: boolean;
@@ -277,7 +277,7 @@ function ReviewCard({
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#8a5f79]">Product</p>
             <p className="text-sm font-semibold text-[#2f1126]">{review.product.name}</p>
-            <p className="text-xs text-[#8a5f79]">{review.product.category}</p>
+            <p className="text-xs text-[#8a5f79]">{review.product.category || 'Uncategorized'}</p>
           </div>
         </div>
 
@@ -295,20 +295,16 @@ function ReviewCard({
       </div>
 
       <div className="mt-5 space-y-3">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#8a5f79]">Review</p>
-          <h3 className="mt-1 text-base font-bold text-[#2f1126]">{review.title || 'Untitled review'}</h3>
-        </div>
+        {review.title && <h3 className="text-base font-bold text-[#2f1126]">{review.title}</h3>}
         <p className="text-sm leading-relaxed text-[#522d42]/85">{review.comment}</p>
         {review.fitExperience && (
           <p className="text-xs italic text-[#8a5f79]">Fit experience: {review.fitExperience}</p>
         )}
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-[#8a5f79]">
-        <span className="rounded-full bg-[#f8eef4] px-2.5 py-1">Helpful {review.helpful}</span>
+      {/* <div className="mt-5 flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-[#8a5f79]">
         <span className="rounded-full bg-[#f8eef4] px-2.5 py-1">{review.images.length} image{review.images.length === 1 ? '' : 's'}</span>
-      </div>
+      </div> */}
     </article>
   );
 }

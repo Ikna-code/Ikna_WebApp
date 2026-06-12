@@ -29,6 +29,8 @@ export async function getReviews(productId: string, ratingFilter?: number) {
           select: {
             id: true,
             email: true,
+            firstName: true,
+            lastName: true,
           },
         },
         images: true,
@@ -52,10 +54,25 @@ export async function createReview(
     title?: string;
     comment: string;
     isVerified?: boolean;
+    authorName?: string;
   }
 ) {
   try {
     const authenticatedUserId = await requireAuthenticatedUserId();
+
+    const normalizedAuthorName = String(data.authorName || '').trim();
+    if (normalizedAuthorName) {
+      const [firstName, ...lastParts] = normalizedAuthorName.split(/\s+/);
+      const lastName = lastParts.join(' ').trim();
+
+      await prisma.user.update({
+        where: { id: authenticatedUserId },
+        data: {
+          firstName: firstName || null,
+          lastName: lastName || null,
+        },
+      });
+    }
 
     return await prisma.review.create({
       data: {
@@ -81,6 +98,7 @@ export async function updateReview(
     rating?: number;
     title?: string;
     comment?: string;
+    authorName?: string;
   }
 ) {
   try {
@@ -94,9 +112,27 @@ export async function updateReview(
       throw new Error("Unauthorized: You cannot edit other users' reviews.");
     }
 
+    const normalizedAuthorName = String(data.authorName || '').trim();
+    if (normalizedAuthorName) {
+      const [firstName, ...lastParts] = normalizedAuthorName.split(/\s+/);
+      const lastName = lastParts.join(' ').trim();
+
+      await prisma.user.update({
+        where: { id: authenticatedUserId },
+        data: {
+          firstName: firstName || null,
+          lastName: lastName || null,
+        },
+      });
+    }
+
     return await prisma.review.update({
       where: { id: reviewId },
-      data,
+      data: {
+        rating: data.rating,
+        title: data.title,
+        comment: data.comment,
+      },
     });
   } catch (error) {
     console.error("Error updating review:", error);
@@ -123,5 +159,47 @@ export async function deleteReview(reviewId: string, _userId: string) {
   } catch (error) {
     console.error("Error deleting review:", error);
     throw new Error(error instanceof Error ? error.message : "Could not delete review.");
+  }
+}
+
+// Fetch top reviews for home page cards with summary stats
+export async function getFeaturedReviews(limit = 3) {
+  try {
+    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 12)) : 3;
+
+    const [reviews, stats] = await Promise.all([
+      prisma.review.findMany({
+        include: {
+          user: {
+            select: {
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+        orderBy: [
+          { rating: "desc" },
+          { helpful: "desc" },
+          { createdAt: "desc" },
+        ],
+        take: safeLimit,
+      }),
+      prisma.review.aggregate({
+        _avg: { rating: true },
+        _count: { id: true },
+      }),
+    ]);
+
+    const average = Number(stats._avg.rating || 0);
+
+    return {
+      reviews,
+      averageRating: Number(average.toFixed(1)),
+      totalReviews: Number(stats._count.id || 0),
+    };
+  } catch (error) {
+    console.error("Error fetching featured reviews:", error);
+    throw new Error("Could not fetch featured reviews.");
   }
 }
