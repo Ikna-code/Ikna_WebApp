@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { Role } from '@prisma/client';
 import { db } from '@/backend/lib/db';
 import { createServerSupabaseClient } from '@/backend/lib/supabaseServer';
+import { serializeDecimal } from '@/backend/lib/serializeDecimal';
 
 async function getAuthorizedAdmin() {
   const supabase = await createServerSupabaseClient();
@@ -49,7 +50,7 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json(orders, {
+  return NextResponse.json(serializeDecimal(orders), {
     headers: {
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
       Pragma: 'no-cache',

@@ -2,6 +2,7 @@
 
 import { PrismaClient } from "@prisma/client";
 import { createServerSupabaseClient } from "@/backend/lib/supabaseServer";
+import { serializeDecimal } from "@/backend/lib/serializeDecimal";
 
 const prisma = new PrismaClient();
 
@@ -19,7 +20,7 @@ async function requireAuthenticatedUserId() {
 // 1. Fetch reviews for a product
 export async function getReviews(productId: string, ratingFilter?: number) {
   try {
-    return await prisma.review.findMany({
+    const reviews = await prisma.review.findMany({
       where: {
         productId,
         ...(ratingFilter && ratingFilter > 0 ? { rating: ratingFilter } : {}),
@@ -39,6 +40,7 @@ export async function getReviews(productId: string, ratingFilter?: number) {
         createdAt: "desc",
       },
     });
+    return serializeDecimal(reviews);
   } catch (error) {
     console.error("Error fetching reviews:", error);
     throw new Error("Could not fetch reviews.");
@@ -74,7 +76,7 @@ export async function createReview(
       });
     }
 
-    return await prisma.review.create({
+    const review = await prisma.review.create({
       data: {
         rating: data.rating,
         title: data.title,
@@ -84,6 +86,7 @@ export async function createReview(
         productId: data.productId,
       },
     });
+    return serializeDecimal(review);
   } catch (error) {
     console.error("Error creating review:", error);
     throw new Error(error instanceof Error ? error.message : "Could not create review.");
@@ -126,7 +129,7 @@ export async function updateReview(
       });
     }
 
-    return await prisma.review.update({
+    const review = await prisma.review.update({
       where: { id: reviewId },
       data: {
         rating: data.rating,
@@ -134,6 +137,7 @@ export async function updateReview(
         comment: data.comment,
       },
     });
+    return serializeDecimal(review);
   } catch (error) {
     console.error("Error updating review:", error);
     throw new Error(error instanceof Error ? error.message : "Could not update review.");

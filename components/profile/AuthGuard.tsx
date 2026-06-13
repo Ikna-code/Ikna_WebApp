@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { createClient } from '@/backend/lib/supabaseClient';
 import { Lock, Mail, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -208,7 +209,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
     initializeAuth();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, currentSession: Session | null) => {
       if (!currentSession) {
         setSession(null);
         setIsInitializing(false);
@@ -445,7 +446,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         placeholder="EMAIL ADDRESS"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="w-full bg-[#F9F3F5] border-none py-3 sm:py-4 pl-10 pr-4 text-[10px] tracking-[0.1em] outline-none"
+        className="w-full bg-[#F9F3F5] border-none py-3 sm:py-4 pl-10 pr-4 text-[10px] tracking-widest outline-none"
         required 
         disabled={authMode === 'signup' && signupStep === 'verification'}
       />
@@ -484,7 +485,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
           placeholder="PASSWORD"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full bg-[#F9F3F5] border-none py-3 sm:py-4 pl-10 pr-10 text-[10px] tracking-[0.1em] outline-none"
+          className="w-full bg-[#F9F3F5] border-none py-3 sm:py-4 pl-10 pr-10 text-[10px] tracking-widest outline-none"
           required 
         />
         <button
@@ -499,13 +500,13 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     )}
 
     {authError && (
-      <p className="text-[10px] font-bold tracking-[0.1em] text-red-600 uppercase">
+      <p className="text-[10px] font-bold tracking-widest text-red-600 uppercase">
         {authError}
       </p>
     )}
 
     {authMessage && !authError && (
-      <p className="text-[10px] font-bold tracking-[0.1em] text-emerald-700 uppercase">
+      <p className="text-[10px] font-bold tracking-widest text-emerald-700 uppercase">
         {authMessage}
       </p>
     )}
@@ -553,9 +554,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   {!(authMode === 'signup' && signupStep === 'verification') && (
     <>
       <div className="relative my-4 sm:my-6 flex items-center">
-        <div className="flex-grow border-t border-[#F9F3F5]"></div>
-        <span className="mx-3 text-[9px] tracking-[0.1em] text-[#321327]/40 uppercase">OR</span>
-        <div className="flex-grow border-t border-[#F9F3F5]"></div>
+        <div className="grow border-t border-[#F9F3F5]"></div>
+        <span className="mx-3 text-[9px] tracking-widest text-[#321327]/40 uppercase">OR</span>
+        <div className="grow border-t border-[#F9F3F5]"></div>
       </div>
 
       <button

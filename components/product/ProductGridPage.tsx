@@ -137,6 +137,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   initialCategory = "",
   searchQuery = "",
 }) => {
+  console.log("Rendering ProductGridPage with products:", products);
   const user = useStore((state) => state.user);
   const cartItems = useStore((state) => state.cartItems);
   const wishlistItems = useStore((state) => state.wishlist);
@@ -156,13 +157,14 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
       acc[normalizedCategory] = (acc[normalizedCategory] || 0) + Number(item?.quantity || 1);
       return acc;
     }, {});
-    
+    console.log("Category quantities:", categoryQuantities);
     // Return set of categories with 3+ items
     return new Set(
       Object.entries(categoryQuantities)
         .filter(([, quantity]) => quantity >= 3)
         .map(([category]) => category)
     );
+
   }, [cartItems]);
 
   // Function to check if product is combo eligible

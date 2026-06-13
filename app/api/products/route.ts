@@ -1,5 +1,6 @@
 import { db } from '@/backend/lib/db';
 import { NextResponse } from 'next/server';
+import { serializeDecimal } from '@/backend/lib/serializeDecimal';
 
 // Use any-cast to work around stale Prisma TS types; actual isActive/isDeleted columns exist in DB.
 const dbProductAny = (db as any).product;
@@ -75,7 +76,10 @@ export async function GET() {
       fabricType: fabricById.get(String(product.id)) || 'cotton',
     }));
 
-    return NextResponse.json(normalizedProducts);
+    // Serialize Decimal values to numbers for JSON response
+    const serializedProducts = serializeDecimal(normalizedProducts);
+
+    return NextResponse.json(serializedProducts);
   } catch {
     return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
   }

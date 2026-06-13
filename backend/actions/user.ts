@@ -3,6 +3,7 @@
 
 import { db } from "@/backend/lib/db";
 import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
+import { serializeDecimal } from "@/backend/lib/serializeDecimal";
 
 /**
  * Fetches the currently authenticated user's profile from Prisma
@@ -31,8 +32,8 @@ export async function getUser() {
     }
   });
 
-  // 3. Keep the JSON serialization to avoid "Plain Object" errors
-  return { ok: true, user: JSON.parse(JSON.stringify(fullUser)) };
+  // Serialize Decimal and other non-serializable types
+  return { ok: true, user: serializeDecimal(fullUser) };
 }
 
 /**
@@ -51,8 +52,8 @@ export async function updateUserProfile(data: { firstName?: string; lastName?: s
       },
     });
     
-    // Remember to serialize the result before returning to client
-    return { success: true, user: JSON.parse(JSON.stringify(updatedUser)) };
+    // Serialize Decimal and other non-serializable types
+    return { success: true, user: serializeDecimal(updatedUser) };
   } catch (error) {
     console.error("Update Error:", error);
     return { success: false, error: "Failed to update profile" };

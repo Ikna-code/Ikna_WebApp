@@ -123,7 +123,10 @@ export default function RootLayout({
         Added 'overscroll-behavior-x-none' and structural touches to ensure that if a gesture spills 
         outside the chart container, the rest of your web app pages don't shift sideways.
       */}
-      <body className="min-h-full flex flex-col overflow-x-hidden overscroll-x-none selection:bg-[#840d5c]/20">
+      <body 
+        className="min-h-full flex flex-col overflow-x-hidden overscroll-x-none selection:bg-[#840d5c]/20"
+        suppressHydrationWarning
+      >
         <AppInitializer />
         {children}
         <Toaster position="top-right" richColors closeButton />

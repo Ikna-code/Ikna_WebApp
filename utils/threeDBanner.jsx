@@ -105,7 +105,7 @@ const PerspectiveGallery = ({ products, children }) => {
             }}
             className="absolute w-24 h-44 md:w-56 md:h-96 rounded-2xl overflow-hidden shadow-2xl border border-white/20 z-20"
           >
-            <img src={resolveImageSrc(products[1]?.image)} className="w-full h-full object-cover" alt="" />
+            <img src={'/images/sample images/Left_center.jpeg'} className="w-full h-full object-cover" alt="" />
           </motion.div>
 
           {/* CENTER CARD (Top priority layer) */}
@@ -128,7 +128,7 @@ const PerspectiveGallery = ({ products, children }) => {
             className="absolute w-24 h-44 md:w-56 md:h-96 rounded-2xl overflow-hidden shadow-2xl border border-white/20 z-20"
           >
             <img 
-              src={resolveImageSrc(products[2]?.image)} 
+              src={'/images/sample images/Right_center.jpeg'} 
               className="w-full h-full object-cover" 
               alt={products[2]?.name} 
             />

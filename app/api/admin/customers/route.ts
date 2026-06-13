@@ -3,6 +3,7 @@ import { Role } from '@prisma/client';
 
 import { db } from '@/backend/lib/db';
 import { createServerSupabaseClient } from '@/backend/lib/supabaseServer';
+import { serializeDecimal } from '@/backend/lib/serializeDecimal';
 
 function toNumber(value: unknown): number {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
@@ -118,10 +119,10 @@ export async function GET() {
     .sort((a, b) => b.totalSpent - a.totalSpent);
 
   return NextResponse.json(
-    {
+    serializeDecimal({
       source: 'supabase-db',
       customers,
-    },
+    }),
     {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',

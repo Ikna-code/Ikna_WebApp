@@ -3,6 +3,7 @@
   import { revalidatePath } from "next/cache";
   import { extractCloudinaryPublicId } from '@/src/lib/cloudinary';
   import { ACTIVE_PRODUCT_WHERE, deleteProduct as softDeleteProduct } from '@/backend/services/productDeletion';
+  import { serializeDecimal } from "@/backend/lib/serializeDecimal";
 
   // Use any-cast to work around stale Prisma TS generated types (new isActive/isDeleted columns).
   // The actual schema and DB are in sync — see migration 20260610110000.
@@ -11,12 +12,8 @@
   // Sanitize products for safe serialization across server-client boundary
   const sanitizeProduct = (product: any) => {
     if (!product) return product;
-    return {
-      ...product,
-      price: product.price ? Number(product.price) : product.price,
-      discountAmount: product.discountAmount ? Number(product.discountAmount) : product.discountAmount,
-      totalAmount: product.totalAmount ? Number(product.totalAmount) : product.totalAmount,
-    };
+    // Use serializeDecimal for comprehensive Decimal handling
+    return serializeDecimal(product);
   };
 
   const toStoragePath = (pathOrUrl: string) => {
@@ -209,10 +206,10 @@
       })
     ]);
 
-    return {
+    return serializeDecimal({
       average: stats._avg.rating || 0,
       totalCount: stats._count._all,
       breakdown,
       reviews: recentReviews
-    };
+    });
   }

@@ -14,9 +14,21 @@ import PaymentMethodsPage from '@/app/account/payments/page';
 import UserSettings from '@/app/account/settings/page';
 import { useStore } from '@/store/useStore';
 import { getMyFitQuizResults } from '@/backend/actions/quiz';
+import MeasurementsModal from './MeasurementsModal';
+import { getMeasurements } from '@/backend/actions/measurements';
 
 // 1. Define your component/section views
-const DashboardView = ({ dbUser, quizResults }: { dbUser: any; quizResults: any[] }) => (
+const DashboardView = ({ 
+  dbUser, 
+  quizResults, 
+  measurements, 
+  onOpenModal 
+}: { 
+  dbUser: any; 
+  quizResults: any[]; 
+  measurements?: any; 
+  onOpenModal: () => void;
+}) => (
   <div className="space-y-8">
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
     <section className="bg-white p-8 border border-[#840d5c]/5 shadow-sm rounded-3xl col-span-1 md:col-span-2">
@@ -43,16 +55,28 @@ const DashboardView = ({ dbUser, quizResults }: { dbUser: any; quizResults: any[
     <section className="bg-[#321327] p-8 text-[#F9F3F5] text-center relative overflow-hidden rounded-3xl col-span-1">
       <div className="absolute top-0 right-0 w-32 h-32 bg-[#840d5c]/10 rounded-full -mr-16 -mt-16" />
       <h3 className="text-sm tracking-[0.2em] font-light mb-4 relative z-10">WANT A PERFECT FIT?</h3>
-      <p className="text-[10px] tracking-[0.1em] opacity-80 mb-6 leading-relaxed relative z-10">
-        Your measurement profile helps us curate the best styles for your body type.
-      </p>
-      <Link 
-        href="/fit-finder" 
+      
+      {measurements && measurements.bustCm ? (
+        <div className="text-xs tracking-[0.1em] opacity-80 mb-6 leading-relaxed relative z-10 space-y-2 text-left">
+          <div>👚 <span className="font-semibold">Bust:</span> {measurements.bustCm} cm</div>
+          {measurements.underburstCm && <div>📏 <span className="font-semibold">Underbust:</span> {measurements.underburstCm} cm</div>}
+          {measurements.waistCm && <div>⭕ <span className="font-semibold">Waist:</span> {measurements.waistCm} cm {measurements.waistInches ? `/ ${measurements.waistInches} in` : ''}</div>}
+          {measurements.hipsCm && <div>👖 <span className="font-semibold">Hips:</span> {measurements.hipsCm} cm</div>}
+          {measurements.inseamCm && <div>📐 <span className="font-semibold">Inseam:</span> {measurements.inseamCm} cm</div>}
+        </div>
+      ) : (
+        <p className="text-[10px] tracking-[0.1em] opacity-80 mb-6 leading-relaxed relative z-10">
+          Your measurement profile helps us curate the best styles for your body type.
+        </p>
+      )}
+      
+      <button 
+        onClick={onOpenModal}
         className="inline-flex items-center gap-2 bg-[#F9F3F5] text-[#321327] px-8 py-3 text-[10px] font-bold tracking-[0.2em] hover:bg-[#840d5c] hover:text-white transition-all relative z-10 rounded-full"
       >
         UPDATE FIT PROFILE
         <ChevronRight size={14} />
-      </Link>
+      </button>
     </section>
     </div>
 
@@ -94,6 +118,8 @@ const SettingsView = ({ dbUser , refetch}: { dbUser: any, refetch: () => void })
 const UserProfile = () => {
   const [dbUser, setDbUser] = useState<any>(null);
   const [quizResults, setQuizResults] = useState<any[]>([]);
+  const [measurements, setMeasurements] = useState<any>(null);
+  const [measurementsModalOpen, setMeasurementsModalOpen] = useState(false);
   const [fetchingProfile, setFetchingProfile] = useState(true);
   const orders = useStore((state) => state.orders);
   const wishlistItems = useStore((state) => state.wishlist);
@@ -146,14 +172,18 @@ const UserProfile = () => {
 
     async function fetchProfile() {
       try {
-        const [response, quizResponse] = await Promise.all([
+        const [response, quizResponse, measurementsResponse] = await Promise.all([
           getUser(),
           getMyFitQuizResults(5),
+          getMeasurements(),
         ]);
         if (!response.ok) throw new Error('Failed to fetch');
         const data = await response;
         setDbUser(data.user);
         setQuizResults(Array.isArray(quizResponse?.results) ? quizResponse.results : []);
+        if (measurementsResponse?.success && measurementsResponse?.measurements) {
+          setMeasurements(measurementsResponse.measurements);
+        }
       } catch (error) {
         console.error("Error fetching profile:", error);
         setQuizResults([]);
@@ -187,7 +217,14 @@ const UserProfile = () => {
   const renderWorkspaceContent = () => {
     switch (activeStep) {
       case 1:
-        return <DashboardView dbUser={dbUser} quizResults={quizResults} />;
+        return (
+          <DashboardView 
+            dbUser={dbUser} 
+            quizResults={quizResults} 
+            measurements={measurements}
+            onOpenModal={() => setMeasurementsModalOpen(true)}
+          />
+        );
       case 2:
         return <OrdersPage />;
       case 3:
@@ -278,6 +315,16 @@ const UserProfile = () => {
             </div>
           )}
         </div>
+
+        <MeasurementsModal
+          isOpen={measurementsModalOpen}
+          onClose={() => setMeasurementsModalOpen(false)}
+          onSave={(newMeasurements) => {
+            setMeasurements(newMeasurements);
+            setMeasurementsModalOpen(false);
+          }}
+          initialData={measurements}
+        />
       </div>
     </AuthGuard>
   );
