@@ -20,6 +20,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useStore } from '@/store/useStore';
 import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
+import { saveFitQuizResult } from '@/backend/actions/quiz';
 
 import Portal from '@/components/ui/Portal';
 
@@ -213,6 +214,10 @@ export default function PerfectFitQuiz({ handleClose }) {
   const products = useStore((state) => state.products);
   const loadProducts = useStore((state) => state.loadProducts);
   const isProductsInitialized = useStore((state) => state.isProductsInitialized);
+  const user = useStore((state) => state.user);
+  const [isSavingResult, setIsSavingResult] = useState(false);
+  const [hasSavedResult, setHasSavedResult] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
 
   // Compute valid occasions based on current selections
   const validOccasionsForSelection = useMemo(() => {
@@ -299,6 +304,43 @@ export default function PerfectFitQuiz({ handleClose }) {
   const closeModal = () => {
     setIsOpen(false);
     handleClose();
+  };
+
+  const handleSaveResult = async () => {
+    if (hasSavedResult) {
+      return;
+    }
+
+    if (!user?.id) {
+      setSaveMessage('Please login to save your quiz result and receive it by email.');
+      return;
+    }
+
+    setIsSavingResult(true);
+    setSaveMessage('');
+
+    try {
+      const response = await saveFitQuizResult({
+        outfit,
+        comfort,
+        occasion,
+        recommendationName: recommendation?.name || '',
+        recommendationDesc: recommendation?.desc || '',
+        recommendationImage: recommendation?.imgurl || '',
+      });
+
+      if (!response?.success) {
+        setSaveMessage(response?.error || 'Unable to save your result right now.');
+        return;
+      }
+
+      setHasSavedResult(true);
+      setSaveMessage('Saved successfully. We also sent your result to your email.');
+    } catch {
+      setSaveMessage('Unable to save your result right now.');
+    } finally {
+      setIsSavingResult(false);
+    }
   };
 
   const nextStep = () => {
@@ -748,9 +790,16 @@ export default function PerfectFitQuiz({ handleClose }) {
                   <p className="text-[#666] text-[13px] text-center mt-1.5">
                     We’ll remember your preferences to improve your experience.
                   </p>
-                  <button className="w-full h-[48px] rounded-[14px] bg-gradient-to-r from-[#ea3f77] to-[#e93369] text-white text-[14px] font-semibold mt-4">
-                    Save My Result
+                  <button
+                    onClick={handleSaveResult}
+                    disabled={isSavingResult || hasSavedResult}
+                    className="w-full h-[48px] rounded-[14px] bg-gradient-to-r from-[#ea3f77] to-[#e93369] text-white text-[14px] font-semibold mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {hasSavedResult ? 'Result Saved' : isSavingResult ? 'Saving...' : 'Save My Result'}
                   </button>
+                  {!!saveMessage && (
+                    <p className="text-[12px] text-center mt-3 text-[#5d3a4e]">{saveMessage}</p>
+                  )}
                 </div>
               </div>
 

@@ -13,10 +13,12 @@ import AddressPage from '@/app/account/address/page';
 import PaymentMethodsPage from '@/app/account/payments/page';
 import UserSettings from '@/app/account/settings/page';
 import { useStore } from '@/store/useStore';
+import { getMyFitQuizResults } from '@/backend/actions/quiz';
 
 // 1. Define your component/section views
-const DashboardView = ({ dbUser }: { dbUser: any }) => (
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+const DashboardView = ({ dbUser, quizResults }: { dbUser: any; quizResults: any[] }) => (
+  <div className="space-y-8">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
     <section className="bg-white p-8 border border-[#840d5c]/5 shadow-sm rounded-3xl col-span-1 md:col-span-2">
       <h2 className="text-xs font-bold tracking-[0.2em] text-[#321327] uppercase mb-6 pb-2 border-b border-[#FAF3F5]">
         Most Recent Order
@@ -34,7 +36,7 @@ const DashboardView = ({ dbUser }: { dbUser: any }) => (
           </Link>
         </div>
       ) : (
-        <p className="text-[10px] text-[#321327]/40 tracking-widest italic">No orders placed yet.</p>
+        <p className="text-[10px] text-[#321327]/40 tracking-widest italic">No orders in the last 7 days.</p>
       )}
     </section>
 
@@ -52,6 +54,32 @@ const DashboardView = ({ dbUser }: { dbUser: any }) => (
         <ChevronRight size={14} />
       </Link>
     </section>
+    </div>
+
+    <section className="bg-white p-8 border border-[#840d5c]/5 shadow-sm rounded-3xl">
+      <h2 className="text-xs font-bold tracking-[0.2em] text-[#321327] uppercase mb-6 pb-2 border-b border-[#FAF3F5]">
+        Fit Quiz Results
+      </h2>
+
+      {quizResults.length > 0 ? (
+        <div className="space-y-3">
+          {quizResults.map((result: any) => (
+            <div key={result.id} className="rounded-2xl border border-[#840d5c]/10 bg-[#fff8fb] px-4 py-3">
+              <p className="text-[11px] font-bold text-[#321327] uppercase tracking-wide">{result.recommendationName}</p>
+              <p className="text-[11px] text-[#321327]/70 mt-1">{result.recommendationDesc}</p>
+              <p className="text-[10px] text-[#840d5c] mt-2 uppercase tracking-wider">
+                Outfit: {result.outfit} • Comfort: {result.comfort} • Occasion: {result.occasion}
+              </p>
+              <p className="text-[10px] text-[#321327]/50 mt-1">
+                Saved on {new Date(result.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[10px] text-[#321327]/40 tracking-widest italic">No quiz results saved yet.</p>
+      )}
+    </section>
   </div>
 );
 
@@ -65,6 +93,7 @@ const SettingsView = ({ dbUser , refetch}: { dbUser: any, refetch: () => void })
 
 const UserProfile = () => {
   const [dbUser, setDbUser] = useState<any>(null);
+  const [quizResults, setQuizResults] = useState<any[]>([]);
   const [fetchingProfile, setFetchingProfile] = useState(true);
   const orders = useStore((state) => state.orders);
   const wishlistItems = useStore((state) => state.wishlist);
@@ -117,12 +146,17 @@ const UserProfile = () => {
 
     async function fetchProfile() {
       try {
-        const response = await getUser();
+        const [response, quizResponse] = await Promise.all([
+          getUser(),
+          getMyFitQuizResults(5),
+        ]);
         if (!response.ok) throw new Error('Failed to fetch');
         const data = await response;
         setDbUser(data.user);
+        setQuizResults(Array.isArray(quizResponse?.results) ? quizResponse.results : []);
       } catch (error) {
         console.error("Error fetching profile:", error);
+        setQuizResults([]);
       } finally {
         setFetchingProfile(false);
       }
@@ -153,7 +187,7 @@ const UserProfile = () => {
   const renderWorkspaceContent = () => {
     switch (activeStep) {
       case 1:
-        return <DashboardView dbUser={dbUser} />;
+        return <DashboardView dbUser={dbUser} quizResults={quizResults} />;
       case 2:
         return <OrdersPage />;
       case 3:

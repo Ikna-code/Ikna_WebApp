@@ -9,10 +9,22 @@ import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
  */
 export async function getUser() {
   const dbUser = await ensureCurrentDbUser();
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const fullUser = await db.user.findUnique({
     where: { id: dbUser.id },
     include: {
+      orders: {
+        where: {
+          createdAt: {
+            gte: weekAgo,
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 10,
+      },
       _count: {
         select: { orders: true, wishlistItems: true }
       }
