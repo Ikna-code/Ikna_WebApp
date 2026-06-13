@@ -21,13 +21,13 @@ function DescriptionAccordion({ description, fabricType }: { description: string
       </button>
       {expanded && (
         <>
-          <p className="mt-2 text-[12px] text-[#321327]/60 leading-relaxed font-medium whitespace-pre-wrap">
+          <p className="mt-2 text-sm md:text-base text-[#321327]/85 leading-relaxed font-medium whitespace-pre-wrap">
             {description}
           </p>
           {fabricType && (
             <div className="mt-3 flex items-center gap-2">
-              <span className="text-[9px] font-black tracking-widest text-[#321327]/40 uppercase">Material</span>
-              <span className="text-[11px] font-semibold text-[#321327] capitalize">{fabricType}</span>
+              <span className="text-[10px] font-black tracking-widest text-[#840d5c] uppercase">Fabric Type</span>
+              <span className="text-[11px] font-bold text-white bg-[#840d5c] px-2.5 py-1 rounded-full capitalize shadow-sm">{fabricType}</span>
             </div>
           )}
         </>
@@ -109,7 +109,7 @@ const SingleProductPage = () => {
   const router = useRouter();
 
   const [activeImgIdx, setActiveImgIdx] = useState(0);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [reviewComposerSignal, setReviewComposerSignal] = useState(0);
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false); 
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
@@ -723,7 +723,10 @@ const SingleProductPage = () => {
                     </button>
 
                     <button
-                      onClick={() => setIsModalOpen(true)}
+                      onClick={() => {
+                        setReviewComposerSignal((prev) => prev + 1);
+                        scrollToReviews();
+                      }}
                       className="w-full bg-white border-2 border-[#321327]/10 text-[#321327] py-3 rounded-full font-bold uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 hover:border-[#840d5c] hover:text-[#840d5c] transition-all"
                     >
                       <MessageSquare size={14} /> Write A Review
@@ -756,7 +759,7 @@ const SingleProductPage = () => {
           </div>
 
           <div ref={reviewRef}>
-            <ReviewSection productId={id?.toString() || ''} />
+            <ReviewSection productId={id?.toString() || ''} openComposerSignal={reviewComposerSignal} />
           </div>
         </div>
       </main>

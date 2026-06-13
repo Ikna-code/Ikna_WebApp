@@ -24,7 +24,7 @@ interface Review {
   };
 }
 
-const ReviewsPage = ({productId}: {productId: string}) => {
+const ReviewsPage = ({ productId, openComposerSignal = 0 }: { productId: string; openComposerSignal?: number }) => {
   const PRODUCT_ID = productId || '';
 
   const user = useStore((state) => state.user);
@@ -94,6 +94,17 @@ const ReviewsPage = ({productId}: {productId: string}) => {
       fetchReviewSummary();
     }
   }, [fetchReviews, fetchReviewSummary, PRODUCT_ID]);
+
+  useEffect(() => {
+    if (!openComposerSignal) return;
+    if (!userId) {
+      alert('Please log in to write a review.');
+      return;
+    }
+
+    setEditingReview(null);
+    setIsModalOpen(true);
+  }, [openComposerSignal, userId]);
 
   const handleDelete = async (reviewId: string) => {
     if (!confirm('Are you sure you want to delete this review?')) return;
