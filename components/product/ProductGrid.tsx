@@ -586,7 +586,7 @@ const ProductGrid = () => {
               <div className="text-center mt-8">
                 <button
                   onClick={() =>
-                    router.push("/shop")
+                    router.push("/shop?category=bras")
                   }
                   className="
                     inline-flex

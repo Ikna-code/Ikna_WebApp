@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 import ProductGridPage from "@/components/product/ProductGridPage";
+import PerspectiveGallery from "@/utils/threeDBanner";
 import Header from '@/components/layout/Header';
 import { useStore } from '@/store/useStore';
 
@@ -80,7 +81,13 @@ export default function Shop() {
     <>
       <Header />
       <div id="shop-content" className="shop-content-layer">
-        <ProductGridPage products={sourceProducts} initialCategory={effectiveInitialCategory} searchQuery={search} />
+        {search ? (
+          <ProductGridPage products={sourceProducts} initialCategory={effectiveInitialCategory} searchQuery={search} />
+        ) : (
+          <PerspectiveGallery products={sourceProducts}>
+            <ProductGridPage products={sourceProducts} initialCategory={effectiveInitialCategory} searchQuery={search} />
+          </PerspectiveGallery>
+        )}
       </div>
 
 
