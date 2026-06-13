@@ -16,6 +16,7 @@ import {
 interface ProductGridPageProps {
   products: any[];
   initialCategory?: string;
+  searchQuery?: string;
 }
 
 const normalizeText = (value: unknown) =>
@@ -39,6 +40,37 @@ const getProductSubCategoryLabel = (product: any) =>
       product?.subcategory?.name ||
       ""
   ).trim();
+
+const productMatchesSearch = (product: any, normalizedSearch: string) => {
+  if (!normalizedSearch) return true;
+
+  const searchTerms = normalizedSearch.split(/\s+/).filter(Boolean);
+  const assignments = Array.isArray(product?.filters) ? product.filters : [];
+  const filterTexts = assignments
+    .flatMap((assignment: any) => {
+      const option = assignment?.filterOption;
+      const group = option?.filterGroup;
+
+      return [
+        option?.displayLabel,
+        option?.value,
+        group?.displayName,
+        group?.name,
+        group?.slug,
+      ];
+    })
+    .filter(Boolean)
+    .join(" ");
+
+  const searchableBlob = normalizeText([
+    product?.name,
+    getProductTypeLabel(product),
+    getProductSubCategoryLabel(product),
+    filterTexts,
+  ].join(" "));
+
+  return searchTerms.every((term) => searchableBlob.includes(term));
+};
 
 const UpwardSelect = ({
   value,
@@ -103,6 +135,7 @@ const UpwardSelect = ({
 const ProductGridPage: React.FC<ProductGridPageProps> = ({
   products = [],
   initialCategory = "",
+  searchQuery = "",
 }) => {
   const user = useStore((state) => state.user);
   const cartItems = useStore((state) => state.cartItems);
@@ -148,6 +181,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState<boolean>(false);
   const [isDesktopFilterDrawerOpen, setIsDesktopFilterDrawerOpen] = useState<boolean>(false);
   const [isPortalReady, setIsPortalReady] = useState<boolean>(false);
+  const hasUserModifiedFiltersRef = useRef(false);
 
   const router = useRouter();
 
@@ -300,36 +334,130 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
     });
   }, [availableDynamicFilterGroups]);
 
+  // Reset user filter modification flag when search term changes
+  useEffect(() => {
+    hasUserModifiedFiltersRef.current = false;
+  }, [searchQuery]);
+
+  // Infer and auto-fill filter drawer from search results (only if user hasn't manually changed filters)
+  useEffect(() => {
+    const normalizedSearch = normalizeText(searchQuery);
+    if (!normalizedSearch || hasUserModifiedFiltersRef.current) return;
+
+    const searchMatchedProducts = products.filter((product) =>
+      productMatchesSearch(product, normalizedSearch)
+    );
+
+    if (!searchMatchedProducts.length) return;
+
+    const matchedCategories = Array.from(
+      new Set(
+        searchMatchedProducts
+          .map((product) => getProductTypeLabel(product))
+          .map((label) => label.trim())
+          .filter(Boolean)
+      )
+    );
+
+    const nextCategory = matchedCategories.length === 1 ? matchedCategories[0] : "All";
+    setSelectedCategory(nextCategory);
+
+    const categoryScopedProducts =
+      nextCategory === "All"
+        ? searchMatchedProducts
+        : searchMatchedProducts.filter(
+            (product) => normalizeText(getProductTypeLabel(product)) === normalizeText(nextCategory)
+          );
+
+    const matchedSubCategories = Array.from(
+      new Set(
+        categoryScopedProducts
+          .map((product) => getProductSubCategoryLabel(product))
+          .map((label) => label.trim())
+          .filter(Boolean)
+      )
+    );
+
+    setSelectedSubCategory(matchedSubCategories.length === 1 ? matchedSubCategories[0] : "");
+
+    if (nextCategory === "All") {
+      setSelectedDynamicFilters({});
+      return;
+    }
+
+    const categoryMetadata = filterMetadata.find(
+      (type: any) => normalizeText(type?.name) === normalizeText(nextCategory)
+    );
+
+    if (!categoryMetadata || !Array.isArray(categoryMetadata.filterGroups)) {
+      setSelectedDynamicFilters({});
+      return;
+    }
+
+    const nextDynamicFilters: Record<string, string> = {};
+
+    for (const group of categoryMetadata.filterGroups) {
+      const groupSlug = String(group?.slug || "").trim();
+      if (!groupSlug) continue;
+
+      const optionIds = new Set<string>();
+      for (const product of categoryScopedProducts) {
+        const assignments = Array.isArray(product?.filters) ? product.filters : [];
+        for (const assignment of assignments) {
+          const option = assignment?.filterOption;
+          const optionGroupSlug = String(option?.filterGroup?.slug || "").trim();
+          const optionId = String(option?.id || "").trim();
+
+          if (optionGroupSlug === groupSlug && optionId) {
+            optionIds.add(optionId);
+          }
+        }
+      }
+
+      if (optionIds.size === 1) {
+        nextDynamicFilters[groupSlug] = Array.from(optionIds)[0];
+      }
+    }
+
+    setSelectedDynamicFilters(nextDynamicFilters);
+  }, [searchQuery, products, filterMetadata]);
+
   // FILTERED + SORTED PRODUCTS
   const filteredAndSortedProducts = useMemo(() => {
     let result = [...products];
-
-    if (selectedCategory !== "All") {
-      result = result.filter((p) => {
-        const productType = getProductTypeLabel(p);
-        return normalizeText(productType) === normalizeText(selectedCategory);
-      });
-    }
-
-    if (selectedSubCategory) {
-      result = result.filter((p) => {
-        const subCategory = getProductSubCategoryLabel(p);
-        return normalizeText(subCategory) === normalizeText(selectedSubCategory);
-      });
-    }
-
+    const normalizedSearch = normalizeText(searchQuery);
     const activeDynamicFilters = Object.entries(selectedDynamicFilters).filter(([, optionId]) => optionId);
-    if (activeDynamicFilters.length) {
-      result = result.filter((product) => {
-        const assignments = Array.isArray(product?.filters) ? product.filters : [];
-        return activeDynamicFilters.every(([groupSlug, optionId]) =>
-          assignments.some((assignment: any) => {
-            const option = assignment?.filterOption;
-            const group = option?.filterGroup;
-            return String(group?.slug || '') === groupSlug && String(option?.id || '') === optionId;
-          })
-        );
-      });
+    const shouldUseSearch = Boolean(normalizedSearch) && !hasUserModifiedFiltersRef.current;
+
+    if (shouldUseSearch) {
+      result = result.filter((product) => productMatchesSearch(product, normalizedSearch));
+    } else {
+      if (selectedCategory !== "All") {
+        result = result.filter((p) => {
+          const productType = getProductTypeLabel(p);
+          return normalizeText(productType) === normalizeText(selectedCategory);
+        });
+      }
+
+      if (selectedSubCategory) {
+        result = result.filter((p) => {
+          const subCategory = getProductSubCategoryLabel(p);
+          return normalizeText(subCategory) === normalizeText(selectedSubCategory);
+        });
+      }
+
+      if (activeDynamicFilters.length) {
+        result = result.filter((product) => {
+          const assignments = Array.isArray(product?.filters) ? product.filters : [];
+          return activeDynamicFilters.every(([groupSlug, optionId]) =>
+            assignments.some((assignment: any) => {
+              const option = assignment?.filterOption;
+              const group = option?.filterGroup;
+              return String(group?.slug || '') === groupSlug && String(option?.id || '') === optionId;
+            })
+          );
+        });
+      }
     }
 
     if (sortBy === "price-low") {
@@ -341,7 +469,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
     }
 
     return result;
-  }, [products, selectedCategory, selectedSubCategory, selectedDynamicFilters, sortBy]);
+  }, [products, searchQuery, selectedCategory, selectedSubCategory, selectedDynamicFilters, sortBy]);
 
   const groupedProducts = useMemo(() => {
     const groups = new Map<string, { category: string; categoryKey: string; variants: any[] }>();
@@ -389,6 +517,24 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
     await toggleWishlist(user.id, id);
   };
 
+  const handleCategoryChange = (newCategory: string) => {
+    hasUserModifiedFiltersRef.current = true;
+    setSelectedCategory(newCategory);
+  };
+
+  const handleSubCategoryChange = (newSubCategory: string) => {
+    hasUserModifiedFiltersRef.current = true;
+    setSelectedSubCategory(newSubCategory);
+  };
+
+  const handleDynamicFilterChange = (slug: string, optionId: string) => {
+    hasUserModifiedFiltersRef.current = true;
+    setSelectedDynamicFilters((current) => ({
+      ...current,
+      [slug]: optionId,
+    }));
+  };
+
   // Reusable inner markup wrapper for clean rendering across drawers
   const FilterFormControls = ({ isMobile = false }) => (
     <div className="flex flex-col gap-5">
@@ -410,7 +556,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
           </label>
           <UpwardSelect
             value={selectedSubCategory}
-            onChange={setSelectedSubCategory}
+            onChange={handleSubCategoryChange}
             options={[
               { label: "All Subcategories", value: "" },
               ...availableSubCategories.map((subCat: any) => ({ label: subCat, value: subCat })),
@@ -427,12 +573,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
           </label>
           <UpwardSelect
             value={selectedDynamicFilters[group.slug] || ""}
-            onChange={(nextValue) =>
-              setSelectedDynamicFilters((current) => ({
-                ...current,
-                [group.slug]: nextValue,
-              }))
-            }
+            onChange={(nextValue) => handleDynamicFilterChange(group.slug, nextValue)}
             options={[
               { label: `All ${group.name}s`, value: "" },
               ...group.options.map((option: any) => ({ label: option.label, value: option.id })),
@@ -473,6 +614,11 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
           <p className="text-xs md:text-sm tracking-[0.25em] text-[#840d5c] uppercase font-semibold mb-3">
             Engineered for Comfort, Designed for You
           </p>
+          {searchQuery.trim() && (
+            <p className="text-[11px] md:text-xs tracking-[0.12em] text-[#321327]/70 uppercase font-semibold">
+              Results for "{searchQuery.trim()}"
+            </p>
+          )}
         </header>
 
         {/* FILTER ACTION BAR */}
@@ -512,7 +658,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
                   return (
                     <div
                       key={group.categoryKey}
-                      className="group cursor-pointer bg-white rounded-[28px] overflow-hidden border border-[#f1d9e8] shadow-[0_4px_20px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_28px_rgba(0,0,0,0.10)] hover:-translate-y-1 transition-all duration-300"
+                      className="cursor-pointer flex h-full"
                       onClick={() =>
                         router.push(
                           `/product/${activeVariant.id}`,

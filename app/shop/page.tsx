@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 import ProductGridPage from "@/components/product/ProductGridPage";
-import PerspectiveGallery from "@/utils/threeDBanner";
 import Header from '@/components/layout/Header';
 import { useStore } from '@/store/useStore';
 
@@ -17,6 +16,7 @@ export default function Shop() {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const category = searchParams.get("category") || "";
+  const effectiveInitialCategory = search.trim() ? "" : category;
 
   useEffect(() => {
     if (!isProductsInitialized) {
@@ -80,18 +80,7 @@ export default function Shop() {
     <>
       <Header />
       <div id="shop-content" className="shop-content-layer">
-        {
-          search ? (
-                    <ProductGridPage products={sourceProducts} initialCategory={category} />
-
-          ) : (
-                  <PerspectiveGallery
-          products={sourceProducts}
-        >
-          <ProductGridPage products={sourceProducts} initialCategory={category} />
-        </PerspectiveGallery>
-          )
-        }
+        <ProductGridPage products={sourceProducts} initialCategory={effectiveInitialCategory} searchQuery={search} />
       </div>
 
 

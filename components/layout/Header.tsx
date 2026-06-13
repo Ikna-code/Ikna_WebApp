@@ -2,19 +2,21 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter, useSearchParams } from 'next/navigation';
 import iknaLogo from '@/public/images/AI_images/logo1_ikna.png';
-import SearchBar from '@/utils/SearchBar';
 import UserProfile from '@/components/profile/UserProfile'; 
 import { ShoppingBag, User, Search, X, Menu } from 'lucide-react';
 import Navbar from './Navbar';
 import { useStore } from "@/store/useStore";
 
 const Header = () => {
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [announcementIndex, setAnnouncementIndex] = useState(0);
   const [announcementVisible, setAnnouncementVisible] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const announcementLines = [
     <span key="welcome">
@@ -25,6 +27,39 @@ const Header = () => {
 
   const { cartItems } = useStore();
   const totalItems = cartItems.reduce((acc, item) => acc + (item.quantity || 0), 0);
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get('search') || '');
+  }, [searchParams]);
+
+  const buildShopUrl = (query: string) => {
+    const trimmed = query.trim();
+    const params = new URLSearchParams();
+
+    if (trimmed) {
+      params.set('search', trimmed);
+    }
+
+    const queryString = params.toString();
+    return queryString ? `/shop?${queryString}` : '/shop';
+  };
+
+  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    router.push(buildShopUrl(searchQuery));
+  };
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const next = event.target.value;
+    setSearchQuery(next);
+    router.push(buildShopUrl(next));
+  };
+
+  const handleMobileSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsMobileMenuOpen(false);
+    router.push(buildShopUrl(searchQuery));
+  };
 
   useEffect(() => {
     const rotateInterval = setInterval(() => {
@@ -69,9 +104,23 @@ const Header = () => {
           
           {/* ACTIONS & MOBILE TRIGGER */}
           <div className="flex items-center space-x-5 md:space-x-7 text-[#321327]">
-            {/* <button className="hidden md:block" aria-label="Search" onClick={() => setIsSearchOpen(true)}>
-              <Search size={20} strokeWidth={1.5} />
-            </button> */}
+            <div className="hidden md:block relative w-10 h-10 shrink-0">
+              <form
+                onSubmit={handleSearchSubmit}
+                className="absolute right-0 top-0 h-10 w-10 hover:w-72 focus-within:w-72 overflow-hidden rounded-full border border-[#321327]/20 bg-white transition-all duration-300"
+                role="search"
+                aria-label="Search products"
+              >
+                <Search size={18} strokeWidth={1.75} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#321327] pointer-events-none" />
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  placeholder="Search products"
+                  className="h-full w-full bg-transparent pl-10 pr-4 text-sm text-[#321327] placeholder:text-[#321327]/40 outline-none"
+                />
+              </form>
+            </div>
             <button className="hidden md:block" aria-label="Account" onClick={() => setIsProfileOpen(true)}>
               <User size={20} strokeWidth={1.5} />
             </button>
@@ -116,12 +165,28 @@ const Header = () => {
 
             {/* ACTION LINKS (SEARCH, PROFILE, CART) */}
             <div className="mt-8 pt-8 border-t border-[#840d5c]/10 flex flex-col space-y-6">
-              {/* <button 
-                onClick={() => { setIsMobileMenuOpen(false); setIsSearchOpen(true); }}
-                className="flex items-center space-x-4 text-[11px] font-bold tracking-[0.2em] text-[#321327]"
-              >
-                <Search size={20} /> <span>SEARCH</span>
-              </button> */}
+              <form onSubmit={handleMobileSearchSubmit} className="space-y-2">
+                <label className="text-[10px] font-bold tracking-[0.2em] text-[#321327] uppercase block">
+                  Search
+                </label>
+                <div className="relative">
+                  <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#321327]/60" />
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search products"
+                    className="w-full h-11 rounded-full border border-[#321327]/20 bg-white pl-10 pr-11 text-sm text-[#321327] placeholder:text-[#321327]/40 outline-none"
+                  />
+                  <button
+                    type="submit"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-[#321327] text-white flex items-center justify-center"
+                    aria-label="Search products"
+                  >
+                    <Search size={15} />
+                  </button>
+                </div>
+              </form>
               
               <button 
                 onClick={() => { setIsMobileMenuOpen(false); setIsProfileOpen(true); }}
@@ -149,8 +214,6 @@ const Header = () => {
           </div>
         </div>
       </div>
-
-      <SearchBar isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
 
       {/* PROFILE DRAWER */}
       {isProfileOpen && (

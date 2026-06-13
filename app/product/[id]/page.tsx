@@ -371,9 +371,9 @@ const SingleProductPage = () => {
       conditionalFeatures.push({ img: "/images/icons/detachable_strap.png", label: "Detachable Strap" });
     }
 
-    if (isBarelyThere) {
-      conditionalFeatures.push({ img: "/images/icons/Light_fine_padded.jpeg", label: "Light Fine Padded" });
-    }
+    // if (isBarelyThere) {
+    //   conditionalFeatures.push({ img: "/images/icons/Light_fine_padded.jpeg", label: "Light Fine Padded" });
+    // }
 
     if (isPaddedBra) {
       conditionalFeatures.push({ img: "/images/icons/Foam_Padding.jpeg", label: "Foam Padding" });
@@ -676,9 +676,7 @@ const SingleProductPage = () => {
                     <span className="text-2xl sm:text-3xl font-bold text-[#321327] tracking-tighter">
                       Rs.{activeVariant?.price}
                     </span>
-                    <span className="text-xs text-[#321327]/40 line-through">
-                      Rs.485.00
-                    </span>
+
                   </div>
 
 
