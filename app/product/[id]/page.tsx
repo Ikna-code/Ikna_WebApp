@@ -50,6 +50,7 @@ import {
 } from 'lucide-react';
 
 import ReviewSection from '@/app/reviews/page';
+import { getReviews } from '@/backend/actions/review';
 import { useStore } from '@/store/useStore';
 import Footer from '@/components/layout/Footer';
 import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
@@ -124,6 +125,8 @@ const SingleProductPage = () => {
 
   const [currentComboSize, setCurrentComboSize] = useState<string>('');
   const [currentComboVariant, setCurrentComboVariant] = useState<any>(null);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [averageRating, setAverageRating] = useState(0);
 
   const reviewRef = useRef<HTMLDivElement>(null);
 
@@ -187,6 +190,35 @@ const SingleProductPage = () => {
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'auto' });
     }
+  }, [productId]);
+
+  useEffect(() => {
+    if (!productId) return;
+
+    let isMounted = true;
+
+    const loadReviewStats = async () => {
+      try {
+        const allReviews = await getReviews(productId);
+        const total = allReviews.length;
+        const sum = allReviews.reduce((acc: number, review: any) => acc + (Number(review?.rating) || 0), 0);
+
+        if (!isMounted) return;
+
+        setReviewCount(total);
+        setAverageRating(total > 0 ? sum / total : 0);
+      } catch (error) {
+        console.error('Failed to load product reviews:', error);
+        if (!isMounted) return;
+        setReviewCount(0);
+        setAverageRating(0);
+      }
+    };
+
+    loadReviewStats();
+    return () => {
+      isMounted = false;
+    };
   }, [productId]);
 
   /* ---------------- PRODUCT ---------------- */
@@ -357,6 +389,10 @@ const SingleProductPage = () => {
   const scrollToReviews = () => {
     reviewRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  const roundedAverageRating = useMemo(() => {
+    return Math.round(averageRating);
+  }, [averageRating]);
 
   const handleAddToBag = async () => {
     const userId = user?.id;
@@ -568,6 +604,25 @@ const SingleProductPage = () => {
                     {activeVariant?.name}
                   </h1>
 
+                  <button onClick={scrollToReviews} className="flex flex-wrap items-center gap-2.5 hover:opacity-70 transition-opacity pt-0.5">
+                      <span className="flex items-center text-[#840d5c]">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={`stat-star-${i}`}
+                            size={11}
+                            fill={i < roundedAverageRating ? 'currentColor' : 'none'}
+                            strokeWidth={i < roundedAverageRating ? 0 : 1.5}
+                          />
+                        ))}
+                      </span>
+                      <span className="text-xs font-bold text-[#321327]">{averageRating.toFixed(1)}</span>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#321327]/5 border border-[#321327]/15 text-[#321327]">
+                      <MessageSquare size={12} className="text-[#840d5c]" />
+                      <span className="text-[10px] font-bold tracking-wider uppercase">{reviewCount}</span>
+                      <span className="text-[10px] font-bold tracking-wider uppercase text-[#321327]/70">Reviews</span>
+                    </span>
+                  </button>
+
                   {categoryVariants.length > 0 && (
                     <div className="pt-1.5">
                       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#321327]/50 mb-2">Colors</p>
@@ -599,14 +654,6 @@ const SingleProductPage = () => {
                     </div>
                   )}
 
-                  <button onClick={scrollToReviews} className="flex items-center gap-3 hover:opacity-70 transition-opacity pt-0.5">
-                    <div className="flex text-[#840d5c]">
-                      {[...Array(5)].map((_, i) => <Star key={i} size={14} fill="currentColor" strokeWidth={0} />)}
-                    </div>
-                    <span className="text-[10px] font-bold text-[#321327] tracking-widest uppercase border-b border-[#321327]/20 pb-0.5">
-                      824 Reviews
-                    </span>
-                  </button>
                   {isComboEligible && (
                     <label className="flex items-center gap-3 bg-[#840d5c]/5 border border-[#840d5c]/20 rounded-xl p-3 cursor-pointer select-none hover:bg-[#840d5c]/10 transition-colors max-w-sm">
                       <input 
@@ -652,14 +699,14 @@ const SingleProductPage = () => {
                     </button>
                   </div>
 
-                  <div className="flex flex-wrap gap-3">
+                  <div className="grid grid-cols-4 sm:flex sm:flex-wrap gap-2.5 sm:gap-3">
                     {availableSizes.map((size) => {
                       const isSelected = selectedSize === size;
                       return (
                         <button
                           key={size}
                           onClick={() => setSelectedSize(size)}
-                          className={`min-w-[64px] h-8 border text-sm font-medium rounded-2xl transition-all duration-200 flex items-center justify-center active:scale-95 shadow-sm ${
+                          className={`w-full sm:w-auto sm:min-w-[64px] h-9 sm:h-8 border text-xs sm:text-sm font-medium rounded-xl sm:rounded-2xl transition-all duration-200 flex items-center justify-center active:scale-95 shadow-sm ${
                             isSelected ? 'bg-black border-black text-white' : 'bg-white border-[#321327]/10 text-[#321327] hover:border-[#840d5c]/40'
                           }`}
                         >

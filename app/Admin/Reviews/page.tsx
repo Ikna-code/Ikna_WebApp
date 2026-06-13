@@ -1,10 +1,12 @@
 import { PrismaClient, Role } from '@prisma/client';
 import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
 import { AlertTriangle, CheckCircle2, MessageSquareWarning, Star, Users } from 'lucide-react';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
 const prisma = new PrismaClient();
+const REVIEWS_PER_PAGE = 8;
 
 const seriousKeywords = [
   'broken',
@@ -66,7 +68,12 @@ async function getAdminContext() {
   return { allowed: true as const, email: dbUser.email };
 }
 
-export default async function AdminReviewsPage() {
+export default async function AdminReviewsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const resolvedSearchParams = (await searchParams) || {};
   const adminContext = await getAdminContext();
 
   if (!adminContext.allowed) {
@@ -112,11 +119,146 @@ export default async function AdminReviewsPage() {
   const totalReviews = reviews.length;
   const flaggedReviews = reviews.filter((review) => getIssueLabel(review) === 'Needs attention');
   const watchListReviews = reviews.filter((review) => getIssueLabel(review) === 'Watch list');
+  const positiveReviews = reviews.filter((review) => getIssueLabel(review) === 'Positive');
   const verifiedReviews = reviews.filter((review) => review.isVerified).length;
   const averageRating =
     totalReviews > 0
       ? (reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews).toFixed(1)
       : '0.0';
+
+  const rawFilter = Array.isArray(resolvedSearchParams?.filter)
+    ? resolvedSearchParams?.filter[0]
+    : resolvedSearchParams?.filter;
+  const normalizedFilter = String(rawFilter || 'all').toLowerCase();
+  const allowedFilters = new Set(['all', 'needs-attention', 'watch-list', 'positive', 'verified']);
+  const activeFilter = allowedFilters.has(normalizedFilter) ? normalizedFilter : 'all';
+
+  const filteredReviews = reviews.filter((review) => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'verified') return review.isVerified;
+    if (activeFilter === 'needs-attention') return getIssueLabel(review) === 'Needs attention';
+    if (activeFilter === 'watch-list') return getIssueLabel(review) === 'Watch list';
+    if (activeFilter === 'positive') return getIssueLabel(review) === 'Positive';
+    return true;
+  });
+
+  const rawPage = Array.isArray(resolvedSearchParams?.page)
+    ? resolvedSearchParams?.page[0]
+    : resolvedSearchParams?.page;
+  const pageNumber = Number(rawPage || 1);
+  const currentPage = Number.isFinite(pageNumber) ? Math.max(1, Math.floor(pageNumber)) : 1;
+  const totalPages = Math.max(1, Math.ceil(filteredReviews.length / REVIEWS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * REVIEWS_PER_PAGE;
+  const paginatedReviews = filteredReviews.slice(startIndex, startIndex + REVIEWS_PER_PAGE);
+
+  const buildHref = (page: number, filter: string) => {
+    const params = new URLSearchParams();
+    if (filter !== 'all') params.set('filter', filter);
+    if (page > 1) params.set('page', String(page));
+    const query = params.toString();
+    return query ? `/Admin/Reviews?${query}` : '/Admin/Reviews';
+  };
+
+  const filterPills = [
+    {
+      key: 'all',
+      label: 'All',
+      count: totalReviews,
+      activeClass: 'border-slate-700 bg-slate-700 text-white',
+      inactiveClass: 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+    },
+    {
+      key: 'needs-attention',
+      label: 'Needs attention',
+      count: flaggedReviews.length,
+      activeClass: 'border-amber-600 bg-amber-600 text-white',
+      inactiveClass: 'border-amber-200 bg-white text-amber-700 hover:bg-amber-50',
+    },
+    {
+      key: 'watch-list',
+      label: 'Watch list',
+      count: watchListReviews.length,
+      activeClass: 'border-violet-600 bg-violet-600 text-white',
+      inactiveClass: 'border-violet-200 bg-white text-violet-700 hover:bg-violet-50',
+    },
+    {
+      key: 'positive',
+      label: 'Positive',
+      count: positiveReviews.length,
+      activeClass: 'border-emerald-600 bg-emerald-600 text-white',
+      inactiveClass: 'border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50',
+    },
+    {
+      key: 'verified',
+      label: 'Verified',
+      count: verifiedReviews,
+      activeClass: 'border-sky-600 bg-sky-600 text-white',
+      inactiveClass: 'border-sky-200 bg-white text-sky-700 hover:bg-sky-50',
+    },
+  ];
+
+  const mobileFilterCards: Array<{
+    key: string;
+    label: string;
+    count: number;
+    icon: React.ComponentType<{ className?: string }>;
+    activeClass: string;
+    inactiveClass: string;
+    iconShellClass: string;
+    badgeClass: string;
+  }> = [
+    {
+      key: 'all',
+      label: 'All',
+      count: totalReviews,
+      icon: Users,
+      activeClass: 'border-slate-500 bg-slate-100',
+      inactiveClass: 'border-neutral-200 bg-white hover:border-slate-300',
+      iconShellClass: 'bg-slate-100 text-slate-700 border-slate-200',
+      badgeClass: 'bg-slate-700 text-white',
+    },
+    {
+      key: 'needs-attention',
+      label: 'Needs attention',
+      count: flaggedReviews.length,
+      icon: AlertTriangle,
+      activeClass: 'border-amber-500 bg-amber-50',
+      inactiveClass: 'border-neutral-200 bg-white hover:border-amber-300',
+      iconShellClass: 'bg-amber-50 text-amber-700 border-amber-200',
+      badgeClass: 'bg-amber-600 text-white',
+    },
+    {
+      key: 'watch-list',
+      label: 'Watch list',
+      count: watchListReviews.length,
+      icon: MessageSquareWarning,
+      activeClass: 'border-violet-500 bg-violet-50',
+      inactiveClass: 'border-neutral-200 bg-white hover:border-violet-300',
+      iconShellClass: 'bg-violet-50 text-violet-700 border-violet-200',
+      badgeClass: 'bg-violet-600 text-white',
+    },
+    {
+      key: 'positive',
+      label: 'Positive',
+      count: positiveReviews.length,
+      icon: Star,
+      activeClass: 'border-emerald-500 bg-emerald-50',
+      inactiveClass: 'border-neutral-200 bg-white hover:border-emerald-300',
+      iconShellClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      badgeClass: 'bg-emerald-600 text-white',
+    },
+    {
+      key: 'verified',
+      label: 'Verified',
+      count: verifiedReviews,
+      icon: CheckCircle2,
+      activeClass: 'border-sky-500 bg-sky-50',
+      inactiveClass: 'border-neutral-200 bg-white hover:border-sky-300',
+      iconShellClass: 'bg-sky-50 text-sky-700 border-sky-200',
+      badgeClass: 'bg-sky-600 text-white',
+    },
+  ];
 
   return (
     <div className="space-y-6 lg:space-y-8">
@@ -178,22 +320,114 @@ export default async function AdminReviewsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-[#2f1126]">All reviews</h2>
-            <p className="text-xs text-[#8a5f79]">Newest feedback appears first.</p>
+            <p className="text-xs text-[#8a5f79]">Newest feedback appears first. Use filters to narrow the review feed.</p>
           </div>
           <span className="rounded-full border border-[#e8bfd5] bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-[#8a5f79]">
-            {watchListReviews.length} watch list
+            Page {safeCurrentPage} of {totalPages}
           </span>
         </div>
 
-        {reviews.length > 0 ? (
+        <div className="grid grid-cols-5 gap-2 md:hidden">
+          {mobileFilterCards.map((filter) => {
+            const isActive = activeFilter === filter.key;
+            const Icon = filter.icon;
+
+            return (
+              <Link
+                key={filter.key}
+                href={buildHref(1, filter.key)}
+                className={`rounded-2xl border p-2 text-center shadow-sm transition ${
+                  isActive
+                    ? filter.activeClass
+                    : filter.inactiveClass
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <span className={`relative rounded-lg border p-1 ${filter.iconShellClass}`}>
+                    <Icon className="h-3.5 w-3.5" />
+                    <span className={`absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold leading-none ${filter.badgeClass}`}>
+                      {filter.count}
+                    </span>
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="hidden flex-wrap items-center gap-2 md:flex">
+          {filterPills.map((filter) => {
+            const isActive = activeFilter === filter.key;
+            return (
+              <Link
+                key={filter.key}
+                href={buildHref(1, filter.key)}
+                className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] transition-colors ${
+                  isActive
+                    ? filter.activeClass
+                    : filter.inactiveClass
+                }`}
+              >
+                {filter.label} ({filter.count})
+              </Link>
+            );
+          })}
+        </div>
+
+        {paginatedReviews.length > 0 ? (
           <div className="grid gap-4 xl:grid-cols-2">
-            {reviews.map((review) => (
+            {paginatedReviews.map((review) => (
               <ReviewCard key={review.id} review={review} />
             ))}
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-[#e8bfd5] bg-white p-6 text-sm text-[#8a5f79]">
-            No reviews available yet.
+            No reviews found for this filter.
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+            <Link
+              href={buildHref(Math.max(1, safeCurrentPage - 1), activeFilter)}
+              aria-disabled={safeCurrentPage === 1}
+              className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] ${
+                safeCurrentPage === 1
+                  ? 'pointer-events-none border-[#f0dbe6] text-[#cfacc2]'
+                  : 'border-[#e8bfd5] text-[#8a5f79] hover:bg-[#f8eef4]'
+              }`}
+            >
+              Prev
+            </Link>
+
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => {
+              const isActive = page === safeCurrentPage;
+              return (
+                <Link
+                  key={page}
+                  href={buildHref(page, activeFilter)}
+                  className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] ${
+                    isActive
+                      ? 'border-[#2f1126] bg-[#2f1126] text-white'
+                      : 'border-[#e8bfd5] text-[#8a5f79] hover:bg-[#f8eef4]'
+                  }`}
+                >
+                  {page}
+                </Link>
+              );
+            })}
+
+            <Link
+              href={buildHref(Math.min(totalPages, safeCurrentPage + 1), activeFilter)}
+              aria-disabled={safeCurrentPage === totalPages}
+              className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] ${
+                safeCurrentPage === totalPages
+                  ? 'pointer-events-none border-[#f0dbe6] text-[#cfacc2]'
+                  : 'border-[#e8bfd5] text-[#8a5f79] hover:bg-[#f8eef4]'
+              }`}
+            >
+              Next
+            </Link>
           </div>
         )}
       </section>
