@@ -22,29 +22,58 @@ const staticRoutes = [
 
   '/account/address',
   '/account/orders',
-  '/account/payments',
   '/account/settings',
   '/account/wishlist',
 
 ] as const;
 
+const formatRouteLabel = (route: string) => {
+  if (route === '/') return 'home';
+  return route.replace(/^\//, '');
+};
+
 export default async function SiteMapPage() {
-  const dbProductAny = (db as any).product;
-  let productLinks: string[] = [];
+  const dbProductTypeAny = (db as any).productType;
+  let categoryBlocks: Array<{
+    categoryName: string;
+    categoryHref: string;
+    subcategories: Array<{ name: string; href: string }>;
+  }> = [];
 
   try {
-    const products: Array<{ id: string }> = await dbProductAny.findMany({
-      where: {
-        isDeleted: false,
-        isActive: true,
+    const productTypes: Array<{
+      name: string;
+      subcategories?: Array<{ name: string }>;
+    }> = await dbProductTypeAny.findMany({
+      where: { isActive: true },
+      select: {
+        name: true,
+        subcategories: {
+          where: { isActive: true },
+          select: { name: true },
+          orderBy: { displayOrder: 'asc' },
+        },
       },
-      select: { id: true },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { displayOrder: 'asc' },
     });
 
-    productLinks = products.map((product) => `/product/${product.id}`);
+    categoryBlocks = productTypes.map((productType) => {
+      const categoryName = String(productType.name || '').trim();
+      const categoryHref = `/shop/${encodeURIComponent(categoryName)}`;
+      const subcategories = (productType.subcategories || [])
+        .map((subcategory) => {
+          const subcategoryName = String(subcategory.name || '').trim();
+          return {
+            name: subcategoryName,
+            href: `${categoryHref}?search=${encodeURIComponent(subcategoryName)}`,
+          };
+        })
+        .filter((subcategory) => Boolean(subcategory.name));
+
+      return { categoryName, categoryHref, subcategories };
+    }).filter((block) => Boolean(block.categoryName));
   } catch {
-    productLinks = [];
+    categoryBlocks = [];
   }
 
   return (
@@ -54,7 +83,7 @@ export default async function SiteMapPage() {
       <main className="max-w-6xl mx-auto px-6 py-10 sm:py-14">
         <h1 className="text-3xl sm:text-4xl font-serif">SiteMap</h1>
         <p className="mt-2 text-sm sm:text-base text-[#321327]/70">
-          Find all internal pages and product links in one place.
+          Find all internal pages, categories, and subcategories in one place.
         </p>
 
         <section className="mt-8 rounded-2xl border border-[#840d5c]/10 bg-white p-6 sm:p-8 shadow-sm">
@@ -66,12 +95,42 @@ export default async function SiteMapPage() {
                   href={route}
                   className="inline-block rounded-md px-2 py-1 hover:bg-[#faf3f5] hover:text-[#840d5c] transition-colors"
                 >
-                  {route}
+                  {formatRouteLabel(route)}
                 </Link>
               </li>
             ))}
           </ul>
         </section>
+
+        {categoryBlocks.length > 0 && (
+          <section className="mt-6 rounded-2xl border border-[#840d5c]/10 bg-white p-6 sm:p-8 shadow-sm">
+            <h2 className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#840d5c]">Categories</h2>
+            <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {categoryBlocks.map((block) => (
+                <div key={block.categoryName} className="rounded-xl border border-[#840d5c]/10 p-4 bg-[#fffafb]">
+                  <span className="inline-block text-sm font-bold text-[#321327]">
+                    {block.categoryName}
+                  </span>
+
+                  {block.subcategories.length > 0 && (
+                    <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                      {block.subcategories.map((subcategory) => (
+                        <li key={`${block.categoryName}-${subcategory.name}`}>
+                          <Link
+                            href={subcategory.href}
+                            className="inline-block rounded-md px-2 py-1 text-[#321327]/80 hover:bg-[#faf3f5] hover:text-[#840d5c] transition-colors"
+                          >
+                            {subcategory.name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
 
       </main>

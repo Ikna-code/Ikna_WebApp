@@ -6,6 +6,8 @@ import { useRouter, useParams } from 'next/navigation';
 import ReviewModal from './ReviewModal';
 import { getReviews, deleteReview, createReview, updateReview } from '@/backend/actions/review';
 import { useStore } from '@/store/useStore';
+import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
 
 interface Review {
   id: string;
@@ -26,6 +28,7 @@ interface Review {
 
 const ReviewsPage = ({ productId, openComposerSignal = 0 }: { productId: string; openComposerSignal?: number }) => {
   const PRODUCT_ID = productId || '';
+  const isStandalonePage = !productId;
 
   const user = useStore((state) => state.user);
   const userId = user?.id || null;
@@ -145,7 +148,7 @@ const ReviewsPage = ({ productId, openComposerSignal = 0 }: { productId: string;
     return fullName || 'Anonymous';
   };
 
-  return (
+  const content = (
 <div className="bg-[#FAF3F5] min-h-screen">
   <ReviewModal 
     isOpen={isModalOpen} 
@@ -193,7 +196,7 @@ const ReviewsPage = ({ productId, openComposerSignal = 0 }: { productId: string;
             <div key={num} className="flex items-center gap-3 text-[10px] font-bold text-[#321327]/60">
               <span className="w-2">{num}</span>
               <Star size={10} fill="currentColor" />
-              <div className="flex-grow h-1.5 bg-[#FAF3F5] rounded-full overflow-hidden">
+              <div className="grow h-1.5 bg-[#FAF3F5] rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-[#840d5c]" 
                   style={{ width: `${totalReviewCount > 0 ? (ratingCounts[num] / totalReviewCount) * 100 : 0}%` }}
@@ -218,7 +221,7 @@ const ReviewsPage = ({ productId, openComposerSignal = 0 }: { productId: string;
 
     {/* Horizontal Filter Bar */}
     <div className="flex items-center gap-3 mb-8 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 md:mx-0 md:px-0">
-      <div className="flex-shrink-0">
+      <div className="shrink-0">
         <Filter size={16} className="text-[#840d5c]" />
       </div>
       {['All', '5 Star', '4 Star','3 Star', '2 Star', '1 Star'].map((filter) => (
@@ -296,6 +299,18 @@ const ReviewsPage = ({ productId, openComposerSignal = 0 }: { productId: string;
     )}
   </div>
 </div>
+  );
+
+  if (!isStandalonePage) {
+    return content;
+  }
+
+  return (
+    <div className="bg-[#FAF3F5] min-h-screen flex flex-col">
+      <Header />
+      <div className="grow pt-24 md:pt-28 px-4 md:px-8 pb-10">{content}</div>
+      <Footer />
+    </div>
   );
 };
 

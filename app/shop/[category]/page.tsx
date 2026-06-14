@@ -1,16 +1,19 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 
 import ProductGridPage from "@/components/product/ProductGridPage";
 import PerspectiveGallery from "@/utils/threeDBanner";
 import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
 import { useStore } from '@/store/useStore';
 
 export default function CategoryPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const category = decodeURIComponent(params.category as string);
+  const search = searchParams.get('search') || '';
   
   const products = useStore((s) => s.products);
   const isProductsInitialized = useStore((s) => s.isProductsInitialized);
@@ -81,9 +84,10 @@ export default function CategoryPage() {
       <Header />
       <div id="shop-content" className="shop-content-layer">
         <PerspectiveGallery products={sourceProducts}>
-          <ProductGridPage products={sourceProducts} initialCategory={category} searchQuery="" />
+          <ProductGridPage products={sourceProducts} initialCategory={category} searchQuery={search} />
         </PerspectiveGallery>
       </div>
+      <Footer />
     </>
   );
 }
