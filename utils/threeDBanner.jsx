@@ -26,7 +26,8 @@ const PerspectiveGallery = ({ products, children }) => {
     return () => window.removeEventListener('resize', update);
   }, []);
   
-  const HEADER_HEIGHT = "80px"; 
+  const HEADER_HEIGHT_PX = 80;
+  const HEADER_HEIGHT = `${HEADER_HEIGHT_PX}px`;
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -57,7 +58,7 @@ const PerspectiveGallery = ({ products, children }) => {
   const scaleSideNear = useTransform(smoothProgress, [0, cardAnimationEnd], [1, 0.90]);
   const scaleCenter = useTransform(smoothProgress, [0, cardAnimationEnd], [1, isMobile ? 1 : 1.05]);
 
-  const whiteSectionY = useTransform(smoothProgress, [0.7, 1], ["100vh", "0vh"]);
+  const whiteSectionY = useTransform(smoothProgress, [0.7, 1], ["100dvh", "0dvh"]);
 
   return (
     <div 
@@ -65,8 +66,8 @@ const PerspectiveGallery = ({ products, children }) => {
       className="relative h-[400vh] bg-[#321327]"
     >
       <section 
-        style={{ top: HEADER_HEIGHT, height: `calc(100vh - ${HEADER_HEIGHT})` }}
-        className="sticky w-full flex flex-col items-center justify-center overflow-hidden"
+        style={{ top: HEADER_HEIGHT, height: `calc(100dvh - ${HEADER_HEIGHT})` }}
+        className="fixed w-full flex flex-col items-center justify-center overflow-hidden"
       >
         
         {/* Background Ambience */}

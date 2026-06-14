@@ -78,7 +78,7 @@ const Header = () => {
 
   return (
     <>
-      <header className="w-full bg-[#F9F3F5] border-b border-[#840d5c]/10 sticky top-0 z-50">
+      <header className="w-full bg-[#F9F3F5] border-b border-[#840d5c]/10 fixed top-0 z-50">
         <div className="w-full bg-[#321327] py-2.5 px-4 overflow-hidden">
           <div className="h-4 md:h-5 flex items-center justify-center">
             <div
