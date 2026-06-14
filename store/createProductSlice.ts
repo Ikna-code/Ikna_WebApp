@@ -2,10 +2,30 @@ import { StateCreator } from "zustand";
 import { getProductWithImages } from "@/backend/actions/products";
 import { toggleWishlistAction, getWishlist } from "@/backend/actions/order";
 import { createReview, getReviews, deleteReview } from "@/backend/actions/review";
+import { extractIdFromSlug } from "@/lib/seo";
 
 // Deduplicate concurrent detail requests (e.g., React Strict Mode double-invocation)
 const productDetailInFlight = new Map<string, Promise<any>>();
 const FULL_DETAIL_FLAG = "__fullImageCollection";
+const PRODUCT_DETAIL_TIMEOUT_MS = 4000;
+
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error("Product detail request timed out"));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+};
 
 export interface ProductSlice {
   products: any[];
@@ -87,13 +107,14 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
   },
 
   fetchProductDetails: async (productId: string, force = false) => {
-    if (!productId) return null;
+    const resolvedProductId = extractIdFromSlug(productId);
+    if (!resolvedProductId) return null;
 
-    const cached = get().productDetailsById[productId];
+    const cached = get().productDetailsById[resolvedProductId];
     if (cached && !force) return cached;
 
     // If another call is already fetching this product, reuse that promise.
-    const existingRequest = productDetailInFlight.get(productId);
+    const existingRequest = productDetailInFlight.get(resolvedProductId);
     if (existingRequest && !force) {
       return await existingRequest;
     }
@@ -101,13 +122,13 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
     // Reuse only if we explicitly marked this product as fully hydrated.
     if (!force) {
       const fromProducts = get().products.find(
-        (p: any) => p?.id === productId && p?.[FULL_DETAIL_FLAG] === true
+        (p: any) => p?.id === resolvedProductId && p?.[FULL_DETAIL_FLAG] === true
       );
       if (fromProducts) {
         set((state) => ({
           productDetailsById: {
             ...state.productDetailsById,
-            [productId]: fromProducts,
+            [resolvedProductId]: fromProducts,
           },
         }));
         return fromProducts;
@@ -117,7 +138,10 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
     set({ isLoading: true, error: null });
     const request = (async () => {
       try {
-        const data = await getProductWithImages(productId);
+        const data = await withTimeout(
+          getProductWithImages(resolvedProductId),
+          PRODUCT_DETAIL_TIMEOUT_MS
+        );
         if (!data) {
           set({ isLoading: false });
           return null;
@@ -125,7 +149,7 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
 
         set((state) => ({
           products: state.products.map((product: any) =>
-            product?.id === productId
+            product?.id === resolvedProductId
               ? {
                   ...product,
                   ...data,
@@ -139,13 +163,13 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
           ),
           productDetailsById: {
             ...state.productDetailsById,
-            [productId]: {
-              ...state.productDetailsById[productId],
+            [resolvedProductId]: {
+              ...state.productDetailsById[resolvedProductId],
               ...data,
               fabricType:
                 typeof data?.fabricType === "string" && data.fabricType.trim().length > 0
                   ? data.fabricType
-                  : state.productDetailsById[productId]?.fabricType || "cotton",
+                  : state.productDetailsById[resolvedProductId]?.fabricType || "cotton",
               [FULL_DETAIL_FLAG]: true,
             },
           },
@@ -157,11 +181,11 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
         set({ error: e?.message || "Failed to fetch product details", isLoading: false });
         return null;
       } finally {
-        productDetailInFlight.delete(productId);
+        productDetailInFlight.delete(resolvedProductId);
       }
     })();
 
-    productDetailInFlight.set(productId, request);
+    productDetailInFlight.set(resolvedProductId, request);
     return await request;
   },
 

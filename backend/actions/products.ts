@@ -4,6 +4,7 @@
   import { extractCloudinaryPublicId } from '@/src/lib/cloudinary';
   import { ACTIVE_PRODUCT_WHERE, deleteProduct as softDeleteProduct } from '@/backend/services/productDeletion';
   import { serializeDecimal } from "@/backend/lib/serializeDecimal";
+  import { extractIdFromSlug } from '@/lib/seo';
 
   // Use any-cast to work around stale Prisma TS generated types (new isActive/isDeleted columns).
   // The actual schema and DB are in sync — see migration 20260610110000.
@@ -105,9 +106,10 @@
   }
 
   export const getProductWithImages = async (productId: string) => {
+    const resolvedProductId = extractIdFromSlug(productId);
     const row = await dbProductAny.findFirst({
       where: {
-        id: productId,
+        id: resolvedProductId,
         ...ACTIVE_PRODUCT_WHERE,
       },
       include: {
@@ -128,10 +130,10 @@
 
     const productImages = Array.isArray(row.images) ? row.images : [];
     const safeImages = productImages.filter((image: { image_path?: string }) =>
-      isPathInProductFolder(String(image?.image_path || ''), productId)
+      isPathInProductFolder(String(image?.image_path || ''), resolvedProductId)
     );
 
-    const normalizedImage = isPathInProductFolder(String(row.image || ''), productId)
+    const normalizedImage = isPathInProductFolder(String(row.image || ''), resolvedProductId)
       ? row.image
       : safeImages[0]?.image_path || row.image;
 

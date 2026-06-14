@@ -266,7 +266,7 @@ export default function PerfectFitQuiz({ handleClose }) {
           title: product?.name || 'Product',
           imgurl: getOptimizedSupabaseImageUrl(productImage, { width: 320, quality: 70 }),
           price: `₹${Number(product?.price || 0).toLocaleString()}`,
-          href: `/product/${product.id}`,
+          href: `/product/${product.name ? product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + product.id : product.id}`,
         };
       });
 

@@ -14,6 +14,7 @@ import {
   getProductColorLabel,
   getProductSwatchColor,
 } from "@/lib/productVariants";
+import { generateProductSlug } from "@/lib/seo";
 
 // ================= PRODUCT CARD =================
 
@@ -551,7 +552,7 @@ const ProductGrid = () => {
                     key={group.categoryKey}
                     onClick={() =>
                       router.push(
-                        `/product/${activeVariant.id}`,
+                        `/product/${generateProductSlug(activeVariant)}`,
                         { scroll: true }
                       )
                     }

@@ -43,7 +43,7 @@ const DashboardView = ({
               Status: {dbUser.orders[0].status} • {new Date(dbUser.orders[0].createdAt).toLocaleDateString()}
             </p>
           </div>
-          <Link href={`/account/orders/${dbUser.orders[0].id}`} className="text-[10px] font-bold text-[#840d5c] underline underline-offset-4 tracking-[0.1em]">
+          <Link href={`/account/orders`} className="text-[10px] font-bold text-[#840d5c] underline underline-offset-4 tracking-[0.1em]">
             VIEW DETAILS
           </Link>
         </div>

@@ -1,8 +1,26 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import { buildCanonical } from '@/lib/seo';
+
+export const metadata: Metadata = {
+  title: 'About IKNA | Comfort-First Lingerie Brand from India',
+  description:
+    'Learn about IKNA — a comfort-first lingerie brand built on the belief that luxury is a feeling, not a price. Premium bras and lingerie designed for every woman.',
+  keywords: ['about IKNA', 'IKNA brand story', 'comfort bras India', 'premium lingerie India'],
+  alternates: { canonical: buildCanonical('/about-us') },
+  openGraph: {
+    title: 'About IKNA | Comfort-First Lingerie Brand',
+    description: 'The story behind IKNA — skin-friendly, luxurious lingerie crafted for every woman.',
+    url: buildCanonical('/about-us'),
+    siteName: 'IKNA',
+    type: 'website',
+    images: [{ url: '/images/AI_images/logo1_ikna.png', alt: 'IKNA Logo' }],
+  },
+};
 export default function AboutUs() {
   // Metallic Gold Gradient Utility Class
   const goldText = "bg-gradient-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] bg-clip-text text-transparent font-bold";

@@ -4,6 +4,8 @@ import "./globals.css";
 import Script from "next/script";
 import AppInitializer from "@/components/utility/AppInitializer";
 import { Toaster } from "sonner";
+import JsonLd from "@/components/seo/JsonLd";
+import { getOrganizationJsonLd } from "@/lib/seo";
 
 const GA4_ID = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID;
 
@@ -128,6 +130,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <AppInitializer />
+        <JsonLd data={getOrganizationJsonLd()} />
         {children}
         <Toaster position="top-right" richColors closeButton />
         {GA4_ID && (

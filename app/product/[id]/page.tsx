@@ -1,8 +1,33 @@
 "use client";
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Header from '@/components/layout/Header';
+import { extractIdFromSlug as extractProductIdFromSlug } from '@/lib/seo';
+import {
+  ShoppingBag,
+  Star,
+  ShieldCheck,
+  Truck,
+  ChevronLeft,
+  ChevronDown,
+  MessageSquare,
+  X,
+  XCircle,
+  Trash2,
+  Gift,
+} from 'lucide-react';
+
+import ReviewSection from '@/app/reviews/page';
+import { getReviews } from '@/backend/actions/review';
+import { useStore } from '@/store/useStore';
+import Footer from '@/components/layout/Footer';
+import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
+import Breadcrumb from '@/components/ui/Breadcrumb';
+import {
+  getProductColorLabel,
+  getProductSwatchColor,
+} from '@/lib/productVariants';
 
 function DescriptionAccordion({ description }: { description: string }) {
   const [expanded, setExpanded] = useState(true);
@@ -86,29 +111,6 @@ function HygienePolicyAccordion() {
     </div>
   );
 }
-import {
-  ShoppingBag,
-  Star,
-  ShieldCheck,
-  Truck,
-  ChevronLeft,
-  ChevronDown,
-  MessageSquare,
-  X,
-  XCircle,
-  Trash2,
-  Gift
-} from 'lucide-react';
-
-import ReviewSection from '@/app/reviews/page';
-import { getReviews } from '@/backend/actions/review';
-import { useStore } from '@/store/useStore';
-import Footer from '@/components/layout/Footer';
-import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
-import {
-  getProductColorLabel,
-  getProductSwatchColor,
-} from '@/lib/productVariants';
 
 const getProductSubCategoryKey = (item: any) =>
   String(
@@ -157,6 +159,7 @@ interface ToastState {
 /* ---------------- COMPONENT ---------------- */
 const SingleProductPage = () => {
   const { id } = useParams();
+  const pathname = usePathname();
   const router = useRouter();
 
   const [activeImgIdx, setActiveImgIdx] = useState(0);
@@ -164,6 +167,7 @@ const SingleProductPage = () => {
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false); 
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
+  const [isResolvingProduct, setIsResolvingProduct] = useState(true);
 
   /* ---------------- NOTIFICATION STATE ---------------- */
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -178,6 +182,8 @@ const SingleProductPage = () => {
   const [currentComboVariant, setCurrentComboVariant] = useState<any>(null);
   const [reviewCount, setReviewCount] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
+  const [resolvedProduct, setResolvedProduct] = useState<any>(null);
+  const [hasResolvedProduct, setHasResolvedProduct] = useState(false);
 
   const reviewRef = useRef<HTMLDivElement>(null);
 
@@ -208,22 +214,70 @@ const SingleProductPage = () => {
   const loadProducts = useStore((state) => state.loadProducts);
   const isProductsInitialized = useStore((state) => state.isProductsInitialized);
 
-  const productId = id?.toString() || '';
+  const rawRouteId =
+    id?.toString() ||
+    pathname?.split('/').filter(Boolean).pop() ||
+    '';
+  const productId = extractProductIdFromSlug(rawRouteId);
   const productData = useStore((state) =>
     productId ? state.productDetailsById[productId] : null
   );
+  const productFromCatalog = useMemo(() => {
+    if (!productId) return null;
+    return (
+      products.find((item: any) => String(item?.id || '') === String(productId)) ||
+      null
+    );
+  }, [products, productId]);
 
   /* ---------------- INIT ---------------- */
   useEffect(() => {
     const initPage = async () => {
       try {
-        if (!isProductsInitialized) {
-          await loadProducts();
+        setIsResolvingProduct(true);
+        setHasResolvedProduct(false);
+
+        if (!productId) {
+          setResolvedProduct(null);
+          return;
         }
-        if (!productId || productData) return;
-        await fetchProductDetails(productId);
+
+        const catalogHydrationPromise = isProductsInitialized
+          ? Promise.resolve()
+          : loadProducts();
+
+        if (productData) {
+          setResolvedProduct(productData);
+          setHasResolvedProduct(true);
+          return;
+        }
+
+        if (productFromCatalog) {
+          setResolvedProduct(productFromCatalog);
+          setHasResolvedProduct(true);
+          return;
+        }
+
+        const fetchedProduct = await fetchProductDetails(productId);
+        if (fetchedProduct) {
+          setResolvedProduct(fetchedProduct);
+          setHasResolvedProduct(true);
+          return;
+        }
+
+        await catalogHydrationPromise;
+        const fallbackFromCatalog = useStore
+          .getState()
+          .products.find((item: any) => String(item?.id || '') === String(productId)) || null;
+
+        setResolvedProduct(fallbackFromCatalog);
+        setHasResolvedProduct(true);
       } catch (error) {
         console.error("Initialization error:", error);
+        setResolvedProduct(null);
+        setHasResolvedProduct(true);
+      } finally {
+        setIsResolvingProduct(false);
       }
     };
 
@@ -237,11 +291,45 @@ const SingleProductPage = () => {
   ]);
 
   useEffect(() => {
+    setIsResolvingProduct(true);
+    setHasResolvedProduct(false);
+    setResolvedProduct(null);
     setActiveImgIdx(0);
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'auto' });
     }
   }, [productId]);
+
+  useEffect(() => {
+    if (!productId) return;
+
+    const timer = setTimeout(async () => {
+      if (!isResolvingProduct && hasResolvedProduct) return;
+
+      try {
+        const state = useStore.getState();
+        if (!state.isProductsInitialized) {
+          await state.loadProducts(true);
+        }
+
+        const fallbackProduct =
+          state.productDetailsById[productId] ||
+          state.products.find((item: any) => String(item?.id || '') === String(productId)) ||
+          null;
+
+        setResolvedProduct(fallbackProduct);
+      } catch {
+        setResolvedProduct(null);
+      } finally {
+        setHasResolvedProduct(true);
+        setIsResolvingProduct(false);
+      }
+    }, 4500);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [productId, hasResolvedProduct, isResolvingProduct]);
 
   useEffect(() => {
     if (!productId) return;
@@ -273,22 +361,25 @@ const SingleProductPage = () => {
   }, [productId]);
 
   /* ---------------- PRODUCT ---------------- */
+  const hasImmediateProduct = Boolean(productData || productFromCatalog);
+
   const product = useMemo(() => {
-    if (!productData || !productId) return null;
-    return String(productData.id) === String(productId) ? productData : null;
-  }, [productData, productId]);
+    const candidate = resolvedProduct || productData || productFromCatalog;
+    if (!candidate || !productId) return null;
+    return String(candidate.id) === String(productId) ? candidate : null;
+  }, [productData, productFromCatalog, productId, resolvedProduct]);
 
   useEffect(() => {
+    if (isResolvingProduct) return;
+
+    if (!hasResolvedProduct) return;
+
     if (product && !product.isDeleted && product.isActive) {
       setCurrentComboVariant(product);
       setSelectedVariantId(String(product.id));
       return;
     }
-
-    if (isProductsInitialized && productId) {
-      router.replace('/shop');
-    }
-  }, [product, isProductsInitialized, productId, router]);
+  }, [product, isProductsInitialized, productId, router, isResolvingProduct, hasResolvedProduct]);
 
   const activeVariant = useMemo(() => {
     if (!product) return null;
@@ -573,19 +664,52 @@ const SingleProductPage = () => {
     }
   };
 
+  if ((!hasResolvedProduct || isResolvingProduct) && !hasImmediateProduct) {
+    return (
+      <div className="min-h-screen bg-[#F9F3F5] flex items-center justify-center px-4 text-center">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#840d5c]">Loading Product</p>
+          <p className="mt-3 text-sm text-[#321327]/70">Please wait while we open the product page.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-[#F9F3F5] flex items-center justify-center px-4 text-center">
+        <div className="max-w-md space-y-3">
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#840d5c]">Product Not Found</p>
+          <p className="text-sm text-[#321327]/70">
+            This product link is no longer available.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-[#F9F3F5] min-h-screen flex flex-col">
       <Header />
 
       <main className="flex-grow flex flex-col px-4 md:px-8 pt-24 md:pt-28 pb-12">
         <div className="max-w-[1440px] mx-auto w-full">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#321327]/60 py-3 md:py-4 transition-colors hover:text-[#840d5c]"
-          >
-            <ChevronLeft size={12} />
-            Back to Collection
-          </button>
+          <div className="flex items-center justify-between py-3 md:py-4">
+            <Breadcrumb
+              items={[
+                { label: 'Home', href: '/' },
+                { label: activeVariant?.productType?.name || activeVariant?.category || 'Shop', href: `/shop/${encodeURIComponent(activeVariant?.productType?.name || activeVariant?.category || 'shop')}` },
+                { label: activeVariant?.name || 'Product' },
+              ]}
+            />
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#321327]/60 transition-colors hover:text-[#840d5c]"
+            >
+              <ChevronLeft size={12} />
+              Back
+            </button>
+          </div>
         </div>
 
         <div className="max-w-[1440px] mx-auto w-full space-y-8">
@@ -606,7 +730,7 @@ const SingleProductPage = () => {
                         : 'border-transparent opacity-40 hover:opacity-100'
                     }`}
                   >
-                    <Image src={thumbSrc} alt="thumb" fill sizes="96px" className="object-cover w-full h-full" />
+                    <Image src={thumbSrc} alt={`${activeVariant?.name || 'Product'} – view ${index + 1}`} fill sizes="96px" className="object-cover w-full h-full" />
                   </button>
                 );
               })}
@@ -633,7 +757,7 @@ const SingleProductPage = () => {
                 <Image
                   key={src}
                   src={src}
-                  alt={idx === 0 ? 'Product Main Image' : `Product Image ${idx + 1}`}
+                  alt={idx === 0 ? (activeVariant?.name || 'Product image') : `${activeVariant?.name || 'Product'} – view ${idx + 1}`}
                   fill
                   priority={idx === 0}
                   sizes="500px"

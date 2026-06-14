@@ -12,6 +12,7 @@ import {
   getProductColorLabel,
   getProductSwatchColor,
 } from "@/lib/productVariants";
+import { generateProductSlug } from "@/lib/seo";
 
 interface ProductGridPageProps {
   products: any[];
@@ -663,7 +664,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
                       className="cursor-pointer flex h-full"
                       onClick={() =>
                         router.push(
-                          `/product/${activeVariant.id}`,
+                          `/product/${generateProductSlug(activeVariant)}`,
                           { scroll: true }
                         )
                       }

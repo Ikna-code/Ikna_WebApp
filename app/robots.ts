@@ -1,12 +1,5 @@
 import type { MetadataRoute } from "next";
-
-const rawSiteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  process.env.SITE_URL ||
-  "http://localhost:3000";
-const siteUrl = rawSiteUrl.startsWith("http")
-  ? rawSiteUrl
-  : `https://${rawSiteUrl}`;
+import { SITE_URL } from "@/lib/seo";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -14,10 +7,17 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/Admin", "/account", "/api", "/iknaLoader"],
+        disallow: [
+          "/Admin",
+          "/account",
+          "/api",
+          "/iknaLoader",
+          "/success",
+          "/sitemap",           // HTML sitemap page — Google uses sitemap.xml
+        ],
       },
     ],
-    sitemap: `${siteUrl}/sitemap.xml`,
-    host: siteUrl,
+    sitemap: `${SITE_URL}/sitemap.xml`,
+    host: SITE_URL,
   };
 }
