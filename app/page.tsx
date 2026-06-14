@@ -2,6 +2,7 @@
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ProductHero from '@/components/product/ProductHero';
+import DesktopSticky from '@/components/product/DesktopSticky';
 import ProductSelection from '@/components/product/ProductSelection';
 import VariantSwitcher from '@/components/product/VariantSwitcher';
 import QuizCard from '@/components/utility/QuizCard';
@@ -45,22 +46,24 @@ export default function Home() {
         <ProductGrid />
       </div>
 
-      <main className="flex-grow container mx-auto px-4 pb-5 md:pb-8 lg:pb-12 relative">
+      <main className="flex-grow container mx-auto px-4 pt-6 md:pt-8 lg:pt-10 pb-5 md:pb-8 lg:pb-12 relative">
         
         {/* Main Grid: This is a strict 2-column grid on desktop, 1 on mobile */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-7 md:gap-10 xl:gap-20">
+        <div id="home-main-grid" className="grid grid-cols-1 lg:grid-cols-2 gap-7 md:gap-10 xl:gap-20 lg:items-start">
           
           {/* --- LEFT PANEL (Sticky Image Section) --- */}
-          <div className="lg:sticky lg:top-32 lg:h-fit relative space-y-5 md:space-y-8 z-10">
+          <div className="relative space-y-5 md:space-y-8 z-10 lg:self-start">
                        {/* <ProductSelection /> */}
 
-            <ProductHero />
+            <DesktopSticky boundarySelector="#home-main-grid" topOffset={80}>
+              <ProductHero />
+            </DesktopSticky>
             
             {/* <ProductSelection /> */}
           </div>
 
           {/* --- RIGHT PANEL (Details & Utilities) --- */}
-          <div className="space-y-7 md:space-y-10 lg:space-y-12">
+          <div className="space-y-7 md:space-y-10 lg:space-y-12 lg:self-start">
             
             {/* Main Product Info Section */}
             {/* Added 'relative' and 'overflow-hidden' to clip the ribbon if necessary, and 'p-8' for spacing */}
