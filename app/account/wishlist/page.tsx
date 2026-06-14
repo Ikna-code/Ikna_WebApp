@@ -160,9 +160,7 @@ const WishlistPage = () => {
               <p className="text-xs sm:text-sm opacity-70 leading-relaxed mb-5 sm:mb-6">
                 Based on your wishlist, we think you might also love our upcoming Summer Royale collection. 
               </p>
-              <button className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest border-b-2 border-white pb-1 hover:text-pink-300 hover:border-pink-300 transition-all">
-                Learn More
-              </button>
+
             </div>
           </div>
         </div>

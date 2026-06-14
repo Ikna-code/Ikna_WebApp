@@ -731,57 +731,57 @@ const CartPage = () => {
               </div>
 
               {/* RIGHT: SUMMARY & CHECKOUT MATCHING image_36c8bf.png EXACTLY */}
-              <div className="lg:col-span-2 lg:sticky lg:top-24 space-y-4 w-full">
-                <div className="bg-white border border-[#840d5c]/12 text-[#321327] p-6 rounded-[2.5rem] space-y-6 shadow-xl relative font-sans">
+              <div className="lg:col-span-2 lg:sticky lg:top-24 space-y-3 sm:space-y-4 w-full">
+                <div className="bg-white border border-[#840d5c]/12 text-[#321327] p-4 sm:p-5 md:p-6 rounded-[1.75rem] sm:rounded-[2.5rem] space-y-4 sm:space-y-5 md:space-y-6 shadow-xl relative font-sans">
                   
                   {/* Summary Title */}
                   <div>
                     
-                    <h2 className="text-xl font-bold tracking-wide text-[#321327]">
+                    <h2 className="text-lg sm:text-xl font-bold tracking-wide text-[#321327]">
                       YOUR SUMMARY
                     </h2>
                   </div>
 
                   {/* Payment Method Block Elements Layout Grid */}
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     <p className="text-xs font-bold tracking-wider text-[#321327]/65">
                       PAYMENT METHOD
                     </p>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-2 sm:gap-4">
                       {/* Online Block */}
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('ONLINE')}
-                        className={`flex flex-col items-center justify-center py-4 px-3 rounded-2xl text-center transition-all ${
+                        className={`flex flex-col items-center justify-center py-2.5 sm:py-4 px-2 sm:px-3 rounded-xl sm:rounded-2xl text-center transition-all ${
                           paymentMethod === 'ONLINE'
                             ? 'border-2 border-[#840d5c] bg-[#fff0f8] text-[#7c0a53]'
                             : 'border border-[#840d5c]/20 bg-white text-[#321327]/65 hover:text-[#7c0a53] hover:border-[#840d5c]/40'
                         }`}
                       >
-                        <CreditCard className="w-5 h-5 mb-2" />
-                        <span className="text-xs font-bold tracking-wide">ONLINE</span>
-                        <span className="text-[11px] opacity-80 mt-1">(₹0 Extra)</span>
+                        <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 mb-1.5 sm:mb-2" />
+                        <span className="text-[10px] sm:text-xs font-bold tracking-wide leading-tight">ONLINE</span>
+                        <span className="text-[10px] sm:text-[11px] opacity-80 mt-0.5 sm:mt-1">(₹0 Extra)</span>
                       </button>
 
                       {/* COD Block */}
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('COD')}
-                        className={`flex flex-col items-center justify-center py-4 px-3 rounded-2xl text-center transition-all ${
+                        className={`flex flex-col items-center justify-center py-2.5 sm:py-4 px-2 sm:px-3 rounded-xl sm:rounded-2xl text-center transition-all ${
                           paymentMethod === 'COD'
                             ? 'border-2 border-[#840d5c] bg-[#fff0f8] text-[#7c0a53]'
                             : 'border border-[#840d5c]/20 bg-white text-[#321327]/65 hover:text-[#7c0a53] hover:border-[#840d5c]/40'
                         }`}
                       >
-                        <Truck className="w-5 h-5 mb-2" />
-                        <span className="text-xs font-bold tracking-wide">CASH ON DELIVERY</span>
-                        <span className="text-[11px] opacity-80 mt-1">(₹100 Extra)</span>
+                        <Truck className="w-4 h-4 sm:w-5 sm:h-5 mb-1.5 sm:mb-2" />
+                        <span className="text-[10px] sm:text-xs font-bold tracking-wide leading-tight">CASH ON DELIVERY</span>
+                        <span className="text-[10px] sm:text-[11px] opacity-80 mt-0.5 sm:mt-1">(₹100 Extra)</span>
                       </button>
                     </div>
                   </div>
 
                   {/* Coupon Ticket Block */}
-                  <div className="rounded-2xl border border-[#840d5c]/15 bg-[#fff7fb] p-3 space-y-2">
+                  <div className="rounded-2xl border border-[#840d5c]/15 bg-[#fff7fb] p-2.5 sm:p-3 space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-[#321327]/75">Available Coupons</p>
                       <button
@@ -885,10 +885,10 @@ const CartPage = () => {
                   </div>
 
                   {/* Payable Total Large Card Display Panel */}
-                  <div className="rounded-3xl bg-[#7c0a53] p-5 space-y-4">
+                  <div className="rounded-3xl bg-[#7c0a53] p-4 sm:p-5 space-y-3 sm:space-y-4">
                     <div>
                       <p className="text-sm font-medium text-white/85">Payable Total</p>
-                      <p className="text-5xl font-bold mt-1 tracking-tight text-white">
+                      <p className="text-3xl sm:text-5xl font-bold mt-1 tracking-tight text-white">
                         ₹{checkoutSummary.finalGrandTotal}
                       </p>
                     </div>
@@ -908,7 +908,7 @@ const CartPage = () => {
                   </div>
 
                   {/* Pricing Rows Breakdown Ledger White Card */}
-                  <div className="rounded-[2rem] bg-white text-[#321327] p-5 space-y-4 shadow-sm font-sans">
+                  <div className="rounded-[2rem] bg-white text-[#321327] p-4 sm:p-5 space-y-3 sm:space-y-4 shadow-sm font-sans">
                     <div className="flex justify-between items-center font-bold text-[11px] tracking-wider text-[#321327]/70">
                       <span>ITEMS TOTAL</span>
                       <span className="text-sm font-bold text-[#321327]">₹{checkoutSummary.itemSubtotal}</span>

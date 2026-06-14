@@ -4,14 +4,14 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Header from '@/components/layout/Header';
 
-function DescriptionAccordion({ description, fabricType }: { description: string; fabricType?: string }) {
-  const [expanded, setExpanded] = useState(false);
+function DescriptionAccordion({ description }: { description: string }) {
+  const [expanded, setExpanded] = useState(true);
   return (
     <div className="mt-2">
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
-        className="mt-1.5 flex items-center gap-1 text-[10px] font-extrabold tracking-widest text-[#840d5c] uppercase hover:opacity-70 transition-opacity"
+        className="mt-1.5 flex items-center gap-1 text-xs sm:text-sm font-extrabold tracking-widest text-[#840d5c] uppercase hover:opacity-70 transition-opacity"
       >
         Product Description
         <ChevronDown
@@ -20,17 +20,68 @@ function DescriptionAccordion({ description, fabricType }: { description: string
         />
       </button>
       {expanded && (
-        <>
-          <p className="mt-2 text-sm md:text-base text-[#321327]/85 leading-relaxed font-medium whitespace-pre-wrap">
-            {description}
+        <p className="mt-2 text-sm md:text-base text-[#321327]/85 leading-relaxed font-medium whitespace-pre-wrap">
+          {description}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function FabricTypeAccordion({ fabricType }: { fabricType?: string }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!fabricType) return null;
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
+        className="mt-1.5 flex items-center gap-1 text-xs sm:text-sm font-extrabold tracking-widest text-[#840d5c] uppercase hover:opacity-70 transition-opacity"
+      >
+        Fabric Type
+        <ChevronDown
+          size={12}
+          className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {expanded && (
+        <div className="mt-2">
+          <span className="inline-flex text-[11px] font-bold text-white bg-[#840d5c] px-2.5 py-1 rounded-full capitalize shadow-sm">
+            {fabricType}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HygienePolicyAccordion() {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
+        className="mt-1.5 flex items-center gap-1 text-xs sm:text-sm font-extrabold tracking-widest text-[#840d5c] uppercase hover:opacity-70 transition-opacity"
+      >
+        Reliable Shipping
+        <ChevronDown
+          size={12}
+          className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {expanded && (
+        <div className="mt-2 space-y-2">
+          <p className="text-xs sm:text-sm text-[#321327]/85 leading-relaxed font-medium">
+            Due to hygiene and safety reasons, we do not accept returns or exchanges on intimate apparel.
+            We kindly ask that you review sizing information carefully before placing your order.
           </p>
-          {fabricType && (
-            <div className="mt-3 flex items-center gap-2">
-              <span className="text-[10px] font-black tracking-widest text-[#840d5c] uppercase">Fabric Type</span>
-              <span className="text-[11px] font-bold text-white bg-[#840d5c] px-2.5 py-1 rounded-full capitalize shadow-sm">{fabricType}</span>
-            </div>
-          )}
-        </>
+          <p className="text-xs sm:text-sm text-[#321327]/85 leading-relaxed font-medium">
+            Thank you for your understanding and support in maintaining product hygiene and safety.
+          </p>
+        </div>
       )}
     </div>
   );
@@ -682,10 +733,13 @@ const SingleProductPage = () => {
 
 
                   {/* DESCRIPTION WITH READ MORE */}
-                  <DescriptionAccordion
-                    description={activeVariant?.description || "Crafted with our proprietary seamless technology for a second-skin feel."}
-                    fabricType={(activeVariant as any)?.fabricType}
-                  />
+                  <div className="space-y-1">
+                    <DescriptionAccordion
+                      description={activeVariant?.description || "Crafted with our proprietary seamless technology for a second-skin feel."}
+                    />
+                    <FabricTypeAccordion fabricType={(activeVariant as any)?.fabricType} />
+                    <HygienePolicyAccordion />
+                  </div>
                 </div>
 
                 {/* SIZES */}
@@ -749,6 +803,8 @@ const SingleProductPage = () => {
                     <span className="text-[9px] font-bold uppercase text-[#321327]/60 leading-tight tracking-wider">No <br />Return Policy</span>
                   </div>    
                 </div>
+
+
 
               </div>
             </div>
