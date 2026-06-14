@@ -92,13 +92,16 @@ export const ProductCard = ({
 
     if (normalized === 'new arrival') {
       return `
-        px-2.5
+        px-1.5
+        sm:px-3
         py-0.5
         rounded-full
-        text-[9px]
+        text-[6px]
+        sm:text-[9px]
         font-bold
         uppercase
-        tracking-[0.08em]
+        tracking-[0.06em]
+        sm:tracking-[0.08em]
         text-[#2f1c06]
         shadow-sm
         border
@@ -110,13 +113,16 @@ export const ProductCard = ({
 
     if (normalized === 'few left') {
       return `
-        px-2
+        px-1.5
+        sm:px-3
         py-0.5
         rounded-full
-        text-[9px]
+        text-[6px]
+        sm:text-[9px]
         font-bold
         uppercase
-        tracking-[0.08em]
+        tracking-[0.06em]
+        sm:tracking-[0.08em]
         text-white
         shadow-sm
         border
@@ -128,13 +134,16 @@ export const ProductCard = ({
     }
 
     return `
-      px-2
+      px-1.5
+      sm:px-3
       py-0.5
       rounded-full
-      text-[9px]
+      text-[6px]
+      sm:text-[9px]
       font-bold
       uppercase
-      tracking-[0.08em]
+      tracking-[0.06em]
+      sm:tracking-[0.08em]
       text-white
       shadow-sm
       border
@@ -227,7 +236,8 @@ export const ProductCard = ({
         className="
           relative
           w-full
-          aspect-[3/3.8]
+          aspect-[3/4.8]
+          md:aspect-[3/3.8]
           overflow-hidden
           bg-[#fff7fb]
           shrink-0
@@ -250,7 +260,7 @@ export const ProductCard = ({
           priority
         />
         {productBadges.length > 0 && (
-          <div className="absolute bottom-2 right-2 z-30 flex flex-col items-end gap-1.5 max-w-[80%]">
+          <div className="absolute bottom-2 -right-1 z-30 flex flex-col items-end gap-0.5 sm:gap-1 max-w-[80%]">
             {productBadges.map((badge: string, index: number) => {
               const label = String(badge || '').trim();
               if (!label) return null;

@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { LuFilter, LuX } from "react-icons/lu";
+import { LuFilter, LuSlidersHorizontal, LuX } from "react-icons/lu";
 
 import { ProductCard } from "./ProductGrid";
 import Footer from "@/components/layout/Footer";
@@ -638,7 +638,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
               }}
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#321327]/10 bg-[#faf6f8] px-4 py-3 text-xs font-semibold tracking-[0.12em] text-[#321327] uppercase"
             >
-              <LuFilter className="text-[#840d5c] text-base" aria-hidden="true" />
+              <LuSlidersHorizontal className="text-[#840d5c] text-base" aria-hidden="true" />
               Filters & Sort
             </button>
           </div>

@@ -87,7 +87,6 @@ export default function CategoryPage() {
           <ProductGridPage products={sourceProducts} initialCategory={category} searchQuery={search} />
         </PerspectiveGallery>
       </div>
-      <Footer />
     </>
   );
 }
