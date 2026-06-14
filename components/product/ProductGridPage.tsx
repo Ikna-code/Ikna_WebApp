@@ -184,6 +184,10 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState<boolean>(false);
   const [isDesktopFilterDrawerOpen, setIsDesktopFilterDrawerOpen] = useState<boolean>(false);
   const [isPortalReady, setIsPortalReady] = useState<boolean>(false);
+  const [draftSelectedCategory, setDraftSelectedCategory] = useState<string>("All");
+  const [draftSelectedSubCategory, setDraftSelectedSubCategory] = useState<string>("");
+  const [draftSelectedDynamicFilters, setDraftSelectedDynamicFilters] = useState<Record<string, string>>({});
+  const [draftSortBy, setDraftSortBy] = useState<string>("default");
   const hasUserModifiedFiltersRef = useRef(false);
 
   const router = useRouter();
@@ -538,72 +542,172 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
     }));
   };
 
-  // Reusable inner markup wrapper for clean rendering across drawers
-  const FilterFormControls = ({ isMobile = false }) => (
-    <div className="flex flex-col gap-5">
-      {/* Category Display */}
-      <div className="flex flex-col gap-2">
-        <label className="text-xs font-bold tracking-widest text-[#321327] uppercase">
-          Product Type
-        </label>
-        <div className="bg-[#faf6f8] border border-[#321327]/10 rounded-xl px-3 py-2.5 text-xs text-[#321327]">
-          {selectedCategory === "All" ? "All Categories" : selectedCategory}
-        </div>
-      </div>
+  const applyMobileFilters = () => {
+    hasUserModifiedFiltersRef.current = true;
+    setSelectedCategory(draftSelectedCategory);
+    setSelectedSubCategory(draftSelectedSubCategory);
+    setSelectedDynamicFilters(draftSelectedDynamicFilters);
+    setSortBy(draftSortBy);
+    setIsFilterDrawerOpen(false);
+  };
 
-      {/* Subcategory Filter */}
-      {selectedCategory !== "All" && availableSubCategories.length > 0 && (
+  const applyDesktopFilters = () => {
+    hasUserModifiedFiltersRef.current = true;
+    setSelectedCategory(draftSelectedCategory);
+    setSelectedSubCategory(draftSelectedSubCategory);
+    setSelectedDynamicFilters(draftSelectedDynamicFilters);
+    setSortBy(draftSortBy);
+    setIsDesktopFilterDrawerOpen(false);
+  };
+
+  const openMobileFilterDrawer = () => {
+    setDraftSelectedCategory(selectedCategory);
+    setDraftSelectedSubCategory(selectedSubCategory);
+    setDraftSelectedDynamicFilters(selectedDynamicFilters);
+    setDraftSortBy(sortBy);
+    setIsFilterDrawerOpen(true);
+  };
+
+  const openDesktopFilterDrawer = () => {
+    setDraftSelectedCategory(selectedCategory);
+    setDraftSelectedSubCategory(selectedSubCategory);
+    setDraftSelectedDynamicFilters(selectedDynamicFilters);
+    setDraftSortBy(sortBy);
+    setIsDesktopFilterDrawerOpen(true);
+  };
+
+  // Reusable inner markup wrapper for clean rendering across drawers
+  const FilterFormControls = ({ isMobile = false }) => {
+    const useDraftFilters = isMobile || isDesktopFilterDrawerOpen;
+    const activeSelectedCategory = useDraftFilters ? draftSelectedCategory : selectedCategory;
+    const activeSelectedSubCategory = useDraftFilters ? draftSelectedSubCategory : selectedSubCategory;
+    const activeSelectedDynamicFilters = useDraftFilters ? draftSelectedDynamicFilters : selectedDynamicFilters;
+    const activeSortBy = useDraftFilters ? draftSortBy : sortBy;
+
+    const activeAvailableSubCategories = activeSelectedCategory === "All"
+      ? []
+      : (() => {
+          const categoryMetadata = filterMetadata.find((type: any) =>
+            normalizeText(type.name) === normalizeText(activeSelectedCategory)
+          );
+
+          if (!categoryMetadata || !Array.isArray(categoryMetadata.subCategories)) {
+            return [] as string[];
+          }
+
+          return categoryMetadata.subCategories.map((sub: any) => sub.name).sort();
+        })();
+
+    const activeAvailableDynamicFilterGroups = activeSelectedCategory === "All"
+      ? [] as Array<{
+          id: string;
+          slug: string;
+          name: string;
+          options: Array<{ id: string; label: string }>;
+        }>
+      : (() => {
+          const categoryMetadata = filterMetadata.find((type: any) =>
+            normalizeText(type.name) === normalizeText(activeSelectedCategory)
+          );
+
+          if (!categoryMetadata || !Array.isArray(categoryMetadata.filterGroups)) {
+            return [] as Array<{
+              id: string;
+              slug: string;
+              name: string;
+              options: Array<{ id: string; label: string }>;
+            }>;
+          }
+
+          return categoryMetadata.filterGroups
+            .map((group: any) => ({
+              id: String(group?.id || ''),
+              slug: String(group?.slug || ''),
+              name: String(group?.displayName || group?.name || 'Filter'),
+              options: (Array.isArray(group?.filterOptions) ? group.filterOptions : []).map((option: any) => ({
+                id: String(option?.id || ''),
+                label: String(option?.displayLabel || option?.value || 'Option'),
+              })),
+            }))
+            .filter((group: any) => group.options.length > 0)
+            .sort((a: any, b: any) => a.name.localeCompare(b.name));
+        })();
+
+    const activeSetSelectedSubCategory = useDraftFilters ? setDraftSelectedSubCategory : handleSubCategoryChange;
+    const activeSetDynamicFilter = useDraftFilters
+      ? (slug: string, optionId: string) =>
+          setDraftSelectedDynamicFilters((current) => ({
+            ...current,
+            [slug]: optionId,
+          }))
+      : handleDynamicFilterChange;
+
+    return (
+      <div className="flex flex-col gap-5">
+        {/* Category Display */}
         <div className="flex flex-col gap-2">
           <label className="text-xs font-bold tracking-widest text-[#321327] uppercase">
-            Subcategory
+            Product Type
           </label>
-          <UpwardSelect
-            value={selectedSubCategory}
-            onChange={handleSubCategoryChange}
-            options={[
-              { label: "All Subcategories", value: "" },
-              ...availableSubCategories.map((subCat: any) => ({ label: subCat, value: subCat })),
-            ]}
-          />
+          <div className="bg-[#faf6f8] border border-[#321327]/10 rounded-xl px-3 py-2.5 text-xs text-[#321327]">
+            {activeSelectedCategory === "All" ? "All Categories" : activeSelectedCategory}
+          </div>
         </div>
-      )}
 
-      {/* Dynamic Attributes Filters */}
-      {availableDynamicFilterGroups.map((group: any) => (
-        <div key={group.id} className="flex flex-col gap-2">
+        {/* Subcategory Filter */}
+        {activeSelectedCategory !== "All" && activeAvailableSubCategories.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold tracking-widest text-[#321327] uppercase">
+              Subcategory
+            </label>
+            <UpwardSelect
+              value={activeSelectedSubCategory}
+              onChange={activeSetSelectedSubCategory}
+              options={[
+                { label: "All Subcategories", value: "" },
+                ...activeAvailableSubCategories.map((subCat: any) => ({ label: subCat, value: subCat })),
+              ]}
+            />
+          </div>
+        )}
+
+        {/* Dynamic Attributes Filters */}
+        {activeAvailableDynamicFilterGroups.map((group: any) => (
+          <div key={group.id} className="flex flex-col gap-2">
+            <label className="text-xs font-bold tracking-widest text-[#321327] uppercase">
+              {group.name}
+            </label>
+            <UpwardSelect
+              value={activeSelectedDynamicFilters[group.slug] || ""}
+              onChange={(nextValue) => activeSetDynamicFilter(group.slug, nextValue)}
+              options={[
+                { label: `All ${group.name}s`, value: "" },
+                ...group.options.map((option: any) => ({ label: option.label, value: option.id })),
+              ]}
+            />
+          </div>
+        ))}
+
+        {/* Sort Parameter */}
+        <div className="flex flex-col gap-2">
           <label className="text-xs font-bold tracking-widest text-[#321327] uppercase">
-            {group.name}
+            Sort By
           </label>
           <UpwardSelect
-            value={selectedDynamicFilters[group.slug] || ""}
-            onChange={(nextValue) => handleDynamicFilterChange(group.slug, nextValue)}
+            value={activeSortBy}
+            onChange={useDraftFilters ? setDraftSortBy : setSortBy}
+            openDirection={isMobile ? "up" : "down"}
             options={[
-              { label: `All ${group.name}s`, value: "" },
-              ...group.options.map((option: any) => ({ label: option.label, value: option.id })),
+              { label: "Featured", value: "default" },
+              { label: "Price: Low to High", value: "price-low" },
+              { label: "Price: High to Low", value: "price-high" },
+              { label: "Name: A-Z", value: "name-az" },
             ]}
           />
         </div>
-      ))}
-
-      {/* Sort Parameter */}
-      <div className="flex flex-col gap-2">
-        <label className="text-xs font-bold tracking-widest text-[#321327] uppercase">
-          Sort By
-        </label>
-        <UpwardSelect
-          value={sortBy}
-          onChange={setSortBy}
-          openDirection={isMobile ? "up" : "down"}
-          options={[
-            { label: "Featured", value: "default" },
-            { label: "Price: Low to High", value: "price-low" },
-            { label: "Price: High to Low", value: "price-high" },
-            { label: "Name: A-Z", value: "name-az" },
-          ]}
-        />
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <>
@@ -631,10 +735,10 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
               type="button"
               onClick={() => {
                 if (window.matchMedia("(min-width: 768px)").matches) {
-                  setIsDesktopFilterDrawerOpen(true);
+                  openDesktopFilterDrawer();
                   return;
                 }
-                setIsFilterDrawerOpen(true);
+                openMobileFilterDrawer();
               }}
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#321327]/10 bg-[#faf6f8] px-4 py-3 text-xs font-semibold tracking-[0.12em] text-[#321327] uppercase"
             >
@@ -711,11 +815,17 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
         <>
           {/* MOBILE: BOTTOM SHEET */}
           <div
-            className={`md:hidden fixed inset-0 z-220 transition-opacity duration-300 ${
-              isFilterDrawerOpen ? "bg-black/15 backdrop-blur-sm opacity-100" : "opacity-0 pointer-events-none"
+            className={`md:hidden fixed inset-0 z-220 overflow-hidden transition-opacity duration-300 ${
+              isFilterDrawerOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
             }`}
             onClick={() => setIsFilterDrawerOpen(false)}
           >
+            <div
+              className={`absolute inset-0 bg-black/15 backdrop-blur-sm transition-opacity duration-300 ${
+                isFilterDrawerOpen ? "opacity-100" : "opacity-0"
+              }`}
+              aria-hidden="true"
+            />
             <div
               className={`absolute bottom-0 left-0 right-0 max-h-[88vh] rounded-t-[28px] bg-[#F9F3F5] shadow-2xl transition-transform duration-300 ease-in-out flex flex-col ${
                 isFilterDrawerOpen ? "translate-y-0" : "translate-y-full"
@@ -737,6 +847,15 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
               <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
                 <FilterFormControls isMobile={true} />
               </div>
+              <div className="border-t border-[#840d5c]/10 bg-[#F9F3F5] px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                <button
+                  type="button"
+                  onClick={applyMobileFilters}
+                  className="w-full rounded-xl bg-[#321327] px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white shadow-sm transition-colors hover:bg-[#4a1b3a]"
+                >
+                  Apply
+                </button>
+              </div>
             </div>
           </div>
 
@@ -748,7 +867,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
             onClick={() => setIsDesktopFilterDrawerOpen(false)}
           >
             <div
-              className={`absolute right-0 top-0 h-full w-105 max-w-[92vw] bg-[#F9F3F5] shadow-2xl transition-transform duration-300 ease-in-out ${
+              className={`absolute right-0 top-0 flex h-full w-105 max-w-[92vw] flex-col bg-[#F9F3F5] shadow-2xl transition-transform duration-300 ease-in-out ${
                 isDesktopFilterDrawerOpen ? "translate-x-0" : "translate-x-full"
               }`}
               onClick={(e) => e.stopPropagation()}
@@ -764,8 +883,24 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
                   <LuX size={22} />
                 </button>
               </div>
-              <div className="h-[calc(100%-72px)] overflow-y-auto p-6">
+              <div className="flex-1 min-h-0 overflow-y-auto p-6">
                 <FilterFormControls isMobile={false} />
+              </div>
+              <div className="shrink-0 border-t border-[#840d5c]/10 bg-[#F9F3F5] px-6 py-5 grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setIsDesktopFilterDrawerOpen(false)}
+                  className="rounded-xl border border-[#840d5c] px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-[#840d5c] transition-colors hover:bg-[#840d5c] hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={applyDesktopFilters}
+                  className="rounded-xl bg-[#321327] px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white shadow-sm transition-colors hover:bg-[#4a1b3a]"
+                >
+                  Apply
+                </button>
               </div>
             </div>
           </div>
