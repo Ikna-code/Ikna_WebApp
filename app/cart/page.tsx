@@ -539,7 +539,7 @@ const CartPage = () => {
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <Header />
 
-      <main className="grow px-4 sm:px-6 md:px-8 py-6 md:py-12">
+      <main className="grow px-4 sm:px-6 md:px-8 pt-26 md:pt-30 pb-6 md:pb-12">
         <div className="max-w-6xl mx-auto w-full">
           
           {/* HEADER SECTION */}

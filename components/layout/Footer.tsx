@@ -37,7 +37,7 @@ const Footer = () => {
             <ul className="space-y-2 md:space-y-3 text-xs md:text-sm font-medium">
               <li>
                 <Link
-                  href="/shop"
+                  href="/shop/bras"
                   className="hover:translate-x-1 inline-block transition-all duration-300"
                 >
                   Bras
@@ -116,14 +116,14 @@ const Footer = () => {
 
               {/* Email */}
               <Link
-                href="mailto:iknaenterprises@gmail.com"
+                href="mailto:admin@ikna.com"
                 className="flex items-center gap-2.5 md:gap-3 transition-colors duration-300"
               >
                 <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
                   <FaEnvelope className="text-[#ffffff] text-[16px]" />
                 </div>
                 <span className="text-xs md:text-sm break-all">
-                  iknaenterprises@gmail.com
+                  admin@ikna.com
                 </span>
               </Link>
             </div>

@@ -126,7 +126,7 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
                         {/* Category row — tap to expand subcategories */}
                         <div className="flex items-center justify-between">
                           <Link
-                            href={`/shop?category=${encodeURIComponent(cat.name)}`}
+                            href={`/shop/${encodeURIComponent(cat.name)}`}
                             onClick={handleCloseAll}
                             className="flex-1 text-[10px] font-bold tracking-[0.18em] text-[#321327] hover:text-[#840d5c] uppercase px-2 py-2 rounded-lg hover:bg-[#f2e4ea]"
                           >
@@ -153,7 +153,7 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
                             {cat.subCategories.map((sub) => (
                               <Link
                                 key={sub.id}
-                                href={`/shop?category=${encodeURIComponent(cat.name)}&subcategory=${encodeURIComponent(sub.slug)}`}
+                                href={`/shop/${encodeURIComponent(cat.name)}`}
                                 onClick={handleCloseAll}
                                 className="text-[9px] font-semibold tracking-[0.14em] text-[#321327]/70 hover:text-[#840d5c] uppercase px-2 py-1.5 rounded hover:bg-[#f2e4ea]"
                               >
@@ -195,7 +195,7 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
                   {categoryMeta.map((cat) => (
                     <Link
                       key={cat.name}
-                      href={`/shop?category=${encodeURIComponent(cat.name)}`}
+                      href={`/shop/${encodeURIComponent(cat.name)}`}
                       onClick={handleCloseAll}
                       className="text-[10px] font-bold tracking-[0.18em] text-[#321327] hover:text-[#840d5c] uppercase px-2 py-1.5 rounded-lg hover:bg-[#f9f3f5]"
                     >

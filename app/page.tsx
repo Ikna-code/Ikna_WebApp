@@ -38,13 +38,14 @@ export default function Home() {
     <></>
     <div className="flex flex-col min-h-screen bg-ikna-beige text-ikna-dark bg-white text-black">
       <Header />
-    
-               <Banner />
-                 {/* <OpenBanner /> */}
-      <ProductGrid />
-   
 
-      <main className="flex-grow container mx-auto px-4 py-5 md:py-8 lg:py-12 relative">
+      <div className="pt-24 md:pt-26">
+        <Banner />
+        {/* <OpenBanner /> */}
+        <ProductGrid />
+      </div>
+
+      <main className="flex-grow container mx-auto px-4 pb-5 md:pb-8 lg:pb-12 relative">
         
         {/* Main Grid: This is a strict 2-column grid on desktop, 1 on mobile */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-7 md:gap-10 xl:gap-20">

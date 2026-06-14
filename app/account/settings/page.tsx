@@ -131,7 +131,7 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser, onUpdate: () => vo
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="max-w-4xl mx-auto pt-24 md:pt-26 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
       {/* PERSONAL INFORMATION SECTION */}
       <section className="bg-white rounded-3xl border border-[#840d5c]/10 shadow-sm overflow-hidden">

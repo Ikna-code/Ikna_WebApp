@@ -8,7 +8,7 @@ export default function AboutUs() {
   const goldText = "bg-gradient-to-r from-[#BF953F] via-[#FCF6BA] to-[#B38728] bg-clip-text text-transparent font-bold";
 
   return (
-    <div className="min-h-screen bg-white text-gray-800 font-sans antialiased">
+    <div className="min-h-screen bg-white text-gray-800 font-sans antialiased pt-24 md:pt-26">
       <Header/>
       <section>
         <Image

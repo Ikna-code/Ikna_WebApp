@@ -577,7 +577,7 @@ const SingleProductPage = () => {
     <div className="bg-[#F9F3F5] min-h-screen flex flex-col">
       <Header />
 
-      <main className="flex-grow flex flex-col px-4 md:px-8 pb-12">
+      <main className="flex-grow flex flex-col px-4 md:px-8 pt-24 md:pt-28 pb-12">
         <div className="max-w-[1440px] mx-auto w-full">
           <button
             onClick={() => router.back()}
