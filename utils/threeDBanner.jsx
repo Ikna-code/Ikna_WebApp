@@ -42,10 +42,11 @@ const PerspectiveGallery = ({ products, children }) => {
 
   const cardAnimationEnd = 0.7;
   
-  // PERCENTAGE-BASED RELATIVE TRACKING: Ensures flawless 1% overlap bounds across all screen widths
-  // Near cards move out by 74% of their width. Far cards move out by 148%.
-  const spreadNearPercent = useTransform(smoothProgress, [0, cardAnimationEnd], [0, 74]);
-  const spreadFarPercent = useTransform(smoothProgress, [0, cardAnimationEnd], [0, 148]);
+  // Keep mobile composition intact, but fan cards out a bit more on desktop to reduce overlap.
+  const spreadNearTarget = isMobile ? 74 : 92;
+  const spreadFarTarget = isMobile ? 148 : 168;
+  const spreadNearPercent = useTransform(smoothProgress, [0, cardAnimationEnd], [0, spreadNearTarget]);
+  const spreadFarPercent = useTransform(smoothProgress, [0, cardAnimationEnd], [0, spreadFarTarget]);
   
   // Turn numerical progression into clean CSS percentage strings for Framer Motion
   const xLeftFar = useTransform(spreadFarPercent, v => `-${v}%`);
