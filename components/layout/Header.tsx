@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -15,6 +15,7 @@ const Header = () => {
   const [announcementIndex, setAnnouncementIndex] = useState(0);
   const [announcementVisible, setAnnouncementVisible] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const handledOpenAccountRef = useRef(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -30,6 +31,21 @@ const Header = () => {
 
   useEffect(() => {
     setSearchQuery(searchParams.get('search') || '');
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (searchParams.get('openAccount') !== '1' || handledOpenAccountRef.current) {
+      return;
+    }
+
+    handledOpenAccountRef.current = true;
+    setIsProfileOpen(true);
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('openAccount');
+    const nextQuery = params.toString();
+    const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash || ''}`;
+    window.history.replaceState({}, '', nextUrl);
   }, [searchParams]);
 
   const buildShopUrl = (query: string) => {

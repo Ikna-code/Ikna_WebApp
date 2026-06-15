@@ -135,6 +135,11 @@ const ReviewsPage = ({ productId, openComposerSignal = 0 }: { productId: string;
       return;
     }
 
+    if (!PRODUCT_ID || PRODUCT_ID.trim() === '') {
+      alert('Please navigate to a specific product page to write a review.');
+      return;
+    }
+
     setEditingReview(null);
     setIsModalOpen(true);
   };

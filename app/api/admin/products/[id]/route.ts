@@ -3,6 +3,7 @@ import { Prisma, PrismaClient, Role } from '@prisma/client';
 import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
 import { deleteImage, extractCloudinaryPublicId } from '@/src/lib/cloudinary';
 import { deleteProduct, hardDeleteProduct, restoreProduct } from '@/backend/services/productDeletion';
+import { extractIdFromSlug } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 
@@ -337,7 +338,8 @@ export async function PATCH(
   }
 
   try {
-    const { id } = await params;
+    const { id: rawId } = await params;
+    const id = extractIdFromSlug(rawId);
     const body = await request.json();
 
     if (String(body?.action || '').toLowerCase() === 'restore') {
@@ -585,7 +587,8 @@ export async function DELETE(
   }
 
   try {
-    const { id } = await params;
+    const { id: rawId } = await params;
+    const id = extractIdFromSlug(rawId);
     const mode = request.nextUrl.searchParams.get('mode');
 
     const result = mode === 'hard' ? await hardDeleteProduct(id) : await deleteProduct(id);

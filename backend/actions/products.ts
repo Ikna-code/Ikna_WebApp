@@ -101,7 +101,8 @@
   // 🔴 DELETE
   export async function deleteProduct(id: string) {
     await verifyAdmin();
-    await softDeleteProduct(id);
+    const resolvedProductId = extractIdFromSlug(id);
+    await softDeleteProduct(resolvedProductId);
     revalidatePath("/");
   }
 

@@ -60,7 +60,21 @@ export async function createReview(
   }
 ) {
   try {
+    // Validate productId is not empty
+    if (!data.productId || data.productId.trim() === '') {
+      throw new Error("Product ID is required to create a review.");
+    }
+
     const authenticatedUserId = await requireAuthenticatedUserId();
+
+    // Verify the product exists before creating the review
+    const product = await prisma.product.findUnique({
+      where: { id: data.productId },
+    });
+
+    if (!product) {
+      throw new Error("The product you are trying to review does not exist.");
+    }
 
     const normalizedAuthorName = String(data.authorName || '').trim();
     if (normalizedAuthorName) {

@@ -527,7 +527,7 @@ const CartPage = () => {
         <ShoppingBag className="text-[#840d5c]/20 mb-4" size={64} />
         <h2 className="text-xl sm:text-2xl font-serif text-[#321327] mb-2">Your bag is waiting</h2>
         <p className="text-xs sm:text-sm text-[#321327]/60 mb-6">Please log in to view your cart items.</p>
-        <Link href="/" className="px-8 py-3.5 sm:px-10 sm:py-4 bg-[#840d5c] text-white text-[10px] font-bold uppercase tracking-widest rounded-full">
+        <Link href="/?openAccount=1" className="px-8 py-3.5 sm:px-10 sm:py-4 bg-[#840d5c] text-white text-[10px] font-bold uppercase tracking-widest rounded-full">
           Login to Account
         </Link>
       </div>
@@ -958,30 +958,6 @@ const CartPage = () => {
                   </button>
                 </div>
 
-                {/* Trust Badges Footer Grid matching the base alignment below component */}
-                <div className="grid grid-cols-3 gap-1 pt-4 border-t border-[#7c0a53]/10 text-center text-[#321327]">
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 border-r border-[#7c0a53]/10 px-1">
-                    <Truck className="w-5 h-5 text-[#7c0a53]" />
-                    <div className="text-left">
-                      <p className="text-[9px] font-extrabold uppercase leading-none tracking-tight">FREE SHIPPING</p>
-                      <p className="text-[9px] text-[#321327]/60 leading-tight mt-0.5">On online checkout</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 border-r border-[#7c0a53]/10 px-1">
-                    <ShieldCheck className="w-5 h-5 text-[#7c0a53]" />
-                    <div className="text-left">
-                      <p className="text-[9px] font-extrabold uppercase leading-none tracking-tight">SECURE PAYMENT</p>
-                      <p className="text-[9px] text-[#321327]/60 leading-tight mt-0.5">100% secure checkout</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-1">
-                    <RotateCcw className="w-4 h-4 text-[#7c0a53]" />
-                    <div className="text-left">
-                      <p className="text-[9px] font-extrabold uppercase leading-none tracking-tight">EASY RETURNS</p>
-                      <p className="text-[9px] text-[#321327]/60 leading-tight mt-0.5">7-day return policy</p>
-                    </div>
-                  </div>
-                </div>
               </div>
 
             </div>

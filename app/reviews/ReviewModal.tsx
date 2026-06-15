@@ -108,6 +108,12 @@ const handleSubmit = async (e: React.FormEvent) => {
       return;
     }
 
+    // Validate productId for new reviews
+    if (!reviewData?.id && (!productId || productId.trim() === '')) {
+      setError('Unable to create review: No product specified. Please navigate to a specific product page.');
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
 

@@ -939,7 +939,7 @@ const SingleProductPage = () => {
           </div>
 
           <div ref={reviewRef}>
-            <ReviewSection productId={id?.toString() || ''} openComposerSignal={reviewComposerSignal} />
+            <ReviewSection productId={productId} openComposerSignal={reviewComposerSignal} />
           </div>
         </div>
       </main>
