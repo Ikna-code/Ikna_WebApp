@@ -4,6 +4,7 @@ import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
 import { deleteImage, extractCloudinaryPublicId } from '@/src/lib/cloudinary';
 import { deleteProduct, hardDeleteProduct, restoreProduct } from '@/backend/services/productDeletion';
 import { extractIdFromSlug } from '@/lib/seo';
+import { syncProductInventory } from '@/backend/services/inventory';
 
 export const dynamic = 'force-dynamic';
 
@@ -445,6 +446,19 @@ export async function PATCH(
       updateData.sizes = body.sizes.filter((item: unknown) => typeof item === 'string');
     }
 
+    const inventoryPayload: unknown[] = Array.isArray(body?.inventory) ? body.inventory : [];
+    const requestedInventory = inventoryPayload.length
+      ? inventoryPayload
+          .filter(
+            (item: unknown): item is { size: string; stock: number } =>
+              Boolean(item) && typeof (item as any).size === 'string' && typeof (item as any).stock === 'number'
+          )
+          .map((item) => ({
+            size: item.size,
+            stock: item.stock,
+          }))
+      : null;
+
     const hasScalarUpdates = Object.keys(updateData).length > 0;
     const hasImageUpdates = imagePaths.length > 0 || orderedRemovals.length > 0;
     const hasFilterUpdates = Array.isArray(body?.filterOptionIds);
@@ -508,9 +522,31 @@ export async function PATCH(
     const fabricTypeValue: string | undefined = typeof updateData.fabricType === 'string' ? updateData.fabricType : undefined;
     delete updateData.fabricType;
 
-    const updatedProduct = await prismaAny.product.update({
-      where: { id },
-      data: updateData,
+    const updatedProduct = await prisma.$transaction(async (tx) => {
+      const savedProduct = await (tx as any).product.update({
+        where: { id },
+        data: updateData,
+      });
+
+      const nextSizes = Array.isArray(updateData.sizes)
+        ? updateData.sizes
+        : Array.isArray(existingProduct.sizes)
+          ? existingProduct.sizes
+          : [];
+      const nextFallbackStock = typeof body?.stock === 'number'
+        ? body.stock
+        : Number(existingProduct.stock || 0);
+
+      await syncProductInventory(
+        id,
+        nextSizes,
+        requestedInventory,
+        nextFallbackStock,
+        tx as any,
+        'Admin product update'
+      );
+
+      return savedProduct;
     });
 
     if (fabricTypeValue !== undefined) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma, PrismaClient, Role } from '@prisma/client';
 import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
 import { extractCloudinaryPublicId } from '@/src/lib/cloudinary';
+import { syncProductInventory } from '@/backend/services/inventory';
 
 export const dynamic = 'force-dynamic';
 
@@ -405,109 +406,150 @@ async function syncProductFilters(
 }
 
 export async function GET() {
-  const products = await prisma.product.findMany({
-    include: {
-      productType: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
+  try {
+    const products = await prisma.product.findMany({
+      include: {
+        productType: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        subCategory: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        reviews: {
+          select: { rating: true },
+        },
+        images: {
+          select: {
+            id: true,
+            image_path: true,
+            is_primary: true,
+          },
         },
       },
-      subCategory: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        },
-      },
-      reviews: {
-        select: { rating: true },
-      },
-      images: {
-        select: {
-          id: true,
-          image_path: true,
-          is_primary: true,
-        },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  const productIds = products.map((product) => String(product.id));
-  const fabricRows = productIds.length
-    ? await prisma.$queryRaw<Array<{ id: string; fabricType: string | null }>>`
-        SELECT id, "fabricType" AS "fabricType"
-        FROM "Product"
-        WHERE id IN (${Prisma.join(productIds)})
-      `
-    : [];
-  const fabricById = new Map(
-    fabricRows.map((row) => [String(row.id), String(row.fabricType || 'cotton')])
-  );
-
-  const filterRowsRaw = productIds.length
-    ? await prisma.$queryRaw<Array<{
-        id: string;
-        productId: string;
-        filterOptionId: string;
-        optionId: string;
-        optionValue: string;
-        optionDisplayLabel: string;
-        groupId: string;
-        groupName: string;
-        groupDisplayName: string;
-        groupSlug: string;
-      }>>`
-        SELECT
-          pf.id,
-          pf."productId" AS "productId",
-          pf."filterOptionId" AS "filterOptionId",
-          fo.id AS "optionId",
-          fo.value AS "optionValue",
-          fo."displayLabel" AS "optionDisplayLabel",
-          fg.id AS "groupId",
-          fg.name AS "groupName",
-          fg."displayName" AS "groupDisplayName",
-          fg.slug AS "groupSlug"
-        FROM "product_filters" pf
-        INNER JOIN "filter_options" fo ON fo.id = pf."filterOptionId"
-        INNER JOIN "filter_groups" fg ON fg.id = fo."filterGroupId"
-      `
-    : [];
-
-  const productIdSet = new Set(productIds);
-  const filterRows = filterRowsRaw.filter((row) => productIdSet.has(String(row.productId)));
-
-  const filtersByProduct = new Map<string, any[]>();
-  for (const row of filterRows) {
-    const list = filtersByProduct.get(row.productId) || [];
-    list.push({
-      id: row.id,
-      filterOptionId: row.filterOptionId,
-      filterOption: {
-        id: row.optionId,
-        value: row.optionValue,
-        displayLabel: row.optionDisplayLabel,
-        filterGroup: {
-          id: row.groupId,
-          name: row.groupName,
-          displayName: row.groupDisplayName,
-          slug: row.groupSlug,
-        },
-      },
+      orderBy: { createdAt: 'desc' },
     });
-    filtersByProduct.set(row.productId, list);
-  }
 
-  return NextResponse.json(
-    products.map((product) => ({
-      ...product,
-      fabricType: fabricById.get(String(product.id)) || 'cotton',
-      filters: filtersByProduct.get(String(product.id)) || [],
-    }))
-  );
+    const productIds = products.map((product) => String(product.id));
+    const fabricRows = productIds.length
+      ? await prisma.$queryRaw<Array<{ id: string; fabricType: string | null }>>`
+          SELECT id, "fabricType" AS "fabricType"
+          FROM "Product"
+          WHERE id IN (${Prisma.join(productIds)})
+        `
+      : [];
+    const fabricById = new Map(
+      fabricRows.map((row) => [String(row.id), String(row.fabricType || 'cotton')])
+    );
+
+    const filterRowsRaw = productIds.length
+      ? await prisma.$queryRaw<Array<{
+          id: string;
+          productId: string;
+          filterOptionId: string;
+          optionId: string;
+          optionValue: string;
+          optionDisplayLabel: string;
+          groupId: string;
+          groupName: string;
+          groupDisplayName: string;
+          groupSlug: string;
+        }>>`
+          SELECT
+            pf.id,
+            pf."productId" AS "productId",
+            pf."filterOptionId" AS "filterOptionId",
+            fo.id AS "optionId",
+            fo.value AS "optionValue",
+            fo."displayLabel" AS "optionDisplayLabel",
+            fg.id AS "groupId",
+            fg.name AS "groupName",
+            fg."displayName" AS "groupDisplayName",
+            fg.slug AS "groupSlug"
+          FROM "product_filters" pf
+          INNER JOIN "filter_options" fo ON fo.id = pf."filterOptionId"
+          INNER JOIN "filter_groups" fg ON fg.id = fo."filterGroupId"
+        `
+      : [];
+
+    const inventoryRows = productIds.length
+      ? await prisma
+          .$queryRaw<Array<{
+            id: string;
+            productId: string;
+            size: string;
+            stock: number;
+            reservedStock: number;
+            createdAt: Date;
+            updatedAt: Date;
+          }>>`
+          SELECT
+            id,
+            product_id AS "productId",
+            size,
+            stock,
+            reserved_stock AS "reservedStock",
+            created_at AS "createdAt",
+            updated_at AS "updatedAt"
+          FROM public.product_inventory
+          WHERE product_id IN (${Prisma.join(productIds)})
+          ORDER BY size ASC
+        `
+          .catch(() => [])
+      : [];
+
+    const productIdSet = new Set(productIds);
+    const filterRows = filterRowsRaw.filter((row) => productIdSet.has(String(row.productId)));
+
+    const filtersByProduct = new Map<string, any[]>();
+    for (const row of filterRows) {
+      const list = filtersByProduct.get(row.productId) || [];
+      list.push({
+        id: row.id,
+        filterOptionId: row.filterOptionId,
+        filterOption: {
+          id: row.optionId,
+          value: row.optionValue,
+          displayLabel: row.optionDisplayLabel,
+          filterGroup: {
+            id: row.groupId,
+            name: row.groupName,
+            displayName: row.groupDisplayName,
+            slug: row.groupSlug,
+          },
+        },
+      });
+      filtersByProduct.set(row.productId, list);
+    }
+
+    const inventoryByProduct = new Map<string, any[]>();
+    for (const row of inventoryRows) {
+      const list = inventoryByProduct.get(String(row.productId)) || [];
+      list.push(row);
+      inventoryByProduct.set(String(row.productId), list);
+    }
+
+    return NextResponse.json(
+      products.map((product) => ({
+        ...product,
+        fabricType: fabricById.get(String(product.id)) || 'cotton',
+        filters: filtersByProduct.get(String(product.id)) || [],
+        inventory: inventoryByProduct.get(String(product.id)) || [],
+      }))
+    );
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message || 'Failed to load products' },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -550,6 +592,15 @@ export async function POST(request: NextRequest) {
     const sizes: string[] = Array.isArray(body?.sizes)
       ? body.sizes.filter((item: unknown) => typeof item === 'string' && item.length > 0)
       : [];
+    const inventoryPayload: unknown[] = Array.isArray(body?.inventory) ? body.inventory : [];
+    const requestedInventory = inventoryPayload.length
+      ? inventoryPayload
+          .filter(
+            (item: unknown): item is { size: string; stock: number } =>
+              Boolean(item) && typeof (item as any).size === 'string' && typeof (item as any).stock === 'number'
+          )
+          .map((item) => ({ size: item.size, stock: item.stock }))
+      : null;
 
     const requestedIdRaw = typeof body?.id === 'string' ? body.id.trim() : '';
     const requestedId = isNumericProductId(requestedIdRaw)
@@ -657,6 +708,15 @@ export async function POST(request: NextRequest) {
     if (createError || !product) {
       throw new Error(createError?.message || 'Failed to create product');
     }
+
+    await syncProductInventory(
+      String(product.id),
+      sizes,
+      requestedInventory,
+      Number(createPayload.stock || 0),
+      prisma,
+      'Product creation inventory initialization'
+    );
 
     if (imagePaths.length) {
       try {

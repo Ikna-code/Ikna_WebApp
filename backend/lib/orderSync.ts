@@ -1,6 +1,7 @@
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 
 import { db } from '@/backend/lib/db';
+import { restoreOrderInventory } from '@/backend/services/inventory';
 
 type SyncOrderInput = {
   orderId?: string | null;
@@ -79,6 +80,7 @@ export async function syncOrderState(input: SyncOrderInput) {
   const now = new Date();
   const nextOrderStatus = pickHigherStatus(order.status, input.orderStatus ?? undefined);
   const shouldMarkPaid = input.payment?.status === PaymentStatus.COMPLETED;
+  const shouldRestoreInventory = nextOrderStatus === OrderStatus.CANCELLED && order.status !== OrderStatus.CANCELLED;
 
   const updatedOrder = await db.$transaction(async (tx) => {
     const orderUpdateData: Record<string, unknown> = {
@@ -115,6 +117,10 @@ export async function syncOrderState(input: SyncOrderInput) {
 
     if (input.shipment?.deliveredAt && !order.deliveredAt) {
       orderUpdateData.deliveredAt = input.shipment.deliveredAt;
+    }
+
+    if (shouldRestoreInventory) {
+      await restoreOrderInventory(order.id, tx);
     }
 
     const next = await tx.order.update({

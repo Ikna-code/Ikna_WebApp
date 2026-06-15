@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { OrderStatus, Role } from '@prisma/client';
 import { db } from '@/backend/lib/db';
 import { createServerSupabaseClient } from '@/backend/lib/supabaseServer';
+import { restoreOrderInventory } from '@/backend/services/inventory';
 
 const ALLOWED_STATUSES = new Set<OrderStatus>([
   OrderStatus.PENDING,
@@ -51,21 +52,35 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
   }
 
   try {
-    const updatedOrder = await db.order.update({
-      where: { id: orderId },
-      data: { status: nextStatus },
-      include: {
-        address: true,
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
+    const updatedOrder = await db.$transaction(async (tx) => {
+      const existingOrder = await tx.order.findUnique({
+        where: { id: orderId },
+      });
+
+      if (!existingOrder) {
+        throw new Error('ORDER_NOT_FOUND');
+      }
+
+      if (nextStatus === OrderStatus.CANCELLED && existingOrder.status !== OrderStatus.CANCELLED) {
+        await restoreOrderInventory(orderId, tx);
+      }
+
+      return tx.order.update({
+        where: { id: orderId },
+        data: { status: nextStatus },
+        include: {
+          address: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
           },
+          orderItems: true,
         },
-        orderItems: true,
-      },
+      });
     });
 
     const relationAddress = updatedOrder.address
@@ -85,7 +100,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
       ...updatedOrder,
       address: updatedOrder.shippingAddress || relationAddress || null,
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'ORDER_NOT_FOUND') {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
     return NextResponse.json({ error: 'Order not found' }, { status: 404 });
   }
 }

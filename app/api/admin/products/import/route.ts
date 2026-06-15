@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient, Role, Prisma } from '@prisma/client';
 import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
 import { extractCloudinaryPublicId, uploadImage } from '@/src/lib/cloudinary';
+import { syncProductInventory } from '@/backend/services/inventory';
 import * as XLSX from 'xlsx';
 
 export const dynamic = 'force-dynamic';
 
 const prisma = new PrismaClient();
+const prismaAny = prisma as any;
 const DEFAULT_PRODUCT_IMAGE =
   'https://images.unsplash.com/photo-1567016549366-5f3194bab37b?w=400&auto=format&fit=crop';
 const PRODUCT_IMAGES_PREFIX = 'product_photos';
@@ -307,12 +309,21 @@ export async function POST(request: NextRequest) {
         };
 
         try {
-          const created = await prisma.product.create({
+          const created = await prismaAny.product.create({
             data: {
               id: providedId || undefined,
               ...createData,
             },
           });
+
+          await syncProductInventory(
+            created.id,
+            sizes,
+            null,
+            Math.trunc(stock),
+            prisma,
+            'Import inventory initialization'
+          );
 
           createdProducts.push(created.id);
         } catch (error) {
@@ -325,9 +336,18 @@ export async function POST(request: NextRequest) {
             throw error;
           }
 
-          const created = await prisma.product.create({
+          const created = await prismaAny.product.create({
             data: createData,
           });
+
+          await syncProductInventory(
+            created.id,
+            sizes,
+            null,
+            Math.trunc(stock),
+            prisma,
+            'Import inventory initialization'
+          );
 
           createdProducts.push(created.id);
           errors.push(

@@ -138,10 +138,27 @@
       ? row.image
       : safeImages[0]?.image_path || row.image;
 
+    const inventoryRows = await (db as any)
+      .$queryRawUnsafe(
+        `SELECT id,
+                product_id AS "productId",
+                size,
+                stock,
+                reserved_stock AS "reservedStock",
+                created_at AS "createdAt",
+                updated_at AS "updatedAt"
+         FROM public.product_inventory
+         WHERE product_id = $1
+         ORDER BY size ASC`,
+        resolvedProductId
+      )
+      .catch(() => []);
+
     return sanitizeProduct({
       ...row,
       image: normalizedImage,
       product_images: safeImages,
+      inventory: Array.isArray(inventoryRows) ? inventoryRows : [],
     });
   };
 

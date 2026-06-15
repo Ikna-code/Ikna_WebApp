@@ -107,6 +107,8 @@ model Product {
   orderItems         OrderItem[]
   filters            ProductFilter[]
   images             ProductImage[]
+  inventory          ProductInventory[]
+  inventoryTransactions InventoryTransaction[]
   reviews            Review[]
   wishlistItems      WishlistItem[]
 
@@ -114,6 +116,36 @@ model Product {
   @@index([subCategoryId])
   @@index([isDeleted, isActive])
   @@map("Product")
+}
+
+model ProductInventory {
+  id            String   @id @default(uuid()) @db.Uuid
+  productId     String   @map("product_id")
+  size          String
+  stock         Int      @default(0)
+  reservedStock Int      @default(0) @map("reserved_stock")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, size])
+  @@index([productId])
+  @@map("product_inventory")
+}
+
+model InventoryTransaction {
+  id              String   @id @default(uuid()) @db.Uuid
+  productId       String   @map("product_id")
+  size            String
+  quantity        Int
+  transactionType String   @map("transaction_type")
+  reason          String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, size])
+  @@index([transactionType])
+  @@map("inventory_transactions")
 }
 
 model FilterGroup {

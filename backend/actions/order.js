@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabaseClient';// 🛒 CART ACTIONS
 import { Prisma } from "@prisma/client";
 import { calculateComboDiscounts, validateCouponCode } from "./promotions";
 import { createOrderItemSnapshot } from '@/backend/services/productDeletion';
+import { decreaseInventory, ensureProductInventory, getInventoryForSize, increaseInventory } from '@/backend/services/inventory';
 
 const toPlainData = (value) => JSON.parse(JSON.stringify(value));
 
@@ -48,46 +49,65 @@ export async function addToCart(
   comboBundleId = ""
 ) {
   try {
-    // 1. Verify product exists and check stock
-    const product = await db.product.findUnique({
-      where: { id: productId },
-    });
+    const normalizedSize = String(selectedSize || '').trim();
 
-    if (!product) {
-      return { success: false, error: 'Product not found' };
-    }
+    const cartItem = await db.$transaction(async (tx) => {
+      // 1. Verify product exists and check stock
+      const product = await tx.product.findUnique({
+        where: { id: productId },
+      });
 
-    if (product.isDeleted || !product.isActive) {
-      return { success: false, error: 'Product is no longer available.' };
-    }
+      if (!product) {
+        throw new Error('Product not found');
+      }
 
-    if (product.stock < quantity) {
-      return { success: false, error: 'Insufficient stock' };
-    }
+      if (product.isDeleted || !product.isActive) {
+        throw new Error('Product is no longer available.');
+      }
 
-    // 2. Perform the Upsert
-    const cartItem = await db.cartItem.upsert({
-      where: {
-        userId_productId_selectedSize_comboBundleId: {
+      if (normalizedSize) {
+        await ensureProductInventory(productId, Array.isArray(product.sizes) ? product.sizes : [], Number(product.stock || 0), tx);
+        const inventoryRow = await getInventoryForSize(productId, normalizedSize, tx);
+
+        if (!inventoryRow || Number(inventoryRow.stock) < quantity) {
+          throw new Error('Insufficient stock');
+        }
+
+        await decreaseInventory(
+          productId,
+          normalizedSize,
+          Number(quantity || 0),
+          tx,
+          `Cart reservation for user ${userId}`
+        );
+      } else if (product.stock < quantity) {
+        throw new Error('Insufficient stock');
+      }
+
+      // 2. Perform the Upsert
+      return tx.cartItem.upsert({
+        where: {
+          userId_productId_selectedSize_comboBundleId: {
+            userId,
+            productId,
+            selectedSize,
+            comboBundleId: String(comboBundleId || ""),
+          },
+        },
+        update: {
+          quantity: { increment: quantity },
+          comboEligibleQuantity: { increment: Math.max(0, Number(comboEligibleQuantity) || 0) },
+        },
+        create: {
           userId,
           productId,
           selectedSize,
+          quantity,
+          comboEligibleQuantity: Math.max(0, Number(comboEligibleQuantity) || 0),
           comboBundleId: String(comboBundleId || ""),
+          category, // Store category for potential combo logic
         },
-      },
-      update: {
-        quantity: { increment: quantity },
-        comboEligibleQuantity: { increment: Math.max(0, Number(comboEligibleQuantity) || 0) },
-      },
-      create: {
-        userId,
-        productId,
-        selectedSize,
-        quantity,
-        comboEligibleQuantity: Math.max(0, Number(comboEligibleQuantity) || 0),
-        comboBundleId: String(comboBundleId || ""),
-        category, // Store category for potential combo logic
-      },
+      });
     });
 
     revalidatePath("/cart");
@@ -180,11 +200,19 @@ console.log("Parsed quantity:", qty);
         id,
       },
       select: {
+        id: true,
+        productId: true,
+        selectedSize: true,
+        quantity: true,
         userId: true,
         comboBundleId: true,
         comboEligibleQuantity: true,
       },
     });
+
+    if (!existingItem) {
+      return { success: false, error: "Cart item not found" };
+    }
 
     const normalizedBundleId = String(existingItem?.comboBundleId || '').trim();
     if (normalizedBundleId) {
@@ -213,14 +241,39 @@ console.log("Parsed quantity:", qty);
       qty
     );
 
-    const updatedItem = await db.cartItem.update({
-      where: { 
-        id: id 
-      },
-      data: { 
-        quantity: qty,
-        comboEligibleQuantity: boundedComboEligibleQty,
-      },
+    const updatedItem = await db.$transaction(async (tx) => {
+      const delta = qty - Number(existingItem?.quantity || 0);
+      const normalizedSize = String(existingItem?.selectedSize || '').trim();
+
+      if (normalizedSize && delta !== 0) {
+        if (delta > 0) {
+          await decreaseInventory(
+            String(existingItem.productId),
+            normalizedSize,
+            delta,
+            tx,
+            `Cart quantity increase for user ${existingItem.userId}`
+          );
+        } else {
+          await increaseInventory(
+            String(existingItem.productId),
+            normalizedSize,
+            Math.abs(delta),
+            tx,
+            `Cart quantity decrease for user ${existingItem.userId}`
+          );
+        }
+      }
+
+      return tx.cartItem.update({
+        where: {
+          id: id
+        },
+        data: {
+          quantity: qty,
+          comboEligibleQuantity: boundedComboEligibleQty,
+        },
+      });
     });
 
     revalidatePath("/cart");
@@ -251,8 +304,30 @@ console.log("Parsed quantity:", qty);
  */
 export async function removeFromCart(cartItemId) {
   try {
-    const deleted = await db.cartItem.deleteMany({
-      where: { id: String(cartItemId) },
+    const id = String(cartItemId);
+    const deleted = await db.$transaction(async (tx) => {
+      const existingItem = await tx.cartItem.findUnique({
+        where: { id },
+      });
+
+      if (!existingItem) {
+        return { count: 0 };
+      }
+
+      const normalizedSize = String(existingItem.selectedSize || '').trim();
+      if (normalizedSize) {
+        await increaseInventory(
+          String(existingItem.productId),
+          normalizedSize,
+          Number(existingItem.quantity || 0),
+          tx,
+          `Cart item removed for user ${existingItem.userId}`
+        );
+      }
+
+      return tx.cartItem.deleteMany({
+        where: { id },
+      });
     });
 
     if (!deleted.count) {
@@ -269,8 +344,27 @@ export async function removeFromCart(cartItemId) {
 
 export async function clearCart(userId) {
   try {
-    await db.cartItem.deleteMany({
-      where: { userId: String(userId) },
+    await db.$transaction(async (tx) => {
+      const items = await tx.cartItem.findMany({
+        where: { userId: String(userId) },
+      });
+
+      for (const item of items) {
+        const normalizedSize = String(item.selectedSize || '').trim();
+        if (!normalizedSize) continue;
+
+        await increaseInventory(
+          String(item.productId),
+          normalizedSize,
+          Number(item.quantity || 0),
+          tx,
+          `Cart cleared for user ${userId}`
+        );
+      }
+
+      await tx.cartItem.deleteMany({
+        where: { userId: String(userId) },
+      });
     });
 
     revalidatePath("/cart");
@@ -383,6 +477,13 @@ export async function createOrder(userId, couponCode = null, options = {}) {
           comboOfferId: appliedComboId,
         };
       });
+
+      for (const item of cartItems) {
+        const normalizedSize = String(item.selectedSize || '').trim();
+        if (!normalizedSize) {
+          throw new Error(`Missing size selection for product ${item.productId}`);
+        }
+      }
 
       // 3. Step B: Validate and execute Coupon Deductions
       let appliedCouponId = null;

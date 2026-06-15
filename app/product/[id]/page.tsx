@@ -184,6 +184,7 @@ const SingleProductPage = () => {
   const [averageRating, setAverageRating] = useState(0);
   const [resolvedProduct, setResolvedProduct] = useState<any>(null);
   const [hasResolvedProduct, setHasResolvedProduct] = useState(false);
+  const [liveSizeStockByVariant, setLiveSizeStockByVariant] = useState<Record<string, Record<string, number>>>({});
 
   const reviewRef = useRef<HTMLDivElement>(null);
 
@@ -453,6 +454,40 @@ const SingleProductPage = () => {
     });
   }, [activeVariant]);
 
+  const sizeStockMap = useMemo(() => {
+    const variantKey = String(activeVariant?.id || productId || '').trim();
+    const optimisticOverride = variantKey ? liveSizeStockByVariant[variantKey] : undefined;
+    if (optimisticOverride) {
+      return new Map(Object.entries(optimisticOverride));
+    }
+
+    const inventoryRows = Array.isArray((activeVariant as any)?.inventory)
+      ? (activeVariant as any).inventory
+      : Array.isArray((productData as any)?.inventory)
+        ? (productData as any).inventory
+        : [];
+
+    const map = new Map<string, number>();
+    for (const row of inventoryRows) {
+      const size = String((row as any)?.size || '').trim();
+      if (!size) continue;
+      map.set(size, Number((row as any)?.stock || 0));
+    }
+    return map;
+  }, [activeVariant, productData, productId, liveSizeStockByVariant]);
+
+  const outOfStockSizes = useMemo(() => {
+    if (sizeStockMap.size === 0) return [] as string[];
+    return availableSizes.filter((size) => (sizeStockMap.get(size) || 0) <= 0);
+  }, [availableSizes, sizeStockMap]);
+
+  useEffect(() => {
+    if (!selectedSize) return;
+    if (!sizeStockMap.has(selectedSize)) return;
+    if ((sizeStockMap.get(selectedSize) || 0) > 0) return;
+    setSelectedSize('');
+  }, [selectedSize, sizeStockMap]);
+
   const isComboEligible = useMemo(() => {
     const subCategoryName = getProductSubCategoryName(activeVariant || product);
     return COMBO_ELIGIBLE_SUBCATEGORIES.has(subCategoryName);
@@ -552,6 +587,22 @@ const SingleProductPage = () => {
     }
     await addItemToCart(userId, activeVariant?.id, selectedSize, 1, activeVariant?.category, 0, '');
     if (!useStore.getState().error) {
+      const variantKey = String(activeVariant?.id || '').trim();
+      if (variantKey && selectedSize && sizeStockMap.has(selectedSize)) {
+        setLiveSizeStockByVariant((current) => {
+          const existingForVariant = current[variantKey] || Object.fromEntries(sizeStockMap.entries());
+          const nextStock = Math.max(0, Number(existingForVariant[selectedSize] || 0) - 1);
+
+          return {
+            ...current,
+            [variantKey]: {
+              ...existingForVariant,
+              [selectedSize]: nextStock,
+            },
+          };
+        });
+      }
+
       setToast({ message: "Added to bag!", type: 'success' });
     }
   };
@@ -878,19 +929,38 @@ const SingleProductPage = () => {
                   <div className="grid grid-cols-4 sm:flex sm:flex-wrap gap-2.5 sm:gap-3">
                     {availableSizes.map((size) => {
                       const isSelected = selectedSize === size;
+                      const hasInventorySignal = sizeStockMap.size > 0;
+                      const isOutOfStock = hasInventorySignal && (sizeStockMap.get(size) || 0) <= 0;
                       return (
                         <button
                           key={size}
-                          onClick={() => setSelectedSize(size)}
-                          className={`w-full sm:w-auto sm:min-w-[64px] h-9 sm:h-8 border text-xs sm:text-sm font-medium rounded-xl sm:rounded-2xl transition-all duration-200 flex items-center justify-center active:scale-95 shadow-sm ${
-                            isSelected ? 'bg-black border-black text-white' : 'bg-white border-[#321327]/10 text-[#321327] hover:border-[#840d5c]/40'
+                          type="button"
+                          disabled={isOutOfStock}
+                          onClick={() => {
+                            if (isOutOfStock) return;
+                            setSelectedSize(size);
+                          }}
+                          className={`w-full sm:w-auto sm:min-w-[64px] h-9 sm:h-8 border text-xs sm:text-sm font-medium rounded-xl sm:rounded-2xl transition-all duration-200 flex items-center justify-center shadow-sm ${
+                            isOutOfStock
+                              ? 'bg-neutral-100 border-neutral-200 text-neutral-400 opacity-55 cursor-not-allowed'
+                              : isSelected
+                                ? 'bg-black border-black text-white active:scale-95'
+                                : 'bg-white border-[#321327]/10 text-[#321327] hover:border-[#840d5c]/40 active:scale-95'
                           }`}
+                          aria-disabled={isOutOfStock}
+                          title={isOutOfStock ? `${size} is out of stock` : undefined}
                         >
                           {size}
                         </button>
                       );
                     })}
                   </div>
+
+                  {sizeStockMap.size > 0 && outOfStockSizes.length > 0 && (
+                    <p className="text-[11px] sm:text-xs font-semibold text-neutral-500">
+                      Out of stock sizes: {outOfStockSizes.join(', ')}
+                    </p>
+                  )}
 
                   <div className="flex flex-col gap-2.5 pt-1.5">
                     <button

@@ -71,9 +71,40 @@ export async function GET() {
       (Array.isArray(fabricRows) ? fabricRows : []).map((row: any) => [String(row.id), String(row.fabricType || 'cotton')])
     );
 
+    const inventoryRows = productIds.length
+      ? await (db as any)
+          .$queryRawUnsafe(
+            `SELECT id,
+                    product_id AS "productId",
+                    size,
+                    stock,
+                    reserved_stock AS "reservedStock",
+                    created_at AS "createdAt",
+                    updated_at AS "updatedAt"
+             FROM public.product_inventory
+             WHERE product_id IN (${productIds
+               .map((_: string, index: number) => `$${index + 1}`)
+               .join(',')})
+             ORDER BY size ASC`,
+            ...productIds
+          )
+          .catch(() => [])
+      : [];
+
+    const inventoryByProductId = new Map<string, any[]>();
+    for (const row of Array.isArray(inventoryRows) ? inventoryRows : []) {
+      const key = String((row as any)?.productId || '');
+      if (!key) continue;
+
+      const list = inventoryByProductId.get(key) || [];
+      list.push(row);
+      inventoryByProductId.set(key, list);
+    }
+
     const normalizedProducts = products.map((product: any) => ({
       ...product,
       fabricType: fabricById.get(String(product.id)) || 'cotton',
+      inventory: inventoryByProductId.get(String(product.id)) || [],
     }));
 
     // Serialize Decimal values to numbers for JSON response

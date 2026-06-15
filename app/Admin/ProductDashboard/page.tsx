@@ -16,8 +16,18 @@ import {
 import * as XLSX from 'xlsx';
 import { IMAGE_BASE_URL } from '@/public/constants/constants';
 import { useStore } from '@/store/useStore';
+import { InventoryDraftRow, toInventoryPayload, useInventoryDraft } from './useInventoryDraft';
 
 // --- Interfaces ---
+interface ProductInventoryRow {
+  id: string;
+  size: string;
+  stock: number;
+  reservedStock: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface ProductDetail {
   id: string;
   sku: string;
@@ -43,6 +53,7 @@ interface ProductDetail {
   colorHex: string;
   colorName: string;
   fabricType: string;
+  inventory: ProductInventoryRow[];
 }
 
 interface ProductFilterAssignment {
@@ -84,6 +95,7 @@ interface DbProduct {
   colorHex?: string | null;
   colorName?: string | null;
   fabricType?: string | null;
+  inventory?: ProductInventoryRow[];
 }
 
 interface FilterOptionMeta {
@@ -424,6 +436,28 @@ export default function ProductManagementDashboard() {
   const [newFilterOptionIds, setNewFilterOptionIds] = useState<string[]>([]);
   const [editFilterOptionIds, setEditFilterOptionIds] = useState<string[]>([]);
   const [dbFilterGroups, setDbFilterGroups] = useState<DBFilterGroup[]>([]);
+  const [editInventorySeed, setEditInventorySeed] = useState<InventoryDraftRow[]>([]);
+
+  const {
+    rows: newInventoryRows,
+    totalStock: newInventoryTotal,
+    updateRowStock: updateNewInventoryStock,
+  } = useInventoryDraft({
+    sizesValue: newProductDetail.sizes,
+    totalStockValue: newProductDetail.stock,
+    resetKey: `new:${isAddModalOpen ? 'open' : 'closed'}`,
+  });
+
+  const {
+    rows: editInventoryRows,
+    totalStock: editInventoryTotal,
+    updateRowStock: updateEditInventoryStock,
+  } = useInventoryDraft({
+    sizesValue: editProductDetail.sizes,
+    totalStockValue: editProductDetail.stock,
+    initialRows: editInventorySeed,
+    resetKey: editingProductId,
+  });
 
 
   const addFilterGroupsMemo = useMemo(() => {
@@ -440,6 +474,24 @@ export default function ProductManagementDashboard() {
       (g) => g.productTypeId === editProductDetail.category || g.slug === 'tags'
     );
   }, [dbFilterGroups, editProductDetail.category]);
+
+  useEffect(() => {
+    if (newInventoryRows.length === 0) return;
+
+    setNewProductDetail((current) => {
+      const nextStock = String(newInventoryTotal);
+      return current.stock === nextStock ? current : { ...current, stock: nextStock };
+    });
+  }, [newInventoryRows, newInventoryTotal]);
+
+  useEffect(() => {
+    if (editInventoryRows.length === 0) return;
+
+    setEditProductDetail((current) => {
+      const nextStock = String(editInventoryTotal);
+      return current.stock === nextStock ? current : { ...current, stock: nextStock };
+    });
+  }, [editInventoryRows, editInventoryTotal]);
 
 
   const getFilterGroupsForCategory = useCallback(
@@ -610,7 +662,8 @@ const mappedProducts = products.map((product, index) => {
     filters: Array.isArray(product.filters) ? product.filters : [],
     colorHex: product.colorHex || '#000000',
     colorName: product.colorName || product.tag || 'Unspecified',
-    fabricType: product.fabricType || 'cotton'
+    fabricType: product.fabricType || 'cotton',
+    inventory: Array.isArray(product.inventory) ? product.inventory : [],
   };
 });
       setProductDetails(mappedProducts);
@@ -779,10 +832,31 @@ const mappedProducts = products.map((product, index) => {
   useEffect(() => {
     const fetchFilters = async () => {
       try {
-        const res = await fetch('/api/admin/filters'); // Or your configured filters endpoint
+        const res = await fetch('/api/filters', { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
-          setDbFilterGroups(data);
+          const normalizedGroups = Array.isArray(data)
+            ? data.flatMap((type: any) => {
+                const productTypeId = typeof type?.id === 'string' ? type.id : '';
+                const groups = Array.isArray(type?.filterGroups) ? type.filterGroups : [];
+
+                return groups.map((group: any) => ({
+                  id: String(group?.id || ''),
+                  productTypeId,
+                  name: String(group?.name || ''),
+                  displayName: String(group?.displayName || ''),
+                  slug: String(group?.slug || ''),
+                  filterOptions: Array.isArray(group?.filterOptions)
+                    ? group.filterOptions.map((option: any) => ({
+                        id: String(option?.id || ''),
+                        value: String(option?.value || ''),
+                        displayLabel: String(option?.displayLabel || ''),
+                      }))
+                    : [],
+                }));
+              })
+            : [];
+          setDbFilterGroups(normalizedGroups);
         }
       } catch (err) {
         console.error('Failed to load filter tags:', err);
@@ -984,6 +1058,7 @@ const payload = {
         colorHex: newProductDetail.colorHex.trim() || '#000000',
         colorName: newProductDetail.colorName.trim() || 'Unspecified',
         fabricType: newProductDetail.fabricType.trim() || 'cotton',
+        inventory: toInventoryPayload(newInventoryRows),
         // productTypeId: newProductDetail.productTypeId || 'default_type_id_here'
       };
 
@@ -1047,6 +1122,7 @@ const payload = {
         fabricType: 'cotton',
       });
       setNewFilterOptionIds([]);
+      setEditInventorySeed([]);
       clearAddProductImages();
       setAddPrimaryImagePreviewKey('');
       setIsAddModalOpen(false);
@@ -1287,6 +1363,14 @@ const payload = {
       colorName: (product as any).colorName || 'Black',
       fabricType: (product as any).fabricType || 'cotton',
     });
+    setEditInventorySeed(
+      Array.isArray(product.inventory)
+        ? product.inventory.map((row) => ({
+            size: row.size,
+            stock: String(row.stock),
+          }))
+        : []
+    );
 // Extract existing filter option relationships out of the product if present
     const existingOptionIds = product.filters?.map(f => f.filterOptionId) || [];
     setEditFilterOptionIds(existingOptionIds);
@@ -1421,6 +1505,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
           colorHex: editProductDetail.colorHex.trim() || '#000000',
           colorName: editProductDetail.colorName.trim() || 'Unspecified',
           fabricType: editProductDetail.fabricType.trim() || 'cotton',
+          inventory: toInventoryPayload(editInventoryRows),
         }),
       });
 
@@ -1433,6 +1518,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
       setEditingProductId('');
       setEditingProductSku('');
       setEditExistingImages([]);
+      setEditInventorySeed([]);
       setEditFilterOptionIds([]);
       setRemovedEditImageIds([]);
       setRemovedEditImagePaths([]);
@@ -2482,9 +2568,9 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
               type="button"
               aria-label="Close confirmation modal"
               onClick={closeConfirmModal}
-              className="fixed inset-0 z-[90] bg-neutral-900/50"
+              className="fixed inset-0 z-90 bg-neutral-900/50"
             />
-            <div className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto p-4">
+            <div className="fixed inset-0 z-100 grid place-items-center overflow-y-auto p-4">
               <div className="my-8 w-full max-w-md rounded-3xl border border-neutral-200 bg-white p-6 shadow-2xl">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -2886,6 +2972,40 @@ onClick={() => {
                       className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
                     />
                   </div>
+                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-neutral-500">Inventory</p>
+                        <p className="mt-1 text-[11px] text-neutral-500">
+                          Size-level stock is the source of truth. Aggregate stock stays synced for backward compatibility.
+                        </p>
+                      </div>
+                    </div>
+                    {newInventoryRows.length > 0 ? (
+                      <div className="mt-4 space-y-2">
+                        <div className="grid grid-cols-[1fr_120px] gap-3 px-1 text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">
+                          <span>Size</span>
+                          <span>Stock</span>
+                        </div>
+                        {newInventoryRows.map((row) => (
+                          <div key={row.size} className="grid grid-cols-[1fr_120px] gap-3">
+                            <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-xs font-semibold text-neutral-700">
+                              {row.size}
+                            </div>
+                            <input
+                              type="number"
+                              min="0"
+                              value={row.stock}
+                              onChange={(e) => updateNewInventoryStock(row.size, e.target.value)}
+                              className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-4 text-xs text-neutral-500">Add sizes above to generate inventory rows.</p>
+                    )}
+                  </div>
 {/* Hex Color Picker, Color Name, & Color Preview Block */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                     <div>
@@ -2961,6 +3081,7 @@ onClick={() => {
                         onChange={(e) => setNewProductDetail({ ...newProductDetail, stock: e.target.value })}
                         className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
                       />
+                      <p className="mt-1 text-[10px] text-neutral-400">When sizes are present, this mirrors the sum of size inventory.</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -3260,6 +3381,38 @@ onClick={() => {
                       className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
                     />
                   </div>
+                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.24em] text-neutral-500">Inventory</p>
+                      <p className="mt-1 text-[11px] text-neutral-500">
+                        Update stock per size here. The legacy product stock field remains synced from these rows.
+                      </p>
+                    </div>
+                    {editInventoryRows.length > 0 ? (
+                      <div className="mt-4 space-y-2">
+                        <div className="grid grid-cols-[1fr_120px] gap-3 px-1 text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">
+                          <span>Size</span>
+                          <span>Stock</span>
+                        </div>
+                        {editInventoryRows.map((row) => (
+                          <div key={row.size} className="grid grid-cols-[1fr_120px] gap-3">
+                            <div className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-xs font-semibold text-neutral-700">
+                              {row.size}
+                            </div>
+                            <input
+                              type="number"
+                              min="0"
+                              value={row.stock}
+                              onChange={(e) => updateEditInventoryStock(row.size, e.target.value)}
+                              className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-4 text-xs text-neutral-500">Add sizes above to manage per-size inventory.</p>
+                    )}
+                  </div>
 {/* Hex Color Picker, Color Name, & Color Preview Block (EDIT) */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                     <div>
@@ -3336,6 +3489,7 @@ onClick={() => {
                         onChange={(e) => setEditProductDetail({ ...editProductDetail, stock: e.target.value })}
                         className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
                       />
+                      <p className="mt-1 text-[10px] text-neutral-400">This aggregate remains available for existing screens and APIs.</p>
                     </div>
                   </div>
 
