@@ -1059,7 +1059,7 @@ const CartPage = () => {
               <div className="flex items-end justify-between gap-3 mb-4">
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#840d5c]/65">Recommended</p>
-                  <h5 className="text-lg sm:text-xl font-serif text-[#321327] uppercase ">You may like too</h5>
+                  <h5 className="text-lg sm:text-xl font-serif text-[#321327]">You may like too</h5>
                 </div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#321327]/45">Swipe</p>
               </div>
@@ -1095,7 +1095,7 @@ const CartPage = () => {
                           )}
                         </div>
                         <div className="mt-3 space-y-1">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#321327] line-clamp-2 min-h-[2.1rem]">
+                          <p className="text-[11px] font-bold tracking-[0.12em] text-[#321327] line-clamp-2 min-h-[2.1rem]">
                             {product?.name || 'Product'}
                           </p>
                           <p className="text-sm font-bold text-[#840d5c]">₹{Number(product?.price || 0).toLocaleString()}</p>
