@@ -2,7 +2,8 @@
 "use server"
 import { db } from "@/backend/lib/db";
 import { revalidatePath } from "next/cache";
-import { supabase } from '../lib/supabaseClient';// 🛒 CART ACTIONS
+import { NextResponse } from "next/server";
+import { createServerSupabaseClient, getSupabaseServerClient } from "@/lib/supabase/server";
 import { Prisma } from "@prisma/client";
 import { calculateComboDiscounts, validateCouponCode } from "./promotions";
 import { createOrderItemSnapshot } from '@/backend/services/productDeletion';
@@ -152,6 +153,7 @@ export async function getCartItems(userId) {
 }
 
 export const getCartItemsWithDetails = async (userId) => {
+  const supabase = getSupabaseServerClient();
   const { data, error } = await supabase
     .from('cart_items') // Your @map("cart_items") from Prisma
     .select(`
@@ -737,7 +739,7 @@ export const removeFromWishlist = async (productId, userId) => {
 
 //orderDetails
 export async function getOrderDetails() {
-  const supabase = createClient();
+  const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   console.log("Authenticated user:", user);
 

@@ -642,7 +642,6 @@ const CartPage = () => {
                             <div className="inline-flex items-center gap-1.5 rounded-full bg-[#ffe4f1] px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-[#a3095b] border border-[#ffb6d8]">
                               <Sparkles size={10} /> Combo Bundle Locked
                             </div>
-                            <h3 className="mt-2 text-base sm:text-lg font-serif text-[#321327] leading-tight">Completed Combo Bundle</h3>
                             <p className="text-[10px] font-semibold uppercase tracking-widest text-[#840d5c]/70 mt-1">
                               Quantity is locked. Remove bundle to break this combo.
                             </p>

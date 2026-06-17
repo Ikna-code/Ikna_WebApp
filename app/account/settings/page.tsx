@@ -10,7 +10,7 @@ import {
   LogOut, 
   Trash2 
 } from 'lucide-react';
-import { createClient } from '@/backend/lib/supabaseClient';
+import { supabaseBrowser } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner'; 
 import { updateUserProfile } from '@/backend/actions/user';
@@ -32,7 +32,7 @@ interface DbUser {
 }
 
 const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser, onUpdate: () => void }) => {
-  const supabase = createClient();
+  const supabase = supabaseBrowser;
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const resetStoreState = useStore;

@@ -26,7 +26,20 @@ interface Review {
   };
 }
 
-const ReviewsPage = ({ productId, openComposerSignal = 0 }: { productId: string; openComposerSignal?: number }) => {
+interface ReviewSummary {
+  totalReviews: number;
+  averageRating: number;
+}
+
+const ReviewsPage = ({
+  productId,
+  openComposerSignal = 0,
+  onSummaryChange,
+}: {
+  productId: string;
+  openComposerSignal?: number;
+  onSummaryChange?: (summary: ReviewSummary) => void;
+}) => {
   const PRODUCT_ID = productId || '';
   const isStandalonePage = !productId;
 
@@ -83,13 +96,18 @@ const ReviewsPage = ({ productId, openComposerSignal = 0 }: { productId: string;
       setTotalReviewCount(total);
       setAverageRating(total > 0 ? sum / total : 0);
       setRatingCounts(nextCounts);
+      onSummaryChange?.({
+        totalReviews: total,
+        averageRating: total > 0 ? sum / total : 0,
+      });
     } catch (error) {
       console.error('Failed to fetch review summary from database', error);
       setTotalReviewCount(0);
       setAverageRating(0);
       setRatingCounts({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+      onSummaryChange?.({ totalReviews: 0, averageRating: 0 });
     }
-  }, [PRODUCT_ID]);
+  }, [PRODUCT_ID, onSummaryChange]);
 
   useEffect(() => {
     if (PRODUCT_ID) {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { OrderStatus, Role } from '@prisma/client';
 import { db } from '@/backend/lib/db';
-import { createServerSupabaseClient } from '@/backend/lib/supabaseServer';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { restoreOrderInventory } from '@/backend/services/inventory';
 
 const ALLOWED_STATUSES = new Set<OrderStatus>([

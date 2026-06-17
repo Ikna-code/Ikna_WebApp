@@ -1,7 +1,7 @@
 "use server";
 
 import { PrismaClient } from "@prisma/client";
-import { createServerSupabaseClient } from "@/backend/lib/supabaseServer";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { serializeDecimal } from "@/backend/lib/serializeDecimal";
 
 const prisma = new PrismaClient();

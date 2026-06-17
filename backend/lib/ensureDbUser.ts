@@ -1,6 +1,6 @@
 import { Role } from '@prisma/client';
 import { db } from '@/backend/lib/db';
-import { createServerSupabaseClient } from '@/backend/lib/supabaseServer';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export async function ensureCurrentDbUser() {
   const supabase = await createServerSupabaseClient();

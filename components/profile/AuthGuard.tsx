@@ -1,7 +1,7 @@
 'use client';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
-import { createClient } from '@/backend/lib/supabaseClient';
+import { supabaseBrowser } from '@/lib/supabase/client';
 import { Lock, Mail, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { sendAuthEventNotification } from '@/backend/actions/auth';
@@ -128,7 +128,7 @@ async function sendAuthEmailOnce(email: string, event: 'signup' | 'login') {
 }
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = supabaseBrowser;
   const router = useRouter();
   const [session, setSession] = useState<any>(null);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -187,7 +187,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         }
       }
 
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabaseBrowser.auth.getSession();
 
       if (!session) {
         setSession(null);
@@ -197,9 +197,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
       // Important: getSession can return stale local session data.
       // getUser validates the token with Supabase Auth and returns null/error for deleted users.
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabaseBrowser.auth.getUser();
       if (userError || !user) {
-        await supabase.auth.signOut();
+        await supabaseBrowser.auth.signOut();
         setSession(null);
       } else {
         setSession(session);
@@ -209,29 +209,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
     initializeAuth();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, currentSession: Session | null) => {
-      if (!currentSession) {
-        setSession(null);
-        setIsInitializing(false);
-        return;
-      }
-
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        await supabase.auth.signOut();
-        setSession(null);
-      } else {
-        setSession(currentSession);
-      }
-      setIsInitializing(false);
-
-      if (event === 'SIGNED_IN' && currentSession?.user?.email) {
-        await sendAuthEmailOnce(currentSession.user.email, 'login');
-      }
-    });
-
-    return () => authListener.subscription.unsubscribe();
-  }, [supabase]);
+    return undefined;
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowTs(Date.now()), 1000);
@@ -325,6 +304,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      setSession(data?.session || null);
       await sendAuthEmailOnce(email, 'login');
     } catch (err: any) {
       setAuthError(getFriendlyOtpErrorMessage(err, 'Authentication failed.'));

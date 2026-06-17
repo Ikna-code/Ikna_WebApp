@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Role } from '@prisma/client';
 
 import { db } from '@/backend/lib/db';
-import { createServerSupabaseClient } from '@/backend/lib/supabaseServer';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 type AnalyticsOrder = {
   id: string;

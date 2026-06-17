@@ -1,5 +1,5 @@
 'use server';
-import { createServerSupabaseClient } from "@/backend/lib/supabaseServer";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { db } from "@/backend/lib/db";
 // cookies() is automatically resolved in Next.js, no need to pass it to the function

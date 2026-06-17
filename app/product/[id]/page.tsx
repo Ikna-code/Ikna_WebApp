@@ -571,6 +571,14 @@ const SingleProductPage = () => {
     return Math.round(averageRating);
   }, [averageRating]);
 
+  const handleReviewSummaryChange = React.useCallback(
+    (summary: { totalReviews: number; averageRating: number }) => {
+      setReviewCount(Number(summary?.totalReviews || 0));
+      setAverageRating(Number(summary?.averageRating || 0));
+    },
+    []
+  );
+
   const handleAddToBag = async () => {
     const userId = user?.id;
     if (!userId) {
@@ -1009,7 +1017,11 @@ const SingleProductPage = () => {
           </div>
 
           <div ref={reviewRef}>
-            <ReviewSection productId={productId} openComposerSignal={reviewComposerSignal} />
+            <ReviewSection
+              productId={productId}
+              openComposerSignal={reviewComposerSignal}
+              onSummaryChange={handleReviewSummaryChange}
+            />
           </div>
         </div>
       </main>

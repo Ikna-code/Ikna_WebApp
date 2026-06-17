@@ -1,5 +1,5 @@
 import { StateCreator } from "zustand";
-import { createClient } from "@/backend/lib/supabaseClient";
+import { supabaseBrowser } from "@/lib/supabase/client";
 import { getUser } from "@/backend/actions/user";
 
 export interface AuthSlice {
@@ -22,8 +22,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
     if (get().isAuthInitialized) return;
     set({ isLoading: true, error: null });
     try {
-      const supabase = createClient();
-      const { data: { user }, error } = await supabase.auth.getUser();
+      const { data: { user }, error } = await supabaseBrowser.auth.getUser();
       if (error) {
         set({ error: error.message, isLoading: false, isAuthInitialized: true });
       } else if (!user) {

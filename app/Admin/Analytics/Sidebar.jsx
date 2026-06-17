@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { BarChart3, Box, ClipboardList, Users, LogOut, ChevronDown, Menu, X, MessageSquareWarning } from 'lucide-react';
 import { toast } from 'sonner';
-import { createClient } from '@/backend/lib/supabaseClient';
+import { supabaseBrowser } from '@/lib/supabase/client';
 import { useStore } from '@/store/useStore';
 
 const navItems = [
@@ -100,7 +100,7 @@ function SidebarContent({ adminUser, isSigningOut, onLogout, onNavigate, pathnam
 export default function Sidebar({ adminUser }) {
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = supabaseBrowser;
   const mobileOpen = useStore((state) => state.isAdminMenuOpen);
   const setMobileOpen = useStore((state) => state.setAdminMenuOpen);
   const toggleMobileMenu = useStore((state) => state.toggleAdminMenu);

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useStore } from "@/store/useStore";
-import { createClient } from "@/backend/lib/supabaseClient";
+import { supabaseBrowser } from "@/lib/supabase/client";
 
 /**
  * Bootstraps global data once when the app first loads.
@@ -22,7 +22,6 @@ export default function AppInitializer() {
   const fetchCart = useStore((s) => s.fetchCart);
   const fetchOrders = useStore((s) => s.fetchOrders);
   const fetchAddresses = useStore((s) => s.fetchAddresses);
-  const supabase = useMemo(() => createClient(), []);
   const productRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Step 1: Authenticate the user (runs exactly once on mount)
@@ -33,7 +32,7 @@ export default function AppInitializer() {
   // Step 2: Subscribe to Supabase auth changes so new sessions (OTP, Google, etc.)
   // are reflected in the store without requiring a full page reload.
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event:any) => {
+    const { data: { subscription } } = supabaseBrowser.auth.onAuthStateChange((event:any) => {
       if (event === 'SIGNED_IN') {
         // Re-hydrate store user and user-scoped data after any sign-in.
         forceRefetchUser();
@@ -55,7 +54,7 @@ export default function AppInitializer() {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase, forceRefetchUser]);
+  }, [forceRefetchUser]);
 
   // Step 2: Products are public, so load regardless of auth state.
   useEffect(() => {
@@ -87,7 +86,7 @@ export default function AppInitializer() {
       void fetchOrders(true);
     };
 
-    const channel = supabase
+    const channel = supabaseBrowser
       .channel(`user-commerce-sync-${user.id}`)
       .on(
         "postgres_changes",
@@ -112,9 +111,9 @@ export default function AppInitializer() {
       .subscribe();
 
     return () => {
-      void supabase.removeChannel(channel);
+      void supabaseBrowser.removeChannel(channel);
     };
-  }, [isAuthInitialized, user?.id, fetchCart, fetchOrders, supabase]);
+  }, [isAuthInitialized, user?.id, fetchCart, fetchOrders]);
 
   // Step 4: Keep product catalog in sync when Admin panel changes products/images.
   useEffect(() => {
@@ -130,7 +129,7 @@ export default function AppInitializer() {
       }, 250);
     };
 
-    const channel = supabase
+    const channel = supabaseBrowser
       .channel("products-store-sync")
       .on(
         "postgres_changes",
@@ -157,9 +156,9 @@ export default function AppInitializer() {
         clearTimeout(productRefreshTimerRef.current);
         productRefreshTimerRef.current = null;
       }
-      void supabase.removeChannel(channel);
+      void supabaseBrowser.removeChannel(channel);
     };
-  }, [isAuthInitialized, refreshProducts, supabase]);
+  }, [isAuthInitialized, refreshProducts]);
 
   return null;
 }
