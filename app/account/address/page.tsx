@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import { MapPin, Plus, Trash2, Edit3, X, Loader2, CheckCircle2 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
@@ -21,6 +22,8 @@ const AddressPage = () => {
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [showDefaultToast, setShowDefaultToast] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const user = useStore((state) => state.user);
   const isAuthInitialized = useStore((state) => state.isAuthInitialized);
@@ -28,6 +31,15 @@ const AddressPage = () => {
   const isLoading = useStore((state) => state.isLoading);
   const saveAddress = useStore((state) => state.saveAddress);
   const deleteAddress = useStore((state) => state.deleteAddress);
+
+  const getSafeRedirectPath = (rawPath: string | null) => {
+    if (!rawPath) return null;
+    const trimmedPath = rawPath.trim();
+    if (!trimmedPath.startsWith('/') || trimmedPath.startsWith('//')) {
+      return null;
+    }
+    return trimmedPath;
+  };
 
   // Handle scroll locking when modal opens
   useEffect(() => {
@@ -69,6 +81,13 @@ const AddressPage = () => {
       await saveAddress(user.id, data, addressId);
       setIsFormOpen(false);
       setEditingAddress(null);
+
+      const shouldResumeCheckout = searchParams.get('resumeCheckout') === '1';
+      const redirectPath = getSafeRedirectPath(searchParams.get('redirect'));
+      if (shouldResumeCheckout && redirectPath) {
+        const separator = redirectPath.includes('?') ? '&' : '?';
+        router.push(`${redirectPath}${separator}resumeCheckout=1`);
+      }
     } catch (e) {
       console.error("An unexpected error occurred during submission:", e);
       alert("An unexpected error occurred. Please try again.");

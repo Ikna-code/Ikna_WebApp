@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Script from "next/script";
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Trash2, Plus, Minus, ChevronLeft, ShoppingBag, ArrowRight, ShieldCheck, Loader2, Sparkles, CreditCard, Truck, Gift, CheckCircle2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import Header from '@/components/layout/Header';
@@ -33,6 +34,17 @@ type CheckoutSummary = {
 };
 
 type PaymentMethod = 'ONLINE' | 'COD';
+
+type ShippingAddress = {
+  id: string;
+  name: string;
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
+  isDefault?: boolean;
+};
 
 type RazorpaySuccessResponse = {
   razorpay_order_id: string;
@@ -132,6 +144,9 @@ const CartPage = () => {
   const [showAllMobileItems, setShowAllMobileItems] = useState(false);
   const hasOfferToastHydratedRef = useRef(false);
   const hadComboOfferRef = useRef(false);
+  const hasResumedCheckoutRef = useRef(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   // 2. GLOBAL STORE SELECTORS
   const user = useStore((state) => state.user);
@@ -143,6 +158,12 @@ const CartPage = () => {
   const products = useStore((state) => state.products);
   const loadProducts = useStore((state) => state.loadProducts);
   const isProductsInitialized = useStore((state) => state.isProductsInitialized);
+  const addresses = useStore((state) => state.addresses) as ShippingAddress[];
+  const fetchAddresses = useStore((state) => state.fetchAddresses);
+  const isAddressesInitialized = useStore((state) => state.isAddressesInitialized);
+
+  const selectedShippingAddress =
+    addresses.find((address) => address.isDefault) || addresses[0] || null;
 
   // 5. PAYMENT LOGIC
   const handlePayment = async () => {
@@ -217,6 +238,8 @@ const CartPage = () => {
       const message = err instanceof Error ? err.message : "";
       if (message.toLowerCase().includes("shipping address")) {
         alert("Shipping address not available. Please add an address before checkout.");
+        const redirectTarget = encodeURIComponent('/cart');
+        router.push(`/account/address?redirect=${redirectTarget}&resumeCheckout=1`);
       } else {
         alert(message || "Could not initiate checkout.");
       }
@@ -413,6 +436,38 @@ const CartPage = () => {
       loadProducts();
     }
   }, [isProductsInitialized, loadProducts]);
+
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId || isAddressesInitialized) {
+      return;
+    }
+
+    void fetchAddresses(userId);
+  }, [user?.id, isAddressesInitialized, fetchAddresses]);
+
+  useEffect(() => {
+    const shouldResumeCheckout = searchParams.get('resumeCheckout') === '1';
+    if (!shouldResumeCheckout || hasResumedCheckoutRef.current) {
+      return;
+    }
+
+    if (!isAuthInitialized || !user?.id || cartItems.length === 0 || isProcessing) {
+      return;
+    }
+
+    hasResumedCheckoutRef.current = true;
+    router.replace('/cart');
+    void handlePayment();
+  }, [
+    searchParams,
+    isAuthInitialized,
+    user?.id,
+    cartItems.length,
+    isProcessing,
+    router,
+    handlePayment,
+  ]);
 
   useEffect(() => {
     const userId = user?.id;
@@ -743,6 +798,34 @@ const CartPage = () => {
                   </div>
 
                   {/* Payment Method Block Elements Layout Grid */}
+                  <div className="rounded-2xl border border-[#840d5c]/15 bg-[#fff7fb] p-3 sm:p-4 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-[#321327]/75">Shipping Address</p>
+                      <Link
+                        href="/account/address?redirect=%2Fcart&resumeCheckout=1"
+                        className="rounded-lg border border-[#840d5c]/20 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-[#7c0a53] hover:bg-[#ffe8f4]"
+                      >
+                        {selectedShippingAddress ? 'Change' : 'Add Address'}
+                      </Link>
+                    </div>
+
+                    {selectedShippingAddress ? (
+                      <div className="rounded-xl border border-[#840d5c]/12 bg-white px-3 py-2">
+                        <p className="text-xs font-bold uppercase tracking-wide text-[#7c0a53]">{selectedShippingAddress.name}</p>
+                        <p className="text-[10px] text-[#321327]/80 mt-0.5 leading-relaxed">
+                          {selectedShippingAddress.street}, {selectedShippingAddress.city}, {selectedShippingAddress.state} {selectedShippingAddress.zip}, {selectedShippingAddress.country}
+                        </p>
+                        {selectedShippingAddress.isDefault && (
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-[#7c0a53] mt-1">Default address</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-[#840d5c]/12 bg-white px-3 py-2 text-[10px] uppercase tracking-widest text-[#321327]/65">
+                        No shipping address selected.
+                      </div>
+                    )}
+                  </div>
+
                   <div className="space-y-2 sm:space-y-3">
                     <p className="text-xs font-bold tracking-wider text-[#321327]/65">
                       PAYMENT METHOD
@@ -752,30 +835,38 @@ const CartPage = () => {
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('ONLINE')}
-                        className={`flex flex-col items-center justify-center py-2.5 sm:py-4 px-2 sm:px-3 rounded-xl sm:rounded-2xl text-center transition-all ${
+                        className={`flex flex-row items-center justify-center gap-x-2 sm:gap-x-3 py-2.5 sm:py-4 px-2 sm:px-3 rounded-xl sm:rounded-2xl text-center transition-all ${
                           paymentMethod === 'ONLINE'
                             ? 'border-2 border-[#840d5c] bg-[#fff0f8] text-[#7c0a53]'
                             : 'border border-[#840d5c]/20 bg-white text-[#321327]/65 hover:text-[#7c0a53] hover:border-[#840d5c]/40'
                         }`}
                       >
-                        <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 mb-1.5 sm:mb-2" />
-                        <span className="text-[10px] sm:text-xs font-bold tracking-wide leading-tight">ONLINE</span>
-                        <span className="text-[10px] sm:text-[11px] opacity-80 mt-0.5 sm:mt-1">(₹0 Extra)</span>
+                        <span className="flex items-center justify-center" aria-hidden="true">
+                          <CreditCard className="w-4 h-4 sm:w-5 sm:h-5" />
+                        </span>
+                        <div className="grid grid-rows-2 justify-items-center gap-0.5 sm:gap-1">
+                          <span className="text-[10px] sm:text-xs font-bold tracking-wide leading-tight">ONLINE</span>
+                          <span className="text-[10px] sm:text-[11px] opacity-80 leading-tight">(₹0 Extra)</span>
+                        </div>
                       </button>
 
                       {/* COD Block */}
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('COD')}
-                        className={`flex flex-col items-center justify-center py-2.5 sm:py-4 px-2 sm:px-3 rounded-xl sm:rounded-2xl text-center transition-all ${
+                        className={`flex flex-row items-center justify-center gap-x-2 sm:gap-x-3 py-2.5 sm:py-4 px-2 sm:px-3 rounded-xl sm:rounded-2xl text-center transition-all ${
                           paymentMethod === 'COD'
                             ? 'border-2 border-[#840d5c] bg-[#fff0f8] text-[#7c0a53]'
                             : 'border border-[#840d5c]/20 bg-white text-[#321327]/65 hover:text-[#7c0a53] hover:border-[#840d5c]/40'
                         }`}
                       >
-                        <Truck className="w-4 h-4 sm:w-5 sm:h-5 mb-1.5 sm:mb-2" />
-                        <span className="text-[10px] sm:text-xs font-bold tracking-wide leading-tight">CASH ON DELIVERY</span>
-                        <span className="text-[10px] sm:text-[11px] opacity-80 mt-0.5 sm:mt-1">(₹100 Extra)</span>
+                        <span className="flex items-center justify-center" aria-hidden="true">
+                          <Truck className="w-4 h-4 sm:w-5 sm:h-5" />
+                        </span>
+                        <div className="grid grid-rows-2 justify-items-center gap-0.5 sm:gap-1">
+                          <span className="text-[10px] sm:text-xs font-bold tracking-wide leading-tight">COD</span>
+                          <span className="text-[10px] sm:text-[11px] opacity-80 leading-tight">(₹100 Extra)</span>
+                        </div>
                       </button>
                     </div>
                   </div>

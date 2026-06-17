@@ -9,12 +9,12 @@ import { buildCanonical } from '@/lib/seo';
 export const metadata: Metadata = {
   title: 'About IKNA | Comfort-First Lingerie Brand from India',
   description:
-    'Learn about IKNA — a comfort-first lingerie brand built on the belief that luxury is a feeling, not a price. Premium bras and lingerie designed for every woman.',
+    'Learn about IKNA, a comfort-first lingerie brand built on the belief that luxury is a feeling, not a price. Premium bras and lingerie designed for every woman.',
   keywords: ['about IKNA', 'IKNA brand story', 'comfort bras India', 'premium lingerie India'],
   alternates: { canonical: buildCanonical('/about-us') },
   openGraph: {
     title: 'About IKNA | Comfort-First Lingerie Brand',
-    description: 'The story behind IKNA — skin-friendly, luxurious lingerie crafted for every woman.',
+    description: 'The story behind IKNA, skin-friendly, luxurious lingerie crafted for every woman.',
     url: buildCanonical('/about-us'),
     siteName: 'IKNA',
     type: 'website',
@@ -53,7 +53,7 @@ export default function AboutUs() {
             </span>
           </h1>
           <p className="text-pink-100/80 max-w-lg mx-auto text-sm md:text-base pt-4 border-t border-pink-700/50">
-            The story behind Ikna — and the simple question that started it all.
+            The story behind Ikna, and the simple question that started it all.
           </p>
         </div>
       </section>
@@ -62,7 +62,7 @@ export default function AboutUs() {
       <section className="max-w-4xl mx-auto px-6 py-16 text-center space-y-6">
 
         <h2 className="text-2xl md:text-3xl font-serif text-[#840d5c] max-w-2xl mx-auto leading-relaxed">
-          &ldquo;When we started Ikna, we asked a simple question — why isn't the first thing that touches our skin also the most skin-friendly and luxurious?&rdquo;
+          &ldquo;When we started Ikna, we asked a simple question, why isn't the first thing that touches our skin also the most skin-friendly and luxurious?&rdquo;
         </h2>
         <p className="text-gray-600 max-w-xl mx-auto text-sm md:text-base leading-relaxed italic">
           Lingerie is something we wear every single day, yet most options in the market force a compromise. We saw a clear gap.
@@ -93,7 +93,7 @@ export default function AboutUs() {
                 💎
               </div>
               <h4 className="font-serif font-bold text-gray-900 text-lg">Luxury, redefined</h4>
-              <p className="text-sm text-gray-500 leading-relaxed">Premium craftsmanship and finishing — without the premium tag.</p>
+              <p className="text-sm text-gray-500 leading-relaxed">Premium craftsmanship and finishing, without the premium tag.</p>
             </div>
 
             {/* Card 3 */}
@@ -111,7 +111,7 @@ export default function AboutUs() {
                 ✨
               </div>
               <h4 className="font-serif font-bold text-gray-900 text-lg">Honestly priced</h4>
-              <p className="text-sm text-gray-500 leading-relaxed">Direct-to-you pricing, so you pay for the product — not the markup.</p>
+              <p className="text-sm text-gray-500 leading-relaxed">Direct-to-you pricing, so you pay for the product, not the markup.</p>
             </div>
           </div>
         </div>
@@ -174,7 +174,7 @@ export default function AboutUs() {
           </Link>
         </div>
 
-        <div className="relative h-[500px] w-[480px] rounded-2xl overflow-hidden">
+        <div className="relative h-[500px]  sm:w-[100%] md:w-[70%] lg:w-[70%] rounded-2xl overflow-hidden sm:left-[-68%]  md:left-[50%] lg:left-[28%] shadow-2xl">
           <Image 
             src="/images/About_2.png" 
             alt="Ikna Collection"

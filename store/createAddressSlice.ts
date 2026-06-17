@@ -36,9 +36,15 @@ export const createAddressSlice: StateCreator<AddressSlice> = (set, get) => ({
       const updated = await getAddressesByUserId(userId);
       if (updated.success) {
         set({ addresses: updated.data, isLoading: false, error: null });
+      } else {
+        const message = updated.error || "Failed to refresh addresses.";
+        set({ error: message, isLoading: false });
+        throw new Error(message);
       }
     } else {
-      set({ error: res.error, isLoading: false });
+      const message = res.error || "Failed to save address.";
+      set({ error: message, isLoading: false });
+      throw new Error(message);
     }
   },
 
