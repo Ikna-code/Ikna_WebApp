@@ -9,6 +9,7 @@ export interface AuthSlice {
   error: string | null;
   fetchUser: () => Promise<void>;
   forceRefetchUser: () => Promise<void>;
+  silentRefetchUser: () => Promise<void>;
   clearUser: () => void;
 }
 
@@ -46,10 +47,34 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set, get) => ({
   },
 
   forceRefetchUser: async () => {
-    // Bypasses the isAuthInitialized guard for use after login/OTP.
+    // Full re-initialization for explicit user-initiated sign-ins.
+    // This resets isAuthInitialized so the step-3 effect re-runs and
+    // reloads cart, wishlist, orders and addresses for the new session.
     set({ isAuthInitialized: false });
     const slice = get() as AuthSlice;
     await slice.fetchUser();
+  },
+
+  silentRefetchUser: async () => {
+    // Updates the user profile in-place WITHOUT resetting isAuthInitialized.
+    // Use this for background token refreshes (TOKEN_REFRESHED) so no loading
+    // spinners appear and no data re-fetches are triggered across the app.
+    try {
+      const { data: { user }, error } = await supabaseBrowser.auth.getUser();
+      if (error || !user) return;
+
+      const profileResponse = await getUser().catch(() => null);
+      const dbUser = profileResponse?.ok ? profileResponse.user : null;
+
+      set({
+        user: {
+          ...user,
+          role: dbUser?.role ?? null,
+        },
+      });
+    } catch {
+      // Silently ignore — do not change any loading or initialized state.
+    }
   },
 
   clearUser: () => set({ user: null, isAuthInitialized: false }),

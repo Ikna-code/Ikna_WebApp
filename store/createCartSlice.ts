@@ -38,6 +38,9 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
 
   fetchOrders: async (force = false) => {
     if (!force && get().isOrdersInitialized) return;
+
+    // Don't set isLoading for silent background refreshes — only for the
+    // first load so pages don't flash a spinner on tab-focus re-syncs.
     try {
       const response = await fetch('/api/orders', { cache: 'no-store' });
       if (response.status === 401) {
@@ -72,7 +75,13 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
       return;
     }
 
-    set({ isLoading: true, error: null });
+    // Only show the loading spinner for the initial load, not for silent
+    // background refreshes (force=true from Realtime reconnect events).
+    // This prevents spinners appearing whenever the browser tab regains focus.
+    const isInitialLoad = !get().isCartInitialized;
+    if (isInitialLoad) {
+      set({ isLoading: true, error: null });
+    }
     const res = await getCartItems(userId);
     // Explicitly check for success and items
     if (res?.success && Array.isArray(res.items)) {

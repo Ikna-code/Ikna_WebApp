@@ -9,17 +9,22 @@ datasource db {
 }
 
 model User {
-  id            String         @id
-  email         String         @unique
-  role          Role           @default(USER)
-  firstName     String?        @map("first_name")
-  lastName      String?        @map("last_name")
-  phone         String?
-  addresses     Address[]
-  cartItems     CartItem[]
-  orders        Order[]
-  reviews       Review[]
-  wishlistItems WishlistItem[]
+  id                     String         @id
+  email                  String         @unique
+  role                   Role           @default(USER)
+  firstName              String?        @map("first_name")
+  lastName               String?        @map("last_name")
+  phone                  String?
+  // Communication preferences — all default true so existing users receive all notifications
+  commOrderUpdates       Boolean        @default(true)  @map("comm_order_updates")
+  commBackInStock        Boolean        @default(true)  @map("comm_back_in_stock")
+  commNewCollections     Boolean        @default(true)  @map("comm_new_collections")
+  commPromotions         Boolean        @default(true)  @map("comm_promotions")
+  addresses              Address[]
+  cartItems              CartItem[]
+  orders                 Order[]
+  reviews                Review[]
+  wishlistItems          WishlistItem[]
 
   @@map("User")
 }

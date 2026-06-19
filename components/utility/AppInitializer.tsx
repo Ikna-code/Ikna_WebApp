@@ -14,6 +14,7 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 export default function AppInitializer() {
   const fetchUser = useStore((s) => s.fetchUser);
   const forceRefetchUser = useStore((s) => s.forceRefetchUser);
+  const silentRefetchUser = useStore((s) => s.silentRefetchUser);
   const isAuthInitialized = useStore((s) => s.isAuthInitialized);
   const user = useStore((s) => s.user);
   const loadProducts = useStore((s) => s.loadProducts);
@@ -31,10 +32,44 @@ export default function AppInitializer() {
 
   // Step 2: Subscribe to Supabase auth changes so new sessions (OTP, Google, etc.)
   // are reflected in the store without requiring a full page reload.
+  //
+  // IMPORTANT: Supabase fires TOKEN_REFRESHED (and often SIGNED_IN alongside it)
+  // whenever the browser tab regains focus and the JWT is silently refreshed.
+  // We must ignore those background token refresh events to prevent unnecessary
+  // store resets, loading spinners, and full data re-fetches on every tab switch.
+  // Only genuine user-initiated sign-in actions (OTP verify, OAuth, password) should
+  // trigger forceRefetchUser().
   useEffect(() => {
-    const { data: { subscription } } = supabaseBrowser.auth.onAuthStateChange((event:any) => {
+    // Track whether the first SIGNED_IN after page load has already been handled.
+    // INITIAL_SESSION fires immediately on mount with the existing session — we
+    // skip it so we don't double-invoke forceRefetchUser() on top of fetchUser().
+    let initialSessionHandled = false;
+
+    const { data: { subscription } } = supabaseBrowser.auth.onAuthStateChange((event: any) => {
+      // TOKEN_REFRESHED: JWT silently refreshed in background (fires on tab focus).
+      // INITIAL_SESSION: fired on first mount with the existing session from storage.
+      // Both are normal background operations — never reset the store for these.
+      if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        initialSessionHandled = true;
+        return;
+      }
+
       if (event === 'SIGNED_IN') {
-        // Re-hydrate store user and user-scoped data after any sign-in.
+        if (!initialSessionHandled) {
+          // First SIGNED_IN on page load is the same session restored from storage —
+          // fetchUser() in the separate effect already handles it.
+          initialSessionHandled = true;
+          return;
+        }
+        // If user already exists in store, this is usually a token refresh/rehydration
+        // side-effect. Keep UX stable by doing a silent user refresh only.
+        const currentState = useStore.getState();
+        if (currentState.user?.id) {
+          void silentRefetchUser();
+          return;
+        }
+
+        // A genuine new sign-in (OTP verified, Google OAuth redirect, etc.).
         forceRefetchUser();
       } else if (event === 'SIGNED_OUT') {
         useStore.setState({
@@ -54,7 +89,7 @@ export default function AppInitializer() {
     });
 
     return () => subscription.unsubscribe();
-  }, [forceRefetchUser]);
+  }, [forceRefetchUser, silentRefetchUser]);
 
   // Step 2: Products are public, so load regardless of auth state.
   useEffect(() => {

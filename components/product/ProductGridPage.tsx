@@ -711,7 +711,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
 
   return (
     <>
-      <div className="min-h-screen bg-[#fdf8fa] flex flex-col">
+      <div className={`min-h-screen bg-[#fdf8fa] flex flex-col${searchQuery ? ' pt-24' : ''}`}>
         
         {/* HEADER */}
         <header className="container mx-auto px-4 md:px-8 pt-8 pb-4 text-center">
@@ -721,11 +721,11 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
           <p className="text-xs md:text-sm tracking-[0.25em] text-[#840d5c] uppercase font-semibold mb-3">
             Engineered for Comfort, Designed for You
           </p>
-          {searchQuery.trim() && (
+          {/* {searchQuery.trim() && (
             <p className="text-[11px] md:text-xs tracking-[0.12em] text-[#321327]/70 uppercase font-semibold">
               Results for "{searchQuery.trim()}"
             </p>
-          )}
+          )} */}
         </header>
 
         {/* FILTER ACTION BAR */}
