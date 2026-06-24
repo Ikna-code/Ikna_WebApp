@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, X, Tag } from "lucide-react";
 import { cn } from "@/utils/cn";
@@ -55,6 +55,24 @@ const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose }) => {
     { text: "PADDED BRA", type: "padded bra" },
     { text: "SIDE NET COVERAGE BRA", type: "coverage bra" },
   ];
+
+  const suggestions = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return braProducts.slice(0, 4);
+    }
+
+    return braProducts
+      .filter((item) => {
+        const searchableText = `${item.text} ${item.type}`.toLowerCase();
+        return normalizedQuery
+          .split(/\s+/)
+          .filter(Boolean)
+          .every((term) => searchableText.includes(term));
+      })
+      .slice(0, 6);
+  }, [query]);
 
   // Global routing updater
   const updateSearchRoute = (searchText: string) => {
@@ -151,6 +169,33 @@ const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose }) => {
               </button>
             </div>
           </form>
+
+          {isOpen && !!query.trim() && suggestions.length > 0 && (
+            <div className="mb-8 rounded-2xl border border-[#321327]/8 bg-white/80 p-4 shadow-sm backdrop-blur-sm">
+              <p className="mb-3 text-[10px] font-bold tracking-[0.2em] text-[#321327]/50 uppercase">
+                Suggestions
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                {suggestions.map((item) => (
+                  <button
+                    key={`${item.type}-${item.text}`}
+                    type="button"
+                    onClick={() => {
+                      setQuery(item.text);
+                      updateSearchRoute(item.text);
+                    }}
+                    className="rounded-full border border-[#321327]/10 bg-[#faf6f8] px-3 py-2 text-left text-sm text-[#321327] transition hover:border-[#840d5c]/30 hover:text-[#840d5c]"
+                  >
+                    <span className="block text-[9px] font-bold uppercase tracking-wide text-[#840d5c]">
+                      {item.type}
+                    </span>
+                    <span className="block leading-snug">{item.text}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* RESULTS / CATEGORIES PANEL */}
           <div className="space-y-6">

@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -15,9 +15,11 @@ const Header = () => {
   const [announcementIndex, setAnnouncementIndex] = useState(0);
   const [announcementVisible, setAnnouncementVisible] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isDesktopSearchActive, setIsDesktopSearchActive] = useState(false);
   const handledOpenAccountRef = useRef(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const desktopSearchFormRef = useRef<HTMLFormElement>(null);
 
   const announcementLines = [
     <span key="welcome">
@@ -28,6 +30,34 @@ const Header = () => {
 
   const { cartItems } = useStore();
   const totalItems = cartItems.reduce((acc, item) => acc + (item.quantity || 0), 0);
+
+  const searchSuggestions = [
+    { text: 'Barely there - Light padded', type: 'light padded' },
+    { text: 'Non-wired cotton bra', type: 'cotton bra' },
+    { text: 'Barely There Bridgerton limited edition', type: 'limited edition' },
+    { text: 'COMFY SUPPORTIVE MINIMIZER BRA', type: 'minimizer bra' },
+    { text: 'EVERYDAY WEAR COMFY BRA', type: 'everyday wear' },
+    { text: 'PADDED BRA', type: 'padded bra' },
+    { text: 'SIDE NET COVERAGE BRA', type: 'coverage bra' },
+  ];
+
+  const filteredSuggestions = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return [];
+    }
+
+    return searchSuggestions
+      .filter((item) => {
+        const searchableText = `${item.text} ${item.type}`.toLowerCase();
+        return normalizedQuery
+          .split(/\s+/)
+          .filter(Boolean)
+          .every((term) => searchableText.includes(term));
+      })
+      .slice(0, 6);
+  }, [searchQuery]);
 
   useEffect(() => {
     setSearchQuery(searchParams.get('search') || '');
@@ -107,7 +137,7 @@ const Header = () => {
 
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           {/* LOGO */}
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             <Link href="/" className="block">
               <div className="relative w-12 h-12 md:w-16 md:h-16 mix-blend-multiply transition-transform hover:scale-105">
                 <Image src={iknaLogo} alt="IKNA Logo" fill priority sizes="160px" className="object-contain" />
@@ -120,10 +150,19 @@ const Header = () => {
           
           {/* ACTIONS & MOBILE TRIGGER */}
           <div className="flex items-center space-x-5 md:space-x-7 text-[#321327]">
-            <div className="hidden md:block relative w-10 h-10 shrink-0">
+            <div className="hidden md:block relative w-10 h-10 shrink-0 overflow-visible">
               <form
+                ref={desktopSearchFormRef}
                 onSubmit={handleSearchSubmit}
-                className="absolute right-0 top-0 h-10 w-10 hover:w-72 focus-within:w-72 overflow-hidden rounded-full border border-[#321327]/20 bg-white transition-all duration-300"
+                onFocusCapture={() => setIsDesktopSearchActive(true)}
+                onBlurCapture={(event) => {
+                  const nextTarget = event.relatedTarget as Node | null;
+                  if (nextTarget && desktopSearchFormRef.current?.contains(nextTarget)) {
+                    return;
+                  }
+                  setIsDesktopSearchActive(false);
+                }}
+                className="absolute right-0 top-0 h-10 w-10 hover:w-72 focus-within:w-72 overflow-visible rounded-full border border-[#321327]/20 bg-white transition-all duration-300"
                 role="search"
                 aria-label="Search products"
               >
@@ -135,6 +174,32 @@ const Header = () => {
                   placeholder="Search products"
                   className="h-full w-full bg-transparent pl-10 pr-4 text-sm text-[#321327] placeholder:text-[#321327]/40 outline-none"
                 />
+
+                {isDesktopSearchActive && !!searchQuery.trim() && filteredSuggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 top-full z-50 mt-2 rounded-2xl border border-[#321327]/10 bg-white p-2 shadow-xl">
+                    <p className="px-3 pb-2 pt-1 text-[9px] font-bold tracking-[0.2em] text-[#321327]/45 uppercase">
+                      Suggestions
+                    </p>
+
+                    <div className="flex flex-col gap-1">
+                      {filteredSuggestions.map((item) => (
+                        <button
+                          key={`${item.type}-${item.text}`}
+                          type="button"
+                          onClick={() => router.push(buildShopUrl(item.text))}
+                          className="rounded-xl px-3 py-2 text-left transition hover:bg-[#faf6f8]"
+                        >
+                          <span className="block text-[9px] font-bold uppercase tracking-wide text-[#840d5c]">
+                            {item.type}
+                          </span>
+                          <span className="block text-sm text-[#321327]">
+                            {item.text}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </form>
             </div>
             <button className="hidden md:block" aria-label="Account" onClick={() => setIsProfileOpen(true)}>
@@ -159,7 +224,7 @@ const Header = () => {
 
       {/* MOBILE DRAWER */}
       <div 
-        className={`fixed inset-0 z-[100] transition-opacity duration-300 ${
+        className={`fixed inset-0 z-100 transition-opacity duration-300 ${
           isMobileMenuOpen ? 'bg-[#321327]/40 backdrop-blur-sm opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={() => setIsMobileMenuOpen(false)}
@@ -202,6 +267,34 @@ const Header = () => {
                     <Search size={15} />
                   </button>
                 </div>
+                {!!searchQuery.trim() && filteredSuggestions.length > 0 && (
+                  <div className="space-y-2 rounded-2xl border border-[#321327]/10 bg-white p-2 shadow-sm">
+                    <p className="px-2 pt-1 text-[9px] font-bold tracking-[0.2em] text-[#321327]/45 uppercase">
+                      Suggestions
+                    </p>
+                    <div className="flex flex-col gap-1">
+                      {filteredSuggestions.map((item) => (
+                        <button
+                          key={`mobile-${item.type}-${item.text}`}
+                          type="button"
+                          onClick={() => {
+                            setSearchQuery(item.text);
+                            router.push(buildShopUrl(item.text));
+                            setIsMobileMenuOpen(false);
+                          }}
+                          className="rounded-xl px-3 py-2 text-left transition hover:bg-[#faf6f8]"
+                        >
+                          <span className="block text-[9px] font-bold uppercase tracking-wide text-[#840d5c]">
+                            {item.type}
+                          </span>
+                          <span className="block text-sm text-[#321327]">
+                            {item.text}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </form>
               
               <button 
@@ -234,7 +327,7 @@ const Header = () => {
       {/* PROFILE DRAWER */}
       {isProfileOpen && (
         <div
-          className="fixed inset-0 z-[110] flex justify-end pointer-events-auto transition-colors duration-300 bg-[#321327]/40 backdrop-blur-sm"
+          className="fixed inset-0 z-110 flex justify-end pointer-events-auto transition-colors duration-300 bg-[#321327]/40 backdrop-blur-sm"
           onClick={() => setIsProfileOpen(false)}
         >
           <div
