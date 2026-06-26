@@ -18,6 +18,18 @@ const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose }) => {
   // Read current search param directly from URL to keep source of truth synchronized
   const currentSearchParam = searchParams.get("search") || "";
   const [query, setQuery] = useState(currentSearchParam);
+  const [displayedPlaceholder, setDisplayedPlaceholder] = useState("Search bras...");
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [charIndex, setCharIndex] = useState(0);
+  const typingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const placeholderTexts = [
+    "Search bras...",
+    "Try 'minimizer'...",
+    "Try 'barely there'...",
+    "Try 'everyday wear'...",
+    "Try 'padded bra'...",
+  ];
 
   // Sync state whenever URL parameter changes or modal opens
   useEffect(() => {
@@ -35,6 +47,43 @@ const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose }) => {
       document.body.classList.remove("ikna-modal-open");
     };
   }, [isOpen, currentSearchParam]);
+
+  // Typing animation effect for placeholder - runs continuously
+  useEffect(() => {
+    if (!isOpen || query.trim() !== "") {
+      setCharIndex(0);
+      setPlaceholderIndex(0);
+      setDisplayedPlaceholder(placeholderTexts[0]);
+      return;
+    }
+
+    const currentText = placeholderTexts[placeholderIndex];
+
+    if (typingIntervalRef.current) {
+      clearTimeout(typingIntervalRef.current);
+    }
+
+    if (charIndex < currentText.length) {
+      // Type out character by character
+      typingIntervalRef.current = setTimeout(() => {
+        setDisplayedPlaceholder(currentText.slice(0, charIndex + 1));
+        setCharIndex(charIndex + 1);
+      }, 80);
+    } else {
+      // Brief pause (500ms) then move to next placeholder immediately
+      typingIntervalRef.current = setTimeout(() => {
+        setPlaceholderIndex((prev) => (prev + 1) % placeholderTexts.length);
+        setCharIndex(0);
+        setDisplayedPlaceholder("");
+      }, 500);
+    }
+
+    return () => {
+      if (typingIntervalRef.current) {
+        clearTimeout(typingIntervalRef.current);
+      }
+    };
+  }, [isOpen, charIndex, placeholderIndex, query, placeholderTexts]);
 
   // ESC key close
   useEffect(() => {
@@ -140,14 +189,39 @@ const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose }) => {
         <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-6 sm:py-8 scrollbar-thin scrollbar-thumb-transparent">
           {/* SEARCH INPUT */}
           <form onSubmit={handleSearchSubmit} className="relative mb-10">
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={handleInputChange}
-              placeholder="Search bras..."
-              className="w-full bg-transparent border-b-2 border-[#321327] py-4 pr-16 text-lg sm:text-xl font-light outline-none text-[#321327] placeholder:text-[#321327]/30 focus:border-[#840d5c] transition-colors"
-            />
+            <style>{`
+              @keyframes typingCursor {
+                0%, 49% { opacity: 1; }
+                50%, 100% { opacity: 0; }
+              }
+              .typing-cursor::after {
+                content: '';
+                animation: typingCursor 1s infinite;
+                margin-left: 2px;
+                display: inline-block;
+                width: 2px;
+                height: 1.25rem;
+                background-color: #840d5c;
+              }
+            `}</style>
+            <div className="flex items-center border-b-2 border-[#321327] focus-within:border-[#840d5c] transition-colors">
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={handleInputChange}
+                placeholder={displayedPlaceholder}
+                className={cn(
+                  "flex-1 bg-transparent py-4 pr-4 text-lg sm:text-xl font-light outline-none text-[#321327]",
+                  query.trim() === "" && charIndex < displayedPlaceholder.length
+                    ? "placeholder:text-[#321327]/60"
+                    : "placeholder:text-[#321327]/30"
+                )}
+              />
+              {!query.trim() && charIndex === displayedPlaceholder.length && (
+                <div className="typing-cursor mr-2" />
+              )}
+            </div>
 
             {/* ACTION BUTTONS */}
             <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-2">

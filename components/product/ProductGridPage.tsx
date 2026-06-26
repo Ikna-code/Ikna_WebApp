@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { LuFilter, LuSlidersHorizontal, LuX } from "react-icons/lu";
 
 import { ProductCard } from "./ProductGrid";
@@ -189,8 +189,21 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   const [draftSelectedDynamicFilters, setDraftSelectedDynamicFilters] = useState<Record<string, string>>({});
   const [draftSortBy, setDraftSortBy] = useState<string>("default");
   const hasUserModifiedFiltersRef = useRef(false);
+  const [activeMode, setActiveMode] = useState<'search' | 'filter'>('filter');
 
   const router = useRouter();
+  const pathname = usePathname();
+
+  const clearSearchQueryFromUrl = () => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("search")) return;
+
+    params.delete("search");
+    const nextQuery = params.toString();
+    const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname;
+    router.replace(nextUrl, { scroll: false });
+  };
 
   // MAIN CATEGORY
   const mainCategoryName = useMemo(() => {
@@ -344,6 +357,9 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   // Reset user filter modification flag when search term changes
   useEffect(() => {
     hasUserModifiedFiltersRef.current = false;
+    // Any search input change should make search the latest active mode,
+    // even when cleared (empty query should show unfiltered search results).
+    setActiveMode('search');
   }, [searchQuery]);
 
   // Infer and auto-fill filter drawer from search results (only if user hasn't manually changed filters)
@@ -434,10 +450,12 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
     let result = [...products];
     const normalizedSearch = normalizeText(searchQuery);
     const activeDynamicFilters = Object.entries(selectedDynamicFilters).filter(([, optionId]) => optionId);
-    const shouldUseSearch = Boolean(normalizedSearch) && !hasUserModifiedFiltersRef.current;
+    const shouldUseSearch = activeMode === 'search';
 
     if (shouldUseSearch) {
-      result = result.filter((product) => productMatchesSearch(product, normalizedSearch));
+      if (normalizedSearch) {
+        result = result.filter((product) => productMatchesSearch(product, normalizedSearch));
+      }
     } else {
       if (selectedCategory !== "All") {
         result = result.filter((p) => {
@@ -476,7 +494,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
     }
 
     return result;
-  }, [products, searchQuery, selectedCategory, selectedSubCategory, selectedDynamicFilters, sortBy]);
+  }, [products, searchQuery, selectedCategory, selectedSubCategory, selectedDynamicFilters, sortBy, activeMode]);
 
   const groupedProducts = useMemo(() => {
     const groups = new Map<string, { category: string; categoryKey: string; variants: any[] }>();
@@ -544,6 +562,8 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
 
   const applyMobileFilters = () => {
     hasUserModifiedFiltersRef.current = true;
+    setActiveMode('filter');
+    clearSearchQueryFromUrl();
     setSelectedCategory(draftSelectedCategory);
     setSelectedSubCategory(draftSelectedSubCategory);
     setSelectedDynamicFilters(draftSelectedDynamicFilters);
@@ -553,6 +573,8 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
 
   const applyDesktopFilters = () => {
     hasUserModifiedFiltersRef.current = true;
+    setActiveMode('filter');
+    clearSearchQueryFromUrl();
     setSelectedCategory(draftSelectedCategory);
     setSelectedSubCategory(draftSelectedSubCategory);
     setSelectedDynamicFilters(draftSelectedDynamicFilters);

@@ -10,9 +10,16 @@ interface NavbarProps {
   onClose?: () => void;
 }
 
+interface FilterOption {
+  id: string;
+  value: string;
+  displayLabel: string;
+}
+
 interface CategoryMeta {
   name: string;
-  subCategories: { id: string; name: string; slug: string }[];
+  primaryFilterOptions: FilterOption[]; // first filter group options (e.g. Comfort Type)
+  primaryFilterGroupSlug: string;      // e.g. 'comfort-type'
 }
 
 export default function Navbar({ isMobile, onClose }: NavbarProps) {
@@ -52,10 +59,16 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
           setCategoryMeta(
             filtersData
               .filter((item: any) => activeCategories.has(String(item.name || '').trim()))
-              .map((item: any) => ({
-                name: String(item.name || ''),
-                subCategories: Array.isArray(item.subCategories) ? item.subCategories : [],
-              }))
+              .map((item: any) => {
+                const filterGroups = Array.isArray(item.filterGroups) ? item.filterGroups : [];
+                // Use first filter group (e.g. Comfort Type for Bras) as the submenu
+                const firstGroup = filterGroups[0] ?? null;
+                return {
+                  name: String(item.name || ''),
+                  primaryFilterOptions: firstGroup?.filterOptions ?? [],
+                  primaryFilterGroupSlug: firstGroup?.slug ?? '',
+                };
+              })
           );
         }
       } catch {
@@ -71,6 +84,19 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
     setIsShopDrawerOpen(false);
     setExpandedCategory(null);
     onClose?.();
+  };
+
+  const buildShopHref = (categoryName: string, filterOptionValue?: string) => {
+    const basePath = `/shop/${encodeURIComponent(categoryName)}`;
+    const normalized = (filterOptionValue || '').trim();
+
+    if (!normalized) {
+      return basePath;
+    }
+
+    const params = new URLSearchParams();
+    params.set('search', normalized);
+    return `${basePath}?${params.toString()}`;
   };
 
   const navLinks = [
@@ -123,7 +149,7 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
 
                     {categoryMeta.map((cat) => (
                       <div key={cat.name} className="flex flex-col">
-                        {/* Category row — tap to expand subcategories */}
+                        {/* Category row — tap to expand comfort type options */}
                         <div className="flex items-center justify-between">
                           <Link
                             href={`/shop/${encodeURIComponent(cat.name)}`}
@@ -132,7 +158,7 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
                           >
                             {cat.name}
                           </Link>
-                          {cat.subCategories.length > 0 && (
+                          {cat.primaryFilterOptions.length > 0 && (
                             <button
                               type="button"
                               onClick={() => setExpandedCategory((prev) => prev === cat.name ? null : cat.name)}
@@ -147,17 +173,17 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
                           )}
                         </div>
 
-                        {/* Subcategory list */}
-                        {expandedCategory === cat.name && cat.subCategories.length > 0 && (
+                        {/* Comfort Type options list */}
+                        {expandedCategory === cat.name && cat.primaryFilterOptions.length > 0 && (
                           <div className="ml-4 mt-1 mb-1 flex flex-col gap-0.5 pl-3 border-l border-[#840d5c]/20">
-                            {cat.subCategories.map((sub) => (
+                            {cat.primaryFilterOptions.map((opt) => (
                               <Link
-                                key={sub.id}
-                                href={`/shop/${encodeURIComponent(cat.name)}`}
+                                key={opt.id}
+                                href={buildShopHref(cat.name, opt.displayLabel)}
                                 onClick={handleCloseAll}
                                 className="text-[9px] font-semibold tracking-[0.14em] text-[#321327]/70 hover:text-[#840d5c] uppercase px-2 py-1.5 rounded hover:bg-[#f2e4ea]"
                               >
-                                {sub.name}
+                                {opt.displayLabel}
                               </Link>
                             ))}
                           </div>
@@ -193,14 +219,35 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
                 <div className="absolute top-full left-0 mt-3 min-w-[220px] bg-white border border-[#840d5c]/15 rounded-xl shadow-xl p-3 z-[120] flex flex-col gap-1">
 
                   {categoryMeta.map((cat) => (
-                    <Link
-                      key={cat.name}
-                      href={`/shop/${encodeURIComponent(cat.name)}`}
-                      onClick={handleCloseAll}
-                      className="text-[10px] font-bold tracking-[0.18em] text-[#321327] hover:text-[#840d5c] uppercase px-2 py-1.5 rounded-lg hover:bg-[#f9f3f5]"
-                    >
-                      {cat.name}
-                    </Link>
+                     <div key={cat.name} className="group relative">
+                       {/* Category Link */}
+                       <Link
+                         href={buildShopHref(cat.name)}
+                         onClick={handleCloseAll}
+                         className="text-[10px] font-bold tracking-[0.18em] text-[#321327] hover:text-[#840d5c] uppercase px-2 py-1.5 rounded-lg hover:bg-[#f9f3f5] flex items-center justify-between pr-3 w-full"
+                       >
+                         <span>{cat.name}</span>
+                         {cat.primaryFilterOptions.length > 0 && (
+                           <ChevronRight size={12} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                         )}
+                       </Link>
+
+                       {/* Comfort Type Submenu */}
+                       {cat.primaryFilterOptions.length > 0 && (
+                         <div className="absolute left-full top-0 -ml-1 invisible opacity-0 pointer-events-none group-hover:visible group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100 group-focus-within:pointer-events-auto transition-all duration-150 flex flex-col gap-0.5 min-w-[180px] bg-white border border-[#840d5c]/15 rounded-lg shadow-lg p-2 z-[130]">
+                           {cat.primaryFilterOptions.map((opt) => (
+                             <Link
+                               key={opt.id}
+                               href={buildShopHref(cat.name, opt.displayLabel)}
+                               onClick={handleCloseAll}
+                               className="text-[9px] font-semibold tracking-[0.14em] text-[#321327]/70 hover:text-[#840d5c] uppercase px-2 py-1.5 rounded hover:bg-[#f9f3f5]"
+                             >
+                               {opt.displayLabel}
+                             </Link>
+                           ))}
+                         </div>
+                       )}
+                     </div>
                   ))}
                   {categoryMeta.length === 0 && (
                     <span className="text-[10px] font-semibold tracking-[0.12em] text-[#321327]/40 uppercase px-2 py-1.5">

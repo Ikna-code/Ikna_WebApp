@@ -194,9 +194,9 @@ const ReviewsPage = ({
     userId={userId || ""}
   />
   
-  <div className=" mx-auto px-0 py-6 md:py-8">
+  <div className="mx-auto max-w-7xl px-4 md:px-6 lg:px-8 py-6 md:py-8">
     {/* Header Card: Stacked on mobile, 3-cols on LG */}
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12 bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] shadow-sm border border-[#840d5c]/5 mb-8 md:mb-12">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-10 bg-white p-6 md:p-10 rounded-2xl md:rounded-3xl shadow-sm border border-[#840d5c]/5 mb-8 md:mb-12">
       
       {/* Title Section */}
       <div className="space-y-3 md:space-y-4 text-center lg:text-left">
@@ -252,7 +252,7 @@ const ReviewsPage = ({
     </div>
 
     {/* Horizontal Filter Bar */}
-    <div className="flex items-center gap-3 mb-8 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 md:mx-0 md:px-0">
+    <div className="flex items-center gap-2 md:gap-3 mb-8 overflow-x-auto no-scrollbar pb-2">
       <div className="shrink-0">
         <Filter size={16} className="text-[#840d5c]" />
       </div>
@@ -260,10 +260,10 @@ const ReviewsPage = ({
         <button
           key={filter}
           onClick={() => setActiveFilter(filter)}
-          className={`px-5 py-2 rounded-full text-[9px] md:text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all border ${
+          className={`px-4 md:px-5 py-2 rounded-full text-[9px] md:text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all border ${
             activeFilter === filter 
             ? 'bg-[#321327] text-white border-[#321327]' 
-            : 'bg-white text-[#321327]/60 border-transparent hover:border-[#840d5c]/20'
+            : 'bg-white text-[#321327]/60 border-[#840d5c]/10 hover:border-[#840d5c]/30'
           }`}
         >
           {filter}
@@ -271,87 +271,107 @@ const ReviewsPage = ({
       ))}
     </div>
 
-    {/* Review Cards Grid */}
+    {/* Review Cards List (Amazon-style) */}
     {reviews.length === 0 ? (
-      <div className="bg-white border border-[#840d5c]/10 rounded-[1.5rem] md:rounded-[2rem] py-12 text-center">
+      <div className="bg-white border border-[#840d5c]/10 rounded-2xl md:rounded-3xl py-12 text-center">
         <p className="text-sm md:text-base font-semibold text-[#321327]/70">No reviews found</p>
       </div>
     ) : (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-        {reviews.map((review) => (
-          <div key={review.id} className="bg-white p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] border border-[#840d5c]/5 space-y-5 md:space-y-6">
-            <div className="flex justify-between items-start">
-              <div className="space-y-1">
+      <div className="bg-white rounded-2xl md:rounded-3xl border border-[#840d5c]/5 overflow-hidden">
+        {reviews.map((review, index) => (
+          <div key={review.id} className={`px-6 md:px-8 py-6 md:py-8 ${index !== reviews.length - 1 ? 'border-b border-[#840d5c]/5' : ''}`}>
+            {/* Header: Rating, Name, Date */}
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4">
+              <div className="flex items-start gap-3 flex-wrap">
+                {/* Rating Stars */}
                 <div className="flex text-[#840d5c]">
                   {[...Array(5)].map((_, i) => (
                     <Star key={i} size={14} fill={i < review.rating ? "currentColor" : "none"} strokeWidth={1.5} />
                   ))}
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-bold text-[#321327] break-all">{getReviewerName(review)}</span>
-                  {review.isVerified && (
-                    <span className="text-[8px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter flex items-center gap-1 whitespace-nowrap">
-                      <CheckCircle2 size={10} /> Verified
-                    </span>
-                  )}
-                </div>
+
+                {/* Title */}
+                {review.title && (
+                  <h4 className="text-sm md:text-base font-bold text-[#321327] leading-tight w-full sm:w-auto">
+                    {review.title}
+                  </h4>
+                )}
               </div>
-              <span className="text-[9px] md:text-[10px] font-medium text-[#840d5c]/40 text-right">
+
+              <span className="text-[10px] md:text-[11px] font-medium text-[#840d5c]/40 whitespace-nowrap">
                 {new Date(review.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
               </span>
             </div>
 
-            <div className="space-y-2 md:space-y-3">
-              <h4 className="text-base md:text-lg font-bold text-[#321327] leading-tight">{review.title || ''}</h4>
-              <p className="text-xs md:text-sm leading-relaxed text-[#522d42]/80 italic">"{review.comment}"</p>
+            {/* Reviewer Info */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <span className="text-xs md:text-sm font-semibold text-[#321327]">
+                By {getReviewerName(review)}
+              </span>
+              {review.isVerified && (
+                <span className="text-[9px] bg-emerald-50 text-emerald-700 px-2 py-1 rounded font-bold uppercase tracking-tight flex items-center gap-1 whitespace-nowrap">
+                  <CheckCircle2 size={11} /> Verified Purchase
+                </span>
+              )}
             </div>
 
+            {/* Review Text */}
+            <p className="text-xs md:text-sm leading-relaxed text-[#522d42]/85 mb-5">
+              {review.comment}
+            </p>
+
+            {/* Media Gallery (if any) */}
             {Array.isArray(review.images) && review.images.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
-                {review.images.map((media) => (
-                  <div
-                    key={media.id}
-                    className="relative aspect-square overflow-hidden rounded-xl border border-[#840d5c]/10 bg-[#f8edf2]"
-                  >
-                    {isVideoUrl(media.url) ? (
-                      <video
-                        src={media.url}
-                        className="h-full w-full object-cover"
-                        controls
-                        preload="metadata"
-                      />
-                    ) : (
-                      <img
-                        src={media.url}
-                        alt="Review media"
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                      />
-                    )}
-                  </div>
-                ))}
+              <div className="mb-5">
+                <p className="text-xs font-semibold text-[#321327]/60 mb-3">Customer Images</p>
+                <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                  {review.images.map((media) => (
+                    <div
+                      key={media.id}
+                      className="relative shrink-0 h-20 w-20 md:h-24 md:w-24 overflow-hidden rounded-lg border border-[#840d5c]/10 bg-[#f8edf2] hover:shadow-md transition-shadow cursor-pointer"
+                    >
+                      {isVideoUrl(media.url) ? (
+                        <video
+                          src={media.url}
+                          className="h-full w-full object-cover"
+                          preload="none"
+                        />
+                      ) : (
+                        <img
+                          src={media.url}
+                          alt="Review media"
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      )}
+                      {isVideoUrl(media.url) && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                          <div className="text-white text-xl">▶</div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
-              <div className="flex items-center gap-2 justify-end">
-                {review.userId === userId && (
-                  <>
-                    <button 
-                      className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 bg-[#840d5c]/10 rounded-lg text-[9px] font-bold uppercase tracking-tighter text-[#840d5c]"
-                      onClick={() => handleOpenEdit(review)}
-                    >
-                      <Edit size={12} /> Edit
-                    </button>
-                    <button 
-                      className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 bg-red-50 rounded-lg text-[9px] font-bold uppercase tracking-tighter text-red-600"
-                      onClick={() => handleDelete(review.id)}
-                    >
-                      <Trash2 size={12} /> Delete
-                    </button>
-                  </>
-                )}
+            {/* Actions */}
+            {review.userId === userId && (
+              <div className="flex gap-2 justify-end">
+                <button 
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#840d5c]/10 rounded-lg text-[10px] font-bold uppercase tracking-tight text-[#840d5c] hover:bg-[#840d5c]/15 transition-colors"
+                  onClick={() => handleOpenEdit(review)}
+                >
+                  <Edit size={13} /> Edit
+                </button>
+                <button 
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-red-50 rounded-lg text-[10px] font-bold uppercase tracking-tight text-red-600 hover:bg-red-100 transition-colors"
+                  onClick={() => handleDelete(review.id)}
+                >
+                  <Trash2 size={13} /> Delete
+                </button>
               </div>
-
+            )}
           </div>
         ))}
       </div>
