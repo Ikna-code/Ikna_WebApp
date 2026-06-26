@@ -54,6 +54,7 @@ const IknaLoader = () => {
           animate={{ opacity: 0.8 }}
           transition={{ delay: 1.5, duration: 1 }}
           className="text-sm uppercase tracking-[0.3em] text-pink-200 text-center px-4"
+          style={{ fontFamily: '"Amsterdam", cursive' }}
         >
           Hey Beautiful, Embrace Yourself!
         </motion.p>
@@ -79,7 +80,7 @@ const IknaLoader = () => {
             opacity: [0.3, 0.5, 0.3] 
           }}
           transition={{ duration: 4, repeat: Infinity }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded-full blur-[100px]"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-125 h-125 bg-linear-to-r from-pink-500/20 to-purple-500/20 rounded-full blur-[100px]"
         />
       </div>
     </div>

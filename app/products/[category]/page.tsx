@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import ProductGridPage from "@/components/product/ProductGridPage";
 import PerspectiveGallery from "@/utils/threeDBanner";
 import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
 import { useStore } from '@/store/useStore';
 
 export default function CategoryPage() {

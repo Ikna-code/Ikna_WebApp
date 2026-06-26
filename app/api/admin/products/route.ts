@@ -79,6 +79,7 @@ const GLOBAL_BADGE_ID_PREFIX = 'global-product-badge-';
 const GLOBAL_BADGE_LABEL_BY_SLUG: Record<string, string> = {
   'few-left': 'Few Left',
   'new-arrival': 'New Arrival',
+  'best-seller': 'Best Seller',
   'limited-stock': 'Limited Stock',
 };
 

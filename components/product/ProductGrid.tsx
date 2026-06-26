@@ -87,6 +87,34 @@ export const ProductCard = ({
         .filter(Boolean)
     : [];
 
+  const derivedBadgeLabels = useMemo(() => {
+    if (!Array.isArray(product?.backendBadgeLabels)) {
+      return [] as string[];
+    }
+
+    return product.backendBadgeLabels
+      .map((label: unknown) => String(label || '').trim())
+      .filter(Boolean);
+  }, [product]);
+
+  const resolvedProductBadges = useMemo(() => {
+    const combined = [...productBadges, ...derivedBadgeLabels]
+      .map((label) => String(label || '').trim())
+      .filter(Boolean);
+
+    const deduped: string[] = [];
+    const seen = new Set<string>();
+
+    for (const label of combined) {
+      const key = label.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(label);
+    }
+
+    return deduped;
+  }, [derivedBadgeLabels, productBadges]);
+
   const getBadgeClassName = (badge: string) => {
     const normalized = String(badge || '').trim().toLowerCase();
 
@@ -259,9 +287,9 @@ export const ProductCard = ({
           "
           priority
         />
-        {productBadges.length > 0 && (
+        {resolvedProductBadges.length > 0 && (
           <div className="absolute bottom-2 -right-1 z-30 flex flex-col items-end gap-0.5 sm:gap-1 max-w-[80%]">
-            {productBadges.map((badge: string, index: number) => {
+            {resolvedProductBadges.map((badge: string, index: number) => {
               const label = String(badge || '').trim();
               if (!label) return null;
 
@@ -276,7 +304,7 @@ export const ProductCard = ({
             })}
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/5 to-transparent" />
       </div>
 
       {/* CONTENT WITH AUTOMATIC, ACCURATE EXPANSION SPACE */}
@@ -524,7 +552,7 @@ const ProductGrid = () => {
 
   return (
     <section className="bg-[#faf3f5] py-8 md:py-14 min-h-screen">
-      <div className="max-w-[1440px] mx-auto px-3 md:px-8">
+      <div className="max-w-360 mx-auto px-3 md:px-8">
         {/* TITLE */}
         <div className="text-center mb-8 md:mb-12">
           <h1 className="text-2xl md:text-4xl font-serif text-[#321327]">

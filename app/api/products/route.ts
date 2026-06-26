@@ -5,6 +5,32 @@ import { serializeDecimal } from '@/backend/lib/serializeDecimal';
 // Use any-cast to work around stale Prisma TS types; actual isActive/isDeleted columns exist in DB.
 const dbProductAny = (db as any).product;
 
+const getBackendBadgeLabels = (product: any) => {
+  const signals = [
+    product?.name,
+    product?.productType?.name,
+    product?.subCategory?.name,
+    product?.subCategoryName,
+    product?.category,
+    product?.category_name,
+  ]
+    .map((value) => String(value || '').trim().toUpperCase())
+    .filter(Boolean)
+    .join(' | ');
+
+  const badges: string[] = [];
+
+  if (signals.includes('BARELY THERE')) {
+    badges.push('New Arrival');
+  }
+
+  if (signals.includes('MINIMIZER') || signals.includes('EVERYDAY WEAR')) {
+    badges.push('Best Seller');
+  }
+
+  return badges;
+};
+
 export async function GET() {
   try {
     const products = await dbProductAny.findMany({
@@ -105,6 +131,7 @@ export async function GET() {
       ...product,
       fabricType: fabricById.get(String(product.id)) || 'cotton',
       inventory: inventoryByProductId.get(String(product.id)) || [],
+      backendBadgeLabels: getBackendBadgeLabels(product),
     }));
 
     // Serialize Decimal values to numbers for JSON response

@@ -235,7 +235,7 @@ const getProductStatus = (product: ProductDetail) => {
 };
 
 const CATEGORY_OPTIONS = ['Bras', 'Panties', 'Briefs', 'Sets', 'Others'];
-const REQUIRED_PRODUCT_BADGE_LABELS = ['Few Left', 'New Arrival', 'Limited Stock'];
+const REQUIRED_PRODUCT_BADGE_LABELS = ['Few Left', 'New Arrival', 'Best Seller', 'Limited Stock'];
 const BADGE_GROUP_SLUGS = new Set(['tags', 'badges', 'product-filter']);
 
 const parseSku = (value: string) => {

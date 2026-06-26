@@ -24,7 +24,10 @@ const Footer = () => {
               height={50}
               className="mb-4"
             />
-            <h6 className="text-sm italic font-bold mb-1.5">
+            <h6
+              className="text-sm font-bold mb-1.5 not-italic"
+              style={{ fontFamily: '"Amsterdam", cursive' }}
+            >
               Hey Beautiful! Embrace Yourself
             </h6>
           </div>

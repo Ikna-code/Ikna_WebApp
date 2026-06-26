@@ -57,6 +57,7 @@ export async function createReview(
     comment: string;
     isVerified?: boolean;
     authorName?: string;
+    mediaUrls?: string[];
   }
 ) {
   try {
@@ -98,6 +99,15 @@ export async function createReview(
         isVerified: data.isVerified || false,
         userId: authenticatedUserId,
         productId: data.productId,
+        images: {
+          create: (Array.isArray(data.mediaUrls) ? data.mediaUrls : [])
+            .map((url) => String(url || '').trim())
+            .filter(Boolean)
+            .map((url) => ({ url })),
+        },
+      },
+      include: {
+        images: true,
       },
     });
     return serializeDecimal(review);
@@ -116,6 +126,7 @@ export async function updateReview(
     title?: string;
     comment?: string;
     authorName?: string;
+    mediaUrls?: string[];
   }
 ) {
   try {
@@ -143,12 +154,30 @@ export async function updateReview(
       });
     }
 
+    const hasMediaUpdate = Array.isArray(data.mediaUrls);
+    const normalizedMediaUrls = hasMediaUpdate
+      ? (data.mediaUrls || [])
+          .map((url) => String(url || '').trim())
+          .filter(Boolean)
+      : [];
+
     const review = await prisma.review.update({
       where: { id: reviewId },
       data: {
         rating: data.rating,
         title: data.title,
         comment: data.comment,
+        ...(hasMediaUpdate
+          ? {
+              images: {
+                deleteMany: {},
+                create: normalizedMediaUrls.map((url) => ({ url })),
+              },
+            }
+          : {}),
+      },
+      include: {
+        images: true,
       },
     });
     return serializeDecimal(review);

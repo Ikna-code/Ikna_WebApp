@@ -90,9 +90,6 @@ export default function Shop() {
           </PerspectiveGallery>
         )}
       </div>
-
-      <Footer />
-
     </>
   );
 }

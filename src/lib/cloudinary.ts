@@ -10,6 +10,8 @@ type UploadImageResult = {
   publicId: string;
 };
 
+type UploadResourceType = 'image' | 'raw' | 'video' | 'auto';
+
 const ensureCloudinaryConfig = () => {
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
   const apiKey = process.env.CLOUDINARY_API_KEY;
@@ -104,6 +106,21 @@ export async function uploadImage(
     folder?: string;
   } = {}
 ) {
+  return uploadMedia(file, {
+    ...options,
+    resourceType: 'image',
+  });
+}
+
+export async function uploadMedia(
+  file: CloudinaryUploadInput,
+  options: {
+    productId?: string;
+    fileName?: string;
+    folder?: string;
+    resourceType?: UploadResourceType;
+  } = {}
+) {
   const buffer = await toBuffer(file);
   const folder = options.folder || (options.productId ? `product_photos/${options.productId}` : 'product_photos');
   const safeFileName = toDeterministicFilePath(options.fileName || '');
@@ -115,6 +132,7 @@ export async function uploadImage(
     publicId,
     overwrite: true,
     invalidate: true,
+    resourceType: options.resourceType || 'auto',
   });
 }
 

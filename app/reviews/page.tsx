@@ -15,6 +15,7 @@ interface Review {
   rating: number;
   title: string | null;
   comment: string;
+  images: Array<{ id: string; url: string }>;
   isVerified: boolean;
   createdAt: string;
   helpful: number;
@@ -171,6 +172,14 @@ const ReviewsPage = ({
     return fullName || 'Anonymous';
   };
 
+  const isVideoUrl = (url: string) => {
+    const normalized = String(url || '').toLowerCase();
+    return (
+      normalized.includes('/video/upload/') ||
+      /\.(mp4|webm|mov|m4v|avi|mkv)(\?|#|$)/.test(normalized)
+    );
+  };
+
   const content = (
 <div className="bg-[#FAF3F5] min-h-screen">
   <ReviewModal 
@@ -296,6 +305,33 @@ const ReviewsPage = ({
               <h4 className="text-base md:text-lg font-bold text-[#321327] leading-tight">{review.title || ''}</h4>
               <p className="text-xs md:text-sm leading-relaxed text-[#522d42]/80 italic">"{review.comment}"</p>
             </div>
+
+            {Array.isArray(review.images) && review.images.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {review.images.map((media) => (
+                  <div
+                    key={media.id}
+                    className="relative aspect-square overflow-hidden rounded-xl border border-[#840d5c]/10 bg-[#f8edf2]"
+                  >
+                    {isVideoUrl(media.url) ? (
+                      <video
+                        src={media.url}
+                        className="h-full w-full object-cover"
+                        controls
+                        preload="metadata"
+                      />
+                    ) : (
+                      <img
+                        src={media.url}
+                        alt="Review media"
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
               <div className="flex items-center gap-2 justify-end">
                 {review.userId === userId && (

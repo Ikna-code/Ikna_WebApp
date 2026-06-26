@@ -5,6 +5,17 @@ import { X, Star, Camera, Check, Loader2, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { createReview, updateReview } from '@/backend/actions/review';
 
+interface ExistingMediaItem {
+  id: string;
+  url: string;
+}
+
+interface NewMediaPreview {
+  file: File;
+  previewUrl: string;
+  kind: 'image' | 'video';
+}
+
 interface ReviewModalProps {
   isOpen: boolean;
   reviewData: any;
@@ -23,8 +34,8 @@ const ReviewModal = ({ isOpen, reviewData, productId, userId, onClose }: ReviewM
     content: ''
   });
   
-  const [images, setImages] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [existingMedia, setExistingMedia] = useState<ExistingMediaItem[]>([]);
+  const [newMediaPreviews, setNewMediaPreviews] = useState<NewMediaPreview[]>([]);
   const [hover, setHover] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -42,6 +53,17 @@ const ReviewModal = ({ isOpen, reviewData, productId, userId, onClose }: ReviewM
         title: reviewData.title || '',
         content: reviewData.comment || ''
       });
+
+      setExistingMedia(
+        Array.isArray(reviewData.images)
+          ? reviewData.images
+              .map((item: any) => ({
+                id: String(item?.id || ''),
+                url: String(item?.url || '').trim(),
+              }))
+              .filter((item: ExistingMediaItem) => Boolean(item.url))
+          : []
+      );
     } else if (isOpen) {
       setFormData({
         rating: 0,
@@ -49,8 +71,8 @@ const ReviewModal = ({ isOpen, reviewData, productId, userId, onClose }: ReviewM
         title: '',
         content: ''
       });
-      setImages([]);
-      setPreviews([]);
+      setExistingMedia([]);
+      setNewMediaPreviews([]);
     }
   }, [isOpen, reviewData]);
 
@@ -62,9 +84,9 @@ const ReviewModal = ({ isOpen, reviewData, productId, userId, onClose }: ReviewM
 
   useEffect(() => {
     return () => {
-      previews.forEach(url => URL.revokeObjectURL(url));
+      newMediaPreviews.forEach((item) => URL.revokeObjectURL(item.previewUrl));
     };
-  }, [previews]);
+  }, [newMediaPreviews]);
 
   if (!isOpen) return null;
 
@@ -74,31 +96,96 @@ const ReviewModal = ({ isOpen, reviewData, productId, userId, onClose }: ReviewM
     if (error) setError('');
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const isVideoUrl = (url: string) => {
+    const normalized = String(url || '').toLowerCase();
+    return (
+      normalized.includes('/video/upload/') ||
+      /\.(mp4|webm|mov|m4v|avi|mkv)(\?|#|$)/.test(normalized)
+    );
+  };
+
+  const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
-      const MAX_SIZE = 5 * 1024 * 1024;
+      const remainingSlots = Math.max(0, 3 - (existingMedia.length + newMediaPreviews.length));
 
-      const validFiles = selectedFiles.filter(file => file.size <= MAX_SIZE);
-      if (validFiles.length < selectedFiles.length) {
-        setError('Some files were too large (Max 5MB)');
+      if (remainingSlots === 0) {
+        setError('You can upload up to 3 files.');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
       }
 
-      const updatedFiles = [...images, ...validFiles].slice(0, 3);
-      previews.forEach(url => URL.revokeObjectURL(url));
-      
-      const newPreviews = updatedFiles.map(file => URL.createObjectURL(file));
-      
-      setImages(updatedFiles);
-      setPreviews(newPreviews);
+      const filesToProcess = selectedFiles.slice(0, remainingSlots);
+      const validPreviews: NewMediaPreview[] = [];
+      let rejectedCount = 0;
+
+      for (const file of filesToProcess) {
+        const mimeType = String(file.type || '').toLowerCase();
+        const isVideo = mimeType.startsWith('video/');
+        const isImage = mimeType.startsWith('image/');
+
+        if (!isVideo && !isImage) {
+          rejectedCount += 1;
+          continue;
+        }
+
+        const maxSize = isVideo ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+          rejectedCount += 1;
+          continue;
+        }
+
+        validPreviews.push({
+          file,
+          previewUrl: URL.createObjectURL(file),
+          kind: isVideo ? 'video' : 'image',
+        });
+      }
+
+      if (rejectedCount > 0) {
+        setError('Some files were skipped (allowed: image up to 5MB, video up to 20MB).');
+      }
+
+      setNewMediaPreviews((current) => [...current, ...validPreviews]);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const removeImage = (index: number) => {
-    URL.revokeObjectURL(previews[index]);
-    setImages(prev => prev.filter((_, i) => i !== index));
-    setPreviews(prev => prev.filter((_, i) => i !== index));
+  const removeNewMedia = (index: number) => {
+    setNewMediaPreviews((current) => {
+      const media = current[index];
+      if (media) {
+        URL.revokeObjectURL(media.previewUrl);
+      }
+      return current.filter((_, i) => i !== index);
+    });
+  };
+
+  const removeExistingMedia = (mediaId: string) => {
+    setExistingMedia((current) => current.filter((item) => item.id !== mediaId));
+  };
+
+  const uploadReviewMedia = async (files: File[]) => {
+    if (!files.length) return [] as string[];
+
+    const formData = new FormData();
+    formData.append('productId', String(productId || '').trim());
+    files.forEach((file) => formData.append('files', file));
+
+    const response = await fetch('/api/reviews/media/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(payload?.error || 'Failed to upload media');
+    }
+
+    return Array.isArray(payload?.uploadedUrls)
+      ? payload.uploadedUrls.map((url: any) => String(url || '').trim()).filter(Boolean)
+      : [];
   };
 
 const handleSubmit = async (e: React.FormEvent) => {
@@ -118,6 +205,16 @@ const handleSubmit = async (e: React.FormEvent) => {
     setError('');
 
     try {
+      const uploadedMediaUrls = await uploadReviewMedia(
+        newMediaPreviews.map((item) => item.file)
+      );
+
+      const retainedMediaUrls = existingMedia
+        .map((item) => String(item.url || '').trim())
+        .filter(Boolean);
+
+      const mediaUrls = [...retainedMediaUrls, ...uploadedMediaUrls];
+
       if (reviewData?.id) {
         await updateReview(
           reviewData.id,
@@ -127,6 +224,7 @@ const handleSubmit = async (e: React.FormEvent) => {
             title: formData.title,
             comment: formData.content,
             authorName: formData.author,
+            mediaUrls,
           }
         );
       } else {
@@ -139,6 +237,7 @@ const handleSubmit = async (e: React.FormEvent) => {
             comment: formData.content,
             isVerified: false,
             authorName: formData.author,
+            mediaUrls,
           }
         );
       }
@@ -146,8 +245,8 @@ const handleSubmit = async (e: React.FormEvent) => {
       setSubmitted(true);
       setTimeout(() => {
         setSubmitted(false);
-        setImages([]);
-        setPreviews([]);
+        setExistingMedia([]);
+        setNewMediaPreviews([]);
         setFormData({ rating: 0, author: '', title: '', content: '' });
         onClose();
       }, 2500);
@@ -159,7 +258,7 @@ const handleSubmit = async (e: React.FormEvent) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 py-10 sm:py-20 h-full">
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 sm:p-6 py-10 sm:py-20 h-full">
       <div className="absolute inset-0 bg-[#321327]/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden max-h-full flex flex-col animate-in fade-in zoom-in duration-300">
         {submitted ? (
@@ -233,19 +332,40 @@ const handleSubmit = async (e: React.FormEvent) => {
                 />
               </div>
 
-              {/* <div className="space-y-3 pt-2">
+              <div className="space-y-3 pt-2">
                 <div className="flex justify-between items-center px-2">
-                   <p className="text-[10px] font-bold uppercase tracking-widest text-[#321327]/40">Add Photos</p>
-                   <p className="text-[9px] text-[#321327]/30">{previews.length}/3</p>
+                   <p className="text-[10px] font-bold uppercase tracking-widest text-[#321327]/40">Add Photos or Videos</p>
+                   <p className="text-[9px] text-[#321327]/30">{existingMedia.length + newMediaPreviews.length}/3</p>
                 </div>
                 
                 <div className="flex gap-3 flex-wrap">
-                  {previews.map((src, index) => (
-                    <div key={src} className="relative w-20 h-20 rounded-2xl overflow-hidden border border-[#840d5c]/10 shadow-sm group">
-                      <Image src={src} alt="preview" fill className="object-cover" />
+                  {existingMedia.map((item) => (
+                    <div key={item.id} className="relative w-20 h-20 rounded-2xl overflow-hidden border border-[#840d5c]/10 shadow-sm group bg-[#f5e9ef]">
+                      {isVideoUrl(item.url) ? (
+                        <video src={item.url} className="h-full w-full object-cover" muted playsInline />
+                      ) : (
+                        <Image src={item.url} alt="preview" fill className="object-cover" />
+                      )}
                       <button 
                         type="button" 
-                        onClick={() => removeImage(index)}
+                        onClick={() => removeExistingMedia(item.id)}
+                        className="absolute top-1 right-1 bg-white/90 text-red-500 p-1.5 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+
+                  {newMediaPreviews.map((item, index) => (
+                    <div key={item.previewUrl} className="relative w-20 h-20 rounded-2xl overflow-hidden border border-[#840d5c]/10 shadow-sm group bg-[#f5e9ef]">
+                      {item.kind === 'video' ? (
+                        <video src={item.previewUrl} className="h-full w-full object-cover" muted playsInline />
+                      ) : (
+                        <Image src={item.previewUrl} alt="preview" fill className="object-cover" />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeNewMedia(index)}
                         className="absolute top-1 right-1 bg-white/90 text-red-500 p-1.5 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 size={12} />
@@ -256,13 +376,13 @@ const handleSubmit = async (e: React.FormEvent) => {
                   <input 
                     type="file" 
                     ref={fileInputRef} 
-                    onChange={handleImageChange} 
-                    accept="image/*" 
+                    onChange={handleMediaChange} 
+                    accept="image/*,video/*" 
                     multiple 
                     className="hidden" 
                   />
                   
-                  {previews.length < 3 && (
+                  {existingMedia.length + newMediaPreviews.length < 3 && (
                     <button 
                       type="button" 
                       onClick={() => fileInputRef.current?.click()}
@@ -273,7 +393,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                     </button>
                   )}
                 </div>
-              </div> */}
+              </div>
 
               <button 
                 type="submit" 
