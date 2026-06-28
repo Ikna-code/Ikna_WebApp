@@ -549,11 +549,11 @@ const SingleProductPage = () => {
     }
 
     // if (isBarelyThere) {
-    //   conditionalFeatures.push({ img: "/images/icons/Light_fine_padded.jpeg", label: "Light Fine Padded" });
+    //   conditionalFeatures.push({ img: "/images/icons/Light_fine_padded.png", label: "Light Fine Padded" });
     // }
 
     if (isPaddedBra) {
-      conditionalFeatures.push({ img: "/images/icons/Foam_Padding.jpeg", label: "Foam Padding" });
+      conditionalFeatures.push({ img: "/images/icons/Foam_Padding.png", label: "Foam Padding" });
     }
 
     const deduped = [...conditionalFeatures, ...baseFeatures].filter(

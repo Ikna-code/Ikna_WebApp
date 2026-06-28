@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Star, CheckCircle2, ThumbsUp, ChevronLeft, Filter, Trash2, Edit } from 'lucide-react';
+import { Star, CheckCircle2, ThumbsUp, ChevronLeft, Filter, Trash2, Edit, X } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import ReviewModal from './ReviewModal';
 import { getReviews, deleteReview, createReview, updateReview } from '@/backend/actions/review';
@@ -53,6 +53,8 @@ const ReviewsPage = ({
   const [activeFilter, setActiveFilter] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
+  const [previewMediaItems, setPreviewMediaItems] = useState<Array<{ id: string; url: string; type: 'image' | 'video'; poster?: string }>>([]);
+  const [previewMediaIndex, setPreviewMediaIndex] = useState(0);
   
   const router = useRouter();
 
@@ -128,6 +130,54 @@ const ReviewsPage = ({
     setIsModalOpen(true);
   }, [openComposerSignal, userId]);
 
+  const closePreviewModal = () => {
+    setPreviewMediaItems([]);
+    setPreviewMediaIndex(0);
+  };
+
+  const hasPreviewMedia = previewMediaItems.length > 0;
+  const activePreviewMedia = hasPreviewMedia ? previewMediaItems[previewMediaIndex] : null;
+
+  const goToPreviousPreviewMedia = () => {
+    if (!previewMediaItems.length) return;
+    setPreviewMediaIndex((current) =>
+      current === 0 ? previewMediaItems.length - 1 : current - 1
+    );
+  };
+
+  const goToNextPreviewMedia = () => {
+    if (!previewMediaItems.length) return;
+    setPreviewMediaIndex((current) =>
+      current === previewMediaItems.length - 1 ? 0 : current + 1
+    );
+  };
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closePreviewModal();
+        return;
+      }
+      if (event.key === 'ArrowLeft') {
+        goToPreviousPreviewMedia();
+        return;
+      }
+      if (event.key === 'ArrowRight') {
+        goToNextPreviewMedia();
+      }
+    };
+
+    if (hasPreviewMedia) {
+      document.addEventListener('keydown', onKeyDown);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = 'unset';
+    };
+  }, [hasPreviewMedia, previewMediaItems.length]);
+
   const handleDelete = async (reviewId: string) => {
     if (!confirm('Are you sure you want to delete this review?')) return;
     if (!userId) {
@@ -176,8 +226,27 @@ const ReviewsPage = ({
     const normalized = String(url || '').toLowerCase();
     return (
       normalized.includes('/video/upload/') ||
-      /\.(mp4|webm|mov|m4v|avi|mkv)(\?|#|$)/.test(normalized)
+      /\.(mp4|webm|mov)(\?|#|$)/.test(normalized)
     );
+  };
+
+  const sanitizeMediaUrl = (url: string) => {
+    const value = String(url || '').trim();
+    if (!value) return '';
+    try {
+      const parsed = new URL(value);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+      return parsed.toString();
+    } catch {
+      return '';
+    }
+  };
+
+  const toCloudinaryVideoPoster = (url: string) => {
+    const sanitized = sanitizeMediaUrl(url);
+    if (!sanitized) return '';
+    if (!sanitized.includes('/video/upload/')) return '';
+    return sanitized.replace('/video/upload/', '/video/upload/so_0,q_auto,f_jpg,w_480/');
   };
 
   const content = (
@@ -193,6 +262,76 @@ const ReviewsPage = ({
     productId={PRODUCT_ID}
     userId={userId || ""}
   />
+
+  {activePreviewMedia && (
+    <div className="fixed inset-0 z-140 flex items-center justify-center p-4 md:p-8" role="dialog" aria-modal="true" aria-label="Media preview">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
+        onClick={closePreviewModal}
+        aria-label="Close media preview"
+      />
+
+      <div className="relative z-141 w-full max-w-5xl">
+        <button
+          type="button"
+          onClick={closePreviewModal}
+          className="absolute -top-12 right-0 rounded-full bg-white/15 p-2.5 text-white hover:bg-white/25"
+          aria-label="Close preview"
+        >
+          <X size={18} />
+        </button>
+
+        {previewMediaItems.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={goToPreviousPreviewMedia}
+              className="absolute left-2 top-1/2 z-150 -translate-y-1/2 rounded-full bg-black/55 px-3 py-2 text-2xl font-bold text-white transition-colors hover:bg-black/75"
+              aria-label="Previous media"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              onClick={goToNextPreviewMedia}
+              className="absolute right-2 top-1/2 z-150 -translate-y-1/2 rounded-full bg-black/55 px-3 py-2 text-2xl font-bold text-white transition-colors hover:bg-black/75"
+              aria-label="Next media"
+            >
+              ›
+            </button>
+          </>
+        )}
+
+        <div className="overflow-hidden rounded-2xl bg-black shadow-2xl">
+          {activePreviewMedia.type === 'video' ? (
+            <video
+              src={activePreviewMedia.url}
+              poster={activePreviewMedia.poster}
+              className="max-h-[80vh] w-full bg-black"
+              controls
+              autoPlay
+              playsInline
+              preload="metadata"
+            />
+          ) : (
+            <img
+              src={activePreviewMedia.url}
+              alt="Review media preview"
+              className="max-h-[80vh] w-full object-contain"
+              loading="eager"
+            />
+          )}
+        </div>
+
+        {previewMediaItems.length > 1 && (
+          <p className="mt-3 text-center text-xs font-semibold tracking-wide text-white/85">
+            {previewMediaIndex + 1} / {previewMediaItems.length}
+          </p>
+        )}
+      </div>
+    </div>
+  )}
   
   <div className="mx-auto max-w-7xl px-4 md:px-6 lg:px-8 py-6 md:py-8">
     {/* Header Card: Stacked on mobile, 3-cols on LG */}
@@ -329,16 +468,40 @@ const ReviewsPage = ({
                     <div
                       key={media.id}
                       className="relative shrink-0 h-20 w-20 md:h-24 md:w-24 overflow-hidden rounded-lg border border-[#840d5c]/10 bg-[#f8edf2] hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => {
+                        const mappedMediaItems = review.images
+                          .map((item) => {
+                            const safeUrl = sanitizeMediaUrl(item.url);
+                            if (!safeUrl) return null;
+                            const video = isVideoUrl(item.url);
+                            return {
+                              id: item.id,
+                              url: safeUrl,
+                              type: video ? 'video' as const : 'image' as const,
+                              poster: video ? (toCloudinaryVideoPoster(item.url) || undefined) : undefined,
+                            };
+                          })
+                          .filter(Boolean) as Array<{ id: string; url: string; type: 'image' | 'video'; poster?: string }>;
+
+                        if (!mappedMediaItems.length) return;
+
+                        const selectedIndex = mappedMediaItems.findIndex((item) => item.id === media.id);
+                        setPreviewMediaItems(mappedMediaItems);
+                        setPreviewMediaIndex(selectedIndex >= 0 ? selectedIndex : 0);
+                      }}
                     >
                       {isVideoUrl(media.url) ? (
                         <video
-                          src={media.url}
+                          src={sanitizeMediaUrl(media.url)}
+                          poster={toCloudinaryVideoPoster(media.url) || undefined}
                           className="h-full w-full object-cover"
                           preload="none"
+                          muted
+                          playsInline
                         />
                       ) : (
                         <img
-                          src={media.url}
+                          src={sanitizeMediaUrl(media.url)}
                           alt="Review media"
                           className="h-full w-full object-cover"
                           loading="lazy"

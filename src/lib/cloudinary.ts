@@ -8,6 +8,9 @@ type CloudinaryUploadInput = File | Buffer | Uint8Array | ArrayBuffer;
 type UploadImageResult = {
   url: string;
   publicId: string;
+  duration?: number;
+  thumbnailUrl?: string;
+  resourceType?: 'image' | 'video' | 'raw' | 'auto';
 };
 
 type UploadResourceType = 'image' | 'raw' | 'video' | 'auto';
@@ -80,6 +83,7 @@ const uploadBuffer = async (
         overwrite: options.overwrite,
         invalidate: options.invalidate,
         resource_type: options.resourceType || 'image',
+        ...(options.resourceType === 'video' ? { chunk_size: 6_000_000 } : {}),
       },
       (error, result) => {
         if (error || !result) {
@@ -90,6 +94,20 @@ const uploadBuffer = async (
         resolve({
           url: result.secure_url,
           publicId: result.public_id,
+          duration: typeof result.duration === 'number' ? result.duration : undefined,
+          resourceType: (result.resource_type as 'image' | 'video' | 'raw' | 'auto') || undefined,
+          thumbnailUrl:
+            result.resource_type === 'video'
+              ? cloudinary.url(result.public_id, {
+                  secure: true,
+                  resource_type: 'video',
+                  format: 'jpg',
+                  transformation: [
+                    { start_offset: '0', quality: 'auto', fetch_format: 'auto' },
+                    { width: 640, crop: 'scale' },
+                  ],
+                })
+              : undefined,
         });
       }
     );

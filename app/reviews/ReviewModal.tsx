@@ -38,6 +38,8 @@ const ReviewModal = ({ isOpen, reviewData, productId, userId, onClose }: ReviewM
   const [newMediaPreviews, setNewMediaPreviews] = useState<NewMediaPreview[]>([]);
   const [hover, setHover] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploadState, setUploadState] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
@@ -104,6 +106,27 @@ const ReviewModal = ({ isOpen, reviewData, productId, userId, onClose }: ReviewM
     );
   };
 
+  const detectMediaKind = (file: File): 'image' | 'video' | null => {
+    const mimeType = String(file.type || '').toLowerCase();
+    if (mimeType.startsWith('image/')) return 'image';
+
+    const extension = String(file.name || '').toLowerCase().split('.').pop() || '';
+    const allowedVideoExtensions = new Set(['mp4', 'mov', 'webm']);
+    const allowedVideoMime = new Set(['video/mp4', 'video/quicktime', 'video/webm']);
+
+    if (allowedVideoMime.has(mimeType) && allowedVideoExtensions.has(extension)) {
+      return 'video';
+    }
+
+    const name = String(file.name || '').toLowerCase();
+    if ((mimeType === 'application/octet-stream' || mimeType === 'binary/octet-stream') && /\.(mp4|webm|mov)$/i.test(name)) {
+      return 'video';
+    }
+    if (/\.(jpg|jpeg|png|webp|gif|bmp|heic|heif|avif)$/i.test(name)) return 'image';
+
+    return null;
+  };
+
   const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
@@ -120,16 +143,14 @@ const ReviewModal = ({ isOpen, reviewData, productId, userId, onClose }: ReviewM
       let rejectedCount = 0;
 
       for (const file of filesToProcess) {
-        const mimeType = String(file.type || '').toLowerCase();
-        const isVideo = mimeType.startsWith('video/');
-        const isImage = mimeType.startsWith('image/');
+        const detectedKind = detectMediaKind(file);
 
-        if (!isVideo && !isImage) {
+        if (!detectedKind) {
           rejectedCount += 1;
           continue;
         }
 
-        const maxSize = isVideo ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
+        const maxSize = detectedKind === 'video' ? 25 * 1024 * 1024 : 5 * 1024 * 1024;
         if (file.size > maxSize) {
           rejectedCount += 1;
           continue;
@@ -138,12 +159,12 @@ const ReviewModal = ({ isOpen, reviewData, productId, userId, onClose }: ReviewM
         validPreviews.push({
           file,
           previewUrl: URL.createObjectURL(file),
-          kind: isVideo ? 'video' : 'image',
+          kind: detectedKind,
         });
       }
 
       if (rejectedCount > 0) {
-        setError('Some files were skipped (allowed: image up to 5MB, video up to 20MB).');
+        setError('Some files were skipped (allowed videos: mp4/mov/webm up to 25MB, images up to 5MB).');
       }
 
       setNewMediaPreviews((current) => [...current, ...validPreviews]);
@@ -172,20 +193,47 @@ const ReviewModal = ({ isOpen, reviewData, productId, userId, onClose }: ReviewM
     formData.append('productId', String(productId || '').trim());
     files.forEach((file) => formData.append('files', file));
 
-    const response = await fetch('/api/reviews/media/upload', {
-      method: 'POST',
-      body: formData,
+    setUploadState('uploading');
+    setUploadProgress(0);
+
+    const payload = await new Promise<any>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/reviews/media/upload');
+
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return;
+        const progress = Math.round((event.loaded / event.total) * 100);
+        setUploadProgress(progress);
+      };
+
+      xhr.onerror = () => reject(new Error('Network error during media upload'));
+      xhr.onload = () => {
+        try {
+          const responsePayload = JSON.parse(xhr.responseText || '{}');
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(responsePayload);
+            return;
+          }
+          reject(new Error(responsePayload?.error || 'Failed to upload media'));
+        } catch {
+          reject(new Error('Failed to parse upload response'));
+        }
+      };
+
+      xhr.send(formData);
     });
 
-    const payload = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(payload?.error || 'Failed to upload media');
-    }
-
-    return Array.isArray(payload?.uploadedUrls)
+    const urls = Array.isArray(payload?.uploadedUrls)
       ? payload.uploadedUrls.map((url: any) => String(url || '').trim()).filter(Boolean)
       : [];
+
+    if (!urls.length && files.length > 0) {
+      throw new Error('Upload finished but no media URLs were returned');
+    }
+
+    setUploadProgress(100);
+    setUploadState('success');
+    return urls;
   };
 
 const handleSubmit = async (e: React.FormEvent) => {
@@ -203,6 +251,8 @@ const handleSubmit = async (e: React.FormEvent) => {
 
     setIsSubmitting(true);
     setError('');
+    setUploadState('idle');
+    setUploadProgress(0);
 
     try {
       const uploadedMediaUrls = await uploadReviewMedia(
@@ -251,6 +301,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         onClose();
       }, 2500);
     } catch (err: any) {
+      setUploadState('error');
       setError(err.message || 'Submission failed. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -337,6 +388,26 @@ const handleSubmit = async (e: React.FormEvent) => {
                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#321327]/40">Add Photos or Videos</p>
                    <p className="text-[9px] text-[#321327]/30">{existingMedia.length + newMediaPreviews.length}/3</p>
                 </div>
+
+                {uploadState === 'uploading' && (
+                  <div className="px-2">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-[#321327]/10">
+                      <div
+                        className="h-full rounded-full bg-[#840d5c] transition-all duration-200"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                    <p className="mt-1 text-[10px] font-semibold text-[#840d5c]">Uploading media... {uploadProgress}%</p>
+                  </div>
+                )}
+
+                {uploadState === 'success' && (
+                  <p className="px-2 text-[10px] font-semibold text-emerald-600">Media uploaded successfully.</p>
+                )}
+
+                {uploadState === 'error' && (
+                  <p className="px-2 text-[10px] font-semibold text-red-500">Media upload failed. Please try again.</p>
+                )}
                 
                 <div className="flex gap-3 flex-wrap">
                   {existingMedia.map((item) => (
