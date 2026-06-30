@@ -34,7 +34,20 @@ const createQuizResultsTableIfNeeded = async () => {
 };
 
 export async function saveFitQuizResult(input: SaveFitQuizResultInput) {
-  const dbUser = await ensureCurrentDbUser();
+  let dbUser;
+  try {
+    dbUser = await ensureCurrentDbUser();
+  } catch (error) {
+    console.error("Fit quiz save blocked before DB write:", error);
+    const message = error instanceof Error ? error.message : "";
+    const isUnauthorized = /unauthorized|auth/i.test(message);
+    return {
+      success: false,
+      error: isUnauthorized
+        ? "Please login to save your quiz result and receive it by email."
+        : "Unable to verify your account right now. Please try again.",
+    };
+  }
 
   if (!input?.recommendationName || !input?.outfit || !input?.comfort || !input?.occasion) {
     return { success: false, error: "Missing quiz result details" };
@@ -64,17 +77,25 @@ export async function saveFitQuizResult(input: SaveFitQuizResultInput) {
       input.recommendationImage || null
     );
 
+    let emailSent = false;
+
     if (dbUser.email) {
-      await emailService.sendFitQuizResultEmail(dbUser.email, {
-        recommendationName: input.recommendationName,
-        recommendationDesc: input.recommendationDesc,
-        outfit: input.outfit,
-        comfort: input.comfort,
-        occasion: input.occasion,
-      });
+      try {
+        const emailResult = await emailService.sendFitQuizResultEmail(dbUser.email, {
+          recommendationName: input.recommendationName,
+          recommendationDesc: input.recommendationDesc,
+          outfit: input.outfit,
+          comfort: input.comfort,
+          occasion: input.occasion,
+        });
+        emailSent = Boolean(emailResult?.success);
+      } catch (emailError) {
+        // Quiz save should not fail when email delivery has transient issues.
+        console.error("Fit quiz result email send failed:", emailError);
+      }
     }
 
-    return { success: true, id: resultId };
+    return { success: true, id: resultId, emailSent };
   } catch (error) {
     console.error("Failed to save fit quiz result:", error);
     return { success: false, error: "Failed to save quiz result" };

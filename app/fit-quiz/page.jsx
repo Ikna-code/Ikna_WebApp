@@ -335,7 +335,11 @@ export default function PerfectFitQuiz({ handleClose }) {
       }
 
       setHasSavedResult(true);
-      setSaveMessage('Saved successfully. We also sent your result to your email.');
+      setSaveMessage(
+        response?.emailSent
+          ? 'Saved successfully. We also sent your result to your email.'
+          : 'Saved successfully. Email delivery is delayed right now, but your result is stored in your profile.'
+      );
     } catch {
       setSaveMessage('Unable to save your result right now.');
     } finally {
