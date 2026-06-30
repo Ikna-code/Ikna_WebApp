@@ -185,6 +185,7 @@ const SingleProductPage = () => {
   const [resolvedProduct, setResolvedProduct] = useState<any>(null);
   const [hasResolvedProduct, setHasResolvedProduct] = useState(false);
   const [liveSizeStockByVariant, setLiveSizeStockByVariant] = useState<Record<string, Record<string, number>>>({});
+  const [isBuyNowLoading, setIsBuyNowLoading] = useState(false);
 
   const reviewRef = useRef<HTMLDivElement>(null);
 
@@ -579,20 +580,21 @@ const SingleProductPage = () => {
     []
   );
 
-  const handleAddToBag = async () => {
+  const addCurrentVariantToCart = async (successMessage: string) => {
     const userId = user?.id;
     if (!userId) {
       setToast({ message: "Please login first", type: 'error' });
-      return;
+      return false;
     }
     if (!selectedSize) {
       setToast({ message: "Please select a size", type: 'info' });
-      return;
+      return false;
     }
     if (!activeVariant || activeVariant.isDeleted || !activeVariant.isActive) {
       setToast({ message: 'Product is no longer available.', type: 'error' });
-      return;
+      return false;
     }
+
     await addItemToCart(userId, activeVariant?.id, selectedSize, 1, activeVariant?.category, 0, '');
     if (!useStore.getState().error) {
       const variantKey = String(activeVariant?.id || '').trim();
@@ -611,7 +613,27 @@ const SingleProductPage = () => {
         });
       }
 
-      setToast({ message: "Added to bag!", type: 'success' });
+      setToast({ message: successMessage, type: 'success' });
+      return true;
+    }
+
+    setToast({ message: "Could not add product to bag. Please try again.", type: 'error' });
+    return false;
+  };
+
+  const handleAddToBag = async () => {
+    await addCurrentVariantToCart("Added to bag!");
+  };
+
+  const handleBuyNow = async () => {
+    setIsBuyNowLoading(true);
+    try {
+      const isAdded = await addCurrentVariantToCart("Item added. Redirecting to secure checkout...");
+      if (!isAdded) return;
+
+      router.push('/cart?resumeCheckout=1');
+    } finally {
+      setIsBuyNowLoading(false);
     }
   };
 
@@ -976,6 +998,14 @@ const SingleProductPage = () => {
                       className="w-full text-white py-3 rounded-full font-bold uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 shadow-md transition-all active:scale-[0.98] bg-[#840d5c] hover:bg-[#321327] shadow-[#840d5c]/20"
                     >
                       <ShoppingBag size={16} /> Add To Bag
+                    </button>
+
+                    <button
+                      onClick={handleBuyNow}
+                      disabled={isBuyNowLoading}
+                      className="w-full bg-[#321327] text-white py-3 rounded-full font-bold uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 hover:bg-[#840d5c] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <ShieldCheck size={14} /> {isBuyNowLoading ? 'Processing...' : 'Buy Now'}
                     </button>
 
                     <button
