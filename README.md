@@ -40,11 +40,11 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 Create these endpoints in Razorpay and Shiprocket after deploying the app:
 
 - Razorpay: `/api/webhooks/razorpay`
-- Shiprocket: `/api/webhooks/shiprocket`
+- Shiprocket: `/api/order-status`
 
 Environment variables used by these handlers:
 
 - `RAZORPAY_WEBHOOK_SECRET` preferred, falling back to `RAZORPAY_KEY_SECRET`
-- `SHIPROCKET_WEBHOOK_SECRET` optional but recommended
+- `SHIPROCKET_WEBHOOK_SECRET` required for `/api/order-status` x-api-key verification
 
 The order sync now stores provider ids and shipment metadata directly on the `orders` table so payment and shipping updates can reconcile automatically even if the customer does not return to the browser after checkout.

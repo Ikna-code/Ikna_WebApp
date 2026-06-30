@@ -17,29 +17,23 @@ function pickString(...values: unknown[]) {
   return null;
 }
 
-function matchesHmac(rawBody: string, signature: string, secret: string) {
-  const hexDigest = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
-  const base64Digest = crypto.createHmac('sha256', secret).update(rawBody).digest('base64');
-  const candidates = [hexDigest, base64Digest];
+function equalsSecret(expected: string, provided: string) {
+  const expectedBuffer = Buffer.from(expected);
+  const providedBuffer = Buffer.from(provided);
 
-  return candidates.some((candidate) => {
-    const expectedBuffer = Buffer.from(candidate);
-    const actualBuffer = Buffer.from(signature);
+  if (expectedBuffer.length !== providedBuffer.length) {
+    return false;
+  }
 
-    if (expectedBuffer.length !== actualBuffer.length) {
-      return false;
-    }
-
-    return crypto.timingSafeEqual(expectedBuffer, actualBuffer);
-  });
+  return crypto.timingSafeEqual(expectedBuffer, providedBuffer);
 }
 
-function mapShiprocketStatus(statusText: string | null) {
-  if (!statusText) {
+function mapStatus(currentStatus: string | null) {
+  if (!currentStatus) {
     return { orderStatus: null, packedAt: null, shippedAt: null, deliveredAt: null };
   }
 
-  const normalized = statusText.toLowerCase();
+  const normalized = currentStatus.toLowerCase();
   const now = new Date();
 
   if (normalized.includes('deliver')) {
@@ -76,61 +70,42 @@ function asJsonRecord(value: unknown): JsonRecord {
 }
 
 export async function POST(request: Request) {
-  const rawBody = await request.text();
-  const secret = process.env.SHIPROCKET_WEBHOOK_SECRET;
-  const signature =
-    request.headers.get('x-shiprocket-signature') ||
-    request.headers.get('x-webhook-signature') ||
-    request.headers.get('x-signature') ||
-    request.headers.get('signature');
+  const secret = process.env.SHIPROCKET_WEBHOOK_SECRET?.trim();
+  const apiKey = request.headers.get('x-api-key')?.trim();
 
-  if (secret) {
-    if (!signature || !matchesHmac(rawBody, signature, secret)) {
-      return NextResponse.json({ error: 'Invalid Shiprocket signature.' }, { status: 401 });
-    }
+  if (!secret) {
+    return NextResponse.json({ error: 'SHIPROCKET_WEBHOOK_SECRET is not configured.' }, { status: 500 });
   }
+
+  if (!apiKey || !equalsSecret(secret, apiKey)) {
+    return NextResponse.json({ error: 'Invalid x-api-key.' }, { status: 401 });
+  }
+
+  const rawBody = await request.text();
 
   let payload: JsonRecord;
 
   try {
     payload = JSON.parse(rawBody) as JsonRecord;
   } catch {
-    return NextResponse.json({ error: 'Invalid Shiprocket payload.' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid payload.' }, { status: 400 });
   }
 
+  // Log full webhook payload during integration/testing.
+  console.log('[order-status webhook] incoming payload:', payload);
+
   const eventData = asJsonRecord(payload.shipment || payload.data || payload.order || payload);
-
-  const dbOrderId = pickString(
-    payload.dbOrderId,
-    payload.db_order_id,
-    eventData.dbOrderId,
-    eventData.db_order_id,
-    payload.reference_id,
-    payload.referenceId,
-    eventData.reference_id,
-    eventData.referenceId,
-    payload.channel_order_id,
-    eventData.channel_order_id,
-  );
-
+  const awbCode = pickString(payload.awb_code, payload.awb, eventData.awb_code, eventData.awb);
   const shiprocketOrderId = pickString(
+    payload.order_id,
     payload.shiprocket_order_id,
     payload.sr_order_id,
+    eventData.order_id,
     eventData.shiprocket_order_id,
     eventData.sr_order_id,
-    eventData.order_id,
   );
-
-  const shipmentId = pickString(
-    payload.shipment_id,
-    eventData.shipment_id,
-    eventData.id,
-  );
-
-  const awbCode = pickString(payload.awb_code, payload.awb, eventData.awb_code, eventData.awb);
-  const courierName = pickString(payload.courier_name, payload.courier, eventData.courier_name, eventData.courier);
-  const trackingUrl = pickString(payload.tracking_url, eventData.tracking_url);
-  const shiprocketStatus = pickString(
+  const shipmentId = pickString(payload.shipment_id, eventData.shipment_id, eventData.id);
+  const currentStatus = pickString(
     payload.current_status,
     payload.shipment_status,
     payload.status,
@@ -139,28 +114,28 @@ export async function POST(request: Request) {
     eventData.status,
   );
 
-  const mappedStatus = mapShiprocketStatus(shiprocketStatus);
+  const mappedStatus = mapStatus(currentStatus);
+
   const order = await syncOrderState({
-    orderId: dbOrderId,
     shiprocketOrderId,
     shipmentId,
-    orderStatus: mappedStatus.orderStatus,
     shipment: {
       shiprocketOrderId,
       shipmentId,
       awbCode,
-      courierName,
-      trackingUrl,
-      shiprocketStatus,
+      shiprocketStatus: currentStatus,
       packedAt: mappedStatus.packedAt,
       shippedAt: mappedStatus.shippedAt,
       deliveredAt: mappedStatus.deliveredAt,
     },
+    orderStatus: mappedStatus.orderStatus,
   });
 
   return NextResponse.json({
     received: true,
     orderId: order?.id ?? null,
-    shiprocketStatus,
+    awbCode,
+    orderRef: shiprocketOrderId,
+    currentStatus,
   });
 }

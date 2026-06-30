@@ -26,7 +26,7 @@ function SidebarContent({ adminUser, isSigningOut, onLogout, onNavigate, pathnam
   }, [pathname]);
 
   const displayName = [adminUser?.firstName, adminUser?.lastName].filter(Boolean).join(' ').trim() || 'Admin User';
-  const displayEmail = adminUser?.email || 'admin@ikna.com';
+  const displayEmail = adminUser?.email || 'admin@iknaonline.com';
 
   return (
     <>

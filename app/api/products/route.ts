@@ -84,18 +84,6 @@ export async function GET() {
     });
 
     const productIds = products.map((product: any) => String(product.id));
-    const fabricRows = productIds.length
-      ? await (db as any).$queryRawUnsafe(
-          `SELECT id, "fabricType" AS "fabricType" FROM "Product" WHERE id IN (${productIds
-            .map((_: string, index: number) => `$${index + 1}`)
-            .join(',')})`,
-          ...productIds
-        )
-      : [];
-
-    const fabricById = new Map(
-      (Array.isArray(fabricRows) ? fabricRows : []).map((row: any) => [String(row.id), String(row.fabricType || 'cotton')])
-    );
 
     const inventoryRows = productIds.length
       ? await (db as any)
@@ -129,7 +117,7 @@ export async function GET() {
 
     const normalizedProducts = products.map((product: any) => ({
       ...product,
-      fabricType: fabricById.get(String(product.id)) || 'cotton',
+      fabricType: String(product.fabricType || 'cotton'),
       inventory: inventoryByProductId.get(String(product.id)) || [],
       backendBadgeLabels: getBackendBadgeLabels(product),
     }));
@@ -138,7 +126,8 @@ export async function GET() {
     const serializedProducts = serializeDecimal(normalizedProducts);
 
     return NextResponse.json(serializedProducts);
-  } catch {
+  } catch (error) {
+    console.error('[api/products] failed to fetch products:', error);
     return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
   }
 }

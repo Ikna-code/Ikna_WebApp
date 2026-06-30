@@ -238,7 +238,7 @@ export default function TermsAndConditions() {
 
             <p className="text-gray-700 mb-2">
               <span className="font-medium">Email:</span>{' '}
-              admin@ikna.com
+              admin@iknaonline.com
             </p>
 
             <p className="text-gray-700">
