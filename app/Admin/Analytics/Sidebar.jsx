@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { BarChart3, Box, ClipboardList, Users, LogOut, ChevronDown, Menu, X, MessageSquareWarning } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabaseBrowser } from '@/lib/supabase/client';
@@ -99,7 +99,6 @@ function SidebarContent({ adminUser, isSigningOut, onLogout, onNavigate, pathnam
 
 export default function Sidebar({ adminUser }) {
   const pathname = usePathname();
-  const router = useRouter();
   const supabase = supabaseBrowser;
   const mobileOpen = useStore((state) => state.isAdminMenuOpen);
   const setMobileOpen = useStore((state) => state.setAdminMenuOpen);
@@ -117,7 +116,7 @@ export default function Sidebar({ adminUser }) {
 
       resetStoreState.setState({
         user: null,
-        isAuthInitialized: false,
+        isAuthInitialized: true,
         cartItems: [],
         isCartInitialized: false,
         cartUserId: null,
@@ -131,8 +130,7 @@ export default function Sidebar({ adminUser }) {
       });
 
       toast.success('Signed out successfully');
-      router.push('/');
-      router.refresh();
+      window.location.assign('/');
     } catch (error) {
       toast.error(error?.message || 'Failed to sign out');
     } finally {

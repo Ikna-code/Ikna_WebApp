@@ -12,7 +12,6 @@ import {
   Bell,
 } from 'lucide-react';
 import { supabaseBrowser } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { updateUserProfile, getCommPrefs, updateCommPrefs, deleteAccount, type CommPrefs } from '@/backend/actions/user';
 import { useStore } from '@/store/useStore';
@@ -169,7 +168,6 @@ function ToggleRow({
 /* ─── main component ─────────────────────────────────────────────────────── */
 const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => void }) => {
   const supabase = supabaseBrowser;
-  const router = useRouter();
   const resetStoreState = useStore;
 
   /* profile form */
@@ -274,7 +272,7 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
       if (error) throw error;
       resetStoreState.setState({
         user: null,
-        isAuthInitialized: false,
+        isAuthInitialized: true,
         cartItems: [],
         isCartInitialized: false,
         cartUserId: null,
@@ -286,14 +284,13 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
         isAddressesInitialized: false,
       });
       toast.success('Signed out successfully');
-      router.push('/');
-      router.refresh();
+      window.location.assign('/');
     } catch (error: any) {
       toast.error(error.message);
     } finally {
       setActionLoading(false);
     }
-  }, [supabase, resetStoreState, router]);
+  }, [supabase, resetStoreState]);
 
   const handleDeleteAccount = useCallback(async () => {
     const confirmed = window.confirm(
@@ -309,7 +306,7 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
       await supabase.auth.signOut({ scope: 'local' });
       resetStoreState.setState({
         user: null,
-        isAuthInitialized: false,
+        isAuthInitialized: true,
         cartItems: [],
         isCartInitialized: false,
         cartUserId: null,
@@ -322,14 +319,13 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
       });
 
       toast.success('Your account has been deleted.');
-      router.push('/');
-      router.refresh();
+      window.location.assign('/');
     } catch (error: any) {
       toast.error(error.message ?? 'Could not delete account');
     } finally {
       setActionLoading(false);
     }
-  }, [supabase, resetStoreState, router]);
+  }, [supabase, resetStoreState]);
 
   const handleSavePrefs = useCallback(async () => {
     setPrefsSaving(true);

@@ -74,7 +74,8 @@ export default function AppInitializer() {
       } else if (event === 'SIGNED_OUT') {
         useStore.setState({
           user: null,
-          isAuthInitialized: false,
+          // Auth is resolved after sign-out; keep initialized true so public views don't block on loaders.
+          isAuthInitialized: true,
           cartItems: [],
           isCartInitialized: false,
           cartUserId: null,
