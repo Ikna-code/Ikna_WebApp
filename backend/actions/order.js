@@ -593,7 +593,7 @@ console.log("Total Saved Saved in Audit Log:", totalDiscountAccumulator.toString
 
 /**
  * Records a successful payment and updates order status.
- * Call this after your payment provider (Stripe/PayPal) returns success.
+ * Call this after your payment provider returns success.
  */
 export async function confirmPayment(orderId, transactionId, provider) {
   try {
