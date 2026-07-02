@@ -15,7 +15,6 @@ import {
   Package,
   AlertCircle,
   CircleX,
-  FileText,
   ChevronLeft,
   ChevronRight,
   Tag,
@@ -224,14 +223,7 @@ const IMPORT_TEMPLATE_HEADERS = [
 const STOCK_THRESHOLD = 20;
 
 const getProductStatus = (product: ProductDetail) => {
-  if (product.isDeleted) {
-    return {
-      label: 'Deleted',
-      className: 'bg-red-100 text-red-700 border-red-200',
-    };
-  }
-
-  if (!product.isActive) {
+  if (product.isDeleted || !product.isActive) {
     return {
       label: 'Inactive',
       className: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -241,6 +233,42 @@ const getProductStatus = (product: ProductDetail) => {
   return {
     label: 'Active',
     className: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  };
+};
+
+const getStockPresentation = (stock: number) => {
+  if (stock === 0) {
+    return {
+      badgeLabel: 'Out of Stock',
+      badgeClassName: 'bg-red-100 text-red-700',
+      unitsText: '0 units available',
+      unitsClassName: 'text-red-700',
+      hintText: 'Restock needed',
+      hintClassName: 'text-red-600',
+      iconClassName: 'text-red-500',
+    };
+  }
+
+  if (stock <= STOCK_THRESHOLD) {
+    return {
+      badgeLabel: 'Low Stock',
+      badgeClassName: 'bg-amber-100 text-amber-700',
+      unitsText: `${stock} units left`,
+      unitsClassName: 'text-neutral-600',
+      hintText: 'Reorder soon',
+      hintClassName: 'text-amber-600',
+      iconClassName: 'text-amber-500',
+    };
+  }
+
+  return {
+    badgeLabel: 'In Stock',
+    badgeClassName: 'bg-emerald-100 text-emerald-700',
+    unitsText: `${stock} units available`,
+    unitsClassName: 'text-neutral-600',
+    hintText: stock > STOCK_THRESHOLD * 2 ? 'Well stocked' : 'Stock healthy',
+    hintClassName: 'text-emerald-600',
+    iconClassName: 'text-emerald-500',
   };
 };
 
@@ -359,11 +387,11 @@ export default function ProductManagementDashboard() {
   const refreshProducts = useStore((state) => state.refreshProducts);
   const [productDetails, setProductDetails] = useState<ProductDetail[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
-  const [activeCategory, setActiveCategory] = useState('All');
+  const [activeCategory, setActiveCategory] = useState('');
   const [activeStyle, setActiveStyle] = useState('All');
-  const [stockLevel, setStockLevel] = useState('All');
+  const [stockLevel, setStockLevel] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [maxPriceFilter, setMaxPriceFilter] = useState(1500);
+  const [maxPriceFilter, setMaxPriceFilter] = useState(-1);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -727,10 +755,6 @@ const mappedProducts = products.map((product, index) => {
       const generatedSku = String(maxSku + 1);
       setNextSku(generatedSku);
 
-      const maxPriceFromProducts = mappedProducts.length
-        ? Math.max(...mappedProducts.map((product) => product.price), 1500)
-        : 1500;
-      setMaxPriceFilter(maxPriceFromProducts);
     } catch {
       setErrorMessage('Unable to load products right now.');
     } finally {
@@ -969,18 +993,20 @@ const mappedProducts = products.map((product, index) => {
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.category.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = activeCategory === 'All' || product.category === activeCategory;
+    const matchesCategory = !activeCategory || activeCategory === 'All' || product.category === activeCategory;
     const matchesStyle = activeStyle === 'All' || product.color === activeStyle;
     const matchesStock =
+      !stockLevel ||
       stockLevel === 'All' ||
       (stockLevel === 'In Stock' && product.stock > STOCK_THRESHOLD) ||
       (stockLevel === 'Low Stock' && product.stock > 0 && product.stock <= STOCK_THRESHOLD) ||
       (stockLevel === 'Out of Stock' && product.stock === 0);
-    const matchesPrice = product.price <= maxPriceFilter;
+    const matchesPrice = maxPriceFilter < 0 || product.price <= maxPriceFilter;
 
     return matchesSearch && matchesCategory && matchesStyle && matchesStock && matchesPrice;
   });
   const maxPriceLimit = Math.max(1500, ...productDetails.map((p) => p.price), 0);
+  const effectiveMaxPriceFilter = maxPriceFilter < 0 ? maxPriceLimit : maxPriceFilter;
 
   const itemsPerPage = 8;
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / itemsPerPage));
@@ -993,11 +1019,11 @@ const mappedProducts = products.map((product, index) => {
     (product) => product.stock > 0 && product.stock <= STOCK_THRESHOLD
   ).length;
   const outOfStockCount = productDetails.filter((product) => product.stock === 0).length;
-  const draftProductsCount = productDetails.filter(
-    (product) => !product.isDeleted && !product.isActive
-  ).length;
   const activeProductsCount = productDetails.filter(
     (product) => !product.isDeleted && product.isActive
+  ).length;
+  const inactiveDeletedProductsCount = productDetails.filter(
+    (product) => product.isDeleted || !product.isActive
   ).length;
 
   useEffect(() => {
@@ -1281,16 +1307,7 @@ const payload = {
     });
   };
 
-  const handleDeleteProduct = async (id: string) => {
-    setDeleteModal({
-      isOpen: true,
-      mode: 'single',
-      productId: id,
-      count: 1,
-    });
-  };
-
-  const handleRestoreProduct = async (id: string) => {
+  const handleSetProductActiveState = async (id: string, nextIsActive: boolean) => {
     if (!beginApiCall()) return;
     setErrorMessage('');
 
@@ -1298,17 +1315,21 @@ const payload = {
       const response = await fetch(`/api/admin/products/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'restore' }),
+        body: JSON.stringify({
+          isActive: nextIsActive,
+          isDeleted: false,
+          deletedAt: null,
+        }),
       });
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        throw new Error(payload?.error || 'Failed to restore product');
+        throw new Error(payload?.error || `Failed to mark product as ${nextIsActive ? 'active' : 'inactive'}`);
       }
 
       await Promise.all([fetchProducts(), refreshProducts()]);
     } catch (error: any) {
-      setErrorMessage(error?.message || 'Failed to restore product.');
+      setErrorMessage(error?.message || `Failed to mark product as ${nextIsActive ? 'active' : 'inactive'}.`);
     } finally {
       endApiCall();
     }
@@ -1481,9 +1502,10 @@ const payload = {
     void handleEditProduct(product);
   };
 
-  const handleRowActionDelete = (product: ProductDetail) => {
+  const handleRowActionToggleActive = (product: ProductDetail) => {
     setActiveActionMenuProductId(null);
-    void handleDeleteProduct(product.id);
+    const isInactive = product.isDeleted || !product.isActive;
+    void handleSetProductActiveState(product.id, isInactive);
   };
 
   const removeExistingEditImage = (image: EditableExistingImage) => {
@@ -1611,11 +1633,11 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
   };
 
   const resetFilters = () => {
-    setActiveCategory('All');
+    setActiveCategory('');
     setActiveStyle('All');
-    setStockLevel('All');
+    setStockLevel('');
     setSearchQuery('');
-    setMaxPriceFilter(maxPriceLimit);
+    setMaxPriceFilter(-1);
   };
 
   const handleImportProducts = async (e: React.FormEvent) => {
@@ -2099,7 +2121,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
           <h1 className="text-4xl font-black tracking-tight text-[#2a1031]">Product Management</h1>
         </div>
         <div className="hidden w-full flex-nowrap items-center gap-3 overflow-x-auto pb-1 md:flex md:w-auto">
-          <div className="flex min-w-42.5 items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 shadow-sm">
+          {/* <div className="flex min-w-42.5 items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 shadow-sm">
             <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#f7e8f1] text-[#840d5c]">
               <Package className="h-4 w-4" />
             </div>
@@ -2107,8 +2129,8 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
               <p className="text-[11px] font-semibold text-neutral-500">Total SKUs</p>
               <p className="text-2xl font-black leading-tight text-[#2a1031]">{totalSkus}</p>
             </div>
-          </div>
-          <div className="flex min-w-52.5 items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 shadow-sm">
+          </div> */}
+          {/* <div className="flex min-w-52.5 items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 shadow-sm">
             <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-red-50 text-red-500">
               <AlertCircle className="h-4 w-4" />
             </div>
@@ -2116,50 +2138,59 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
               <p className="text-[11px] font-semibold text-neutral-500">Low Stock Alerts</p>
               <p className="text-xl font-black leading-tight text-red-600">{lowStockCount} Low Stocks</p>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f7e8f1] text-[#840d5c]">
-            <Package className="h-5 w-5" />
+        <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm">
+          <div className="mb-2.5 flex items-center justify-center gap-2">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f7e8f1] text-[#840d5c]">
+              <Package className="h-4 w-4" />
+            </div>
+            <p className="text-base font-semibold text-neutral-600">Total Products</p>
           </div>
-          <p className="text-xs font-semibold text-neutral-500">Total Products</p>
-          <p className="mt-0.5 text-3xl font-black text-[#2a1031]">{totalSkus}</p>
-          <p className="mt-1 text-[11px] text-neutral-500">{activeProductsCount} active products</p>
+          <p className="text-center text-4xl font-black leading-none text-[#6f1454]">{totalSkus}</p>
+          <p className="mt-1.5 text-center text-xs font-medium text-neutral-500">{activeProductsCount} active products</p>
         </div>
 
-        <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-50 text-amber-500">
-            <AlertCircle className="h-5 w-5" />
+        <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm">
+          <div className="mb-2.5 flex items-center justify-center gap-2">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-50 text-amber-500">
+              <AlertCircle className="h-4 w-4" />
+            </div>
+            <p className="text-base font-semibold text-neutral-600">Low Stock</p>
           </div>
-          <p className="text-xs font-semibold text-neutral-500">Low Stock</p>
-          <p className="mt-0.5 text-3xl font-black text-[#2a1031]">{lowStockCount}</p>
-          <p className="mt-1 text-[11px] text-neutral-500">Products running low</p>
+          <p className="text-center text-4xl font-black leading-none text-amber-600">{lowStockCount}</p>
+          <p className="mt-1.5 text-center text-xs font-medium text-neutral-500">Products running low</p>
         </div>
 
-        <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-500">
-            <CircleX className="h-5 w-5" />
+        <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm">
+          <div className="mb-2.5 flex items-center justify-center gap-2">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-500">
+              <CircleX className="h-4 w-4" />
+            </div>
+            <p className="text-base font-semibold text-neutral-600">Out of Stock</p>
           </div>
-          <p className="text-xs font-semibold text-neutral-500">Out of Stock</p>
-          <p className="mt-0.5 text-3xl font-black text-[#2a1031]">{outOfStockCount}</p>
-          <p className="mt-1 text-[11px] text-neutral-500">Currently unavailable</p>
+          <p className="text-center text-4xl font-black leading-none text-red-600">{outOfStockCount}</p>
+          <p className="mt-1.5 text-center text-xs font-medium text-neutral-500">Currently unavailable</p>
         </div>
 
-        <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-500">
-            <FileText className="h-5 w-5" />
+        <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm">
+          <div className="mb-2.5 flex items-center justify-center gap-2">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-600">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+            <p className="text-base font-semibold text-neutral-600">Inactive / Deleted</p>
           </div>
-          <p className="text-xs font-semibold text-neutral-500">Draft Products</p>
-          <p className="mt-0.5 text-3xl font-black text-[#2a1031]">{draftProductsCount}</p>
-          <p className="mt-1 text-[11px] text-neutral-500">Not published yet</p>
+          <p className="text-center text-4xl font-black leading-none text-neutral-700">{inactiveDeletedProductsCount}</p>
+          <p className="mt-1.5 text-center text-xs font-medium text-neutral-500">Needs review or restore</p>
         </div>
+
       </div>
 
       {errorMessage && (
-        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700">
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700">
           {errorMessage}
         </div>
       )}
@@ -2167,7 +2198,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
       <div className="space-y-5">
 
           {/* Actions Toolbar */}
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-2 shadow-sm md:flex-nowrap md:p-3">
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-neutral-200 bg-white p-2 shadow-sm md:flex-nowrap md:p-3">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <button
                 onClick={() => setIsFilterSheetOpen(true)}
@@ -2194,6 +2225,8 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                 onChange={(e) => setActiveCategory(e.target.value)}
                 className="hidden h-10 min-w-28 rounded-xl border border-neutral-300 bg-white px-3 text-xs font-semibold text-neutral-700 outline-none md:block"
               >
+                <option value="" disabled>Category Filter</option>
+
                 {categories.map((c) => (
                   <option key={c}>{c}</option>
                 ))}
@@ -2204,6 +2237,8 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                 onChange={(e) => setStockLevel(e.target.value)}
                 className="hidden h-10 min-w-28 rounded-xl border border-neutral-300 bg-white px-3 text-xs font-semibold text-neutral-700 outline-none md:block"
               >
+                <option value="" disabled>Stock Filter</option>
+
                 {['All', 'In Stock', 'Low Stock', 'Out of Stock'].map((s) => (
                   <option key={s}>{s}</option>
                 ))}
@@ -2214,6 +2249,9 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                 onChange={(e) => setMaxPriceFilter(Number(e.target.value))}
                 className="hidden h-10 min-w-32 rounded-xl border border-neutral-300 bg-white px-3 text-xs font-semibold text-neutral-700 outline-none md:block"
               >
+                <option value={-1} disabled>Price Filter</option>
+                <option value={250}>₹0 - ₹250</option>
+                <option value={500}>₹0 - ₹500</option>
                 <option value={750}>₹0 - ₹750</option>
                 <option value={1000}>₹0 - ₹1,000</option>
                 <option value={1500}>₹0 - ₹1,500</option>
@@ -2256,7 +2294,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
           {/* Mobile Product Cards - HIDDEN */}
           <div className="hidden space-y-3 md:hidden">
             {!isLoading && paginatedProducts.map((p) => (
-              <div key={p.id} className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+              <div key={p.id} className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
                 <div className="flex items-start gap-3">
                   <input
                     type="checkbox"
@@ -2288,21 +2326,21 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
             ))}
 
             {!isLoading && paginatedProducts.length === 0 && (
-              <div className="rounded-2xl border border-neutral-200 bg-white py-8 text-center text-xs font-semibold text-neutral-400 shadow-sm">
+              <div className="rounded-xl border border-neutral-200 bg-white py-8 text-center text-xs font-semibold text-neutral-400 shadow-sm">
                 No products found for the selected filters.
               </div>
             )}
 
             {isLoading && (
-              <div className="rounded-2xl border border-neutral-200 bg-white py-8 text-center text-xs font-semibold text-neutral-400 shadow-sm">
+              <div className="rounded-xl border border-neutral-200 bg-white py-8 text-center text-xs font-semibold text-neutral-400 shadow-sm">
                 Loading products...
               </div>
             )}
           </div>
 
           {/* Product Table */}
-          <div className="overflow-x-auto rounded-3xl border border-neutral-200 bg-white shadow-sm">
-            <table className="w-full min-w-245 border-collapse table-auto text-left text-xs">
+          <div className="overflow-x-auto rounded-2xl border border-neutral-200 bg-white shadow-sm">
+            <table className="w-full min-w-205 border-collapse table-fixed text-left text-[11px]">
               <thead>
                 <tr className="border-b border-neutral-200 text-neutral-400 tracking-wider whitespace-nowrap">
                   <th className="w-12 py-4 px-4">
@@ -2313,14 +2351,14 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                       checked={paginatedProducts.length > 0 && selectedProducts.length === paginatedProducts.length}
                     />
                   </th>
-                  <th className="w-60 py-4 px-3 font-bold">Product</th>
-                  <th className="w-24 py-4 px-3 font-bold">SKU</th>
-                  <th className="w-28 py-4 px-3 font-bold">Stock</th>
-                  <th className="w-24 py-4 px-3 font-bold">Price</th>
-                  <th className="w-32 py-4 px-3 font-bold">Sizes</th>
-                  <th className="w-28 py-4 px-3 font-bold">Color</th>
-                  <th className="w-24 py-4 px-3 font-bold">Status</th>
-                  <th className="w-24 py-4 px-3 font-bold text-center">Actions</th>
+                  <th className="w-52 py-4 px-3 font-bold">Product</th>
+                  <th className="w-20 py-4 px-2 font-bold">SKU</th>
+                  <th className="w-36 py-4 px-2 font-bold">Stock</th>
+                  <th className="w-20 py-4 px-2 font-bold">Price</th>
+                  <th className="w-28 py-4 px-2 font-bold">Sizes</th>
+                  <th className="w-24 py-4 px-2 font-bold">Color</th>
+                  <th className="w-20 py-4 px-2 font-bold">Status</th>
+                  <th className="w-16 py-4 px-2 font-bold text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 text-neutral-600 font-medium">
@@ -2335,65 +2373,66 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                       />
                     </td>
                     <td className="py-4 px-3 align-middle">
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex items-center gap-2">
                         <img
                           src={getImageUrl(p.image)}
-                          className="h-12 w-12 rounded-xl border border-neutral-200 object-cover"
+                          className="h-10 w-10 rounded-xl border border-neutral-200 object-cover"
                           alt={p.name}
                         />
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-bold text-neutral-800" title={p.name}>{p.name}</p>
+                          <p className="truncate text-[13px] font-bold text-neutral-800" title={p.name}>{p.name}</p>
                           <p className="truncate text-[11px] text-neutral-500">{p.category}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-3 align-middle font-mono font-bold text-neutral-800 whitespace-nowrap">{p.sku}</td>
-                    <td className="py-4 px-3 align-middle">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-neutral-900">{p.stock}</span>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                            p.stock === 0
-                              ? 'bg-red-100 text-red-700'
-                              : p.stock <= STOCK_THRESHOLD
-                                ? 'bg-amber-100 text-amber-700'
-                                : 'bg-emerald-100 text-emerald-700'
-                          }`}
-                        >
-                          {p.stock === 0
-                            ? 'Out of Stock'
-                            : p.stock <= STOCK_THRESHOLD
-                              ? 'Low Stock'
-                              : 'In Stock'}
-                        </span>
-                      </div>
+                    <td className="py-4 px-2 align-middle font-mono font-bold text-neutral-800 whitespace-nowrap">{p.sku}</td>
+                    <td className="py-4 px-2 align-middle">
+                      {(() => {
+                        const stockPresentation = getStockPresentation(p.stock);
+                        return (
+                          <div className="space-y-1">
+                            <span
+                              className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${stockPresentation.badgeClassName}`}
+                            >
+                              {stockPresentation.badgeLabel}
+                            </span>
+                            <p className={`inline-flex items-center gap-1 text-[11px] font-semibold ${stockPresentation.unitsClassName}`}>
+                              <Package className={`h-3.5 w-3.5 ${stockPresentation.iconClassName}`} />
+                              {stockPresentation.unitsText}
+                            </p>
+                            {/* <p className={`text-[11px] font-semibold ${stockPresentation.hintClassName}`}>
+                              {stockPresentation.hintText}
+                            </p> */}
+                          </div>
+                        );
+                      })()}
                     </td>
-                    <td className="py-4 px-3 align-middle font-semibold text-neutral-900">₹{p.price}</td>
-                    <td className="py-4 px-3 align-middle">
-                      <p className="max-w-36 truncate whitespace-nowrap text-[11px] text-neutral-700" title={p.sizes.join(', ')}>
+                    <td className="py-4 px-2 align-middle font-semibold text-neutral-900 whitespace-nowrap">₹{p.price}</td>
+                    <td className="py-4 px-2 align-middle">
+                      <p className="max-w-28 truncate whitespace-nowrap text-[10px] text-neutral-700" title={p.sizes.join(', ')}>
                         {p.sizes.length ? p.sizes.join(', ') : 'N/A'}
                       </p>
                     </td>
-                    <td className="py-4 px-3 align-middle">
-                      <div className="flex items-center gap-2">
+                    <td className="py-4 px-2 align-middle">
+                      <div className="flex items-center gap-1.5">
                         <span
                           className="h-3.5 w-3.5 rounded-full border border-neutral-300"
                           style={{ backgroundColor: p.colorHex }}
                           title={p.colorHex}
                         />
-                        <span className="text-[11px] font-semibold text-neutral-700 capitalize">
+                        <span className="truncate text-[10px] font-semibold text-neutral-700 capitalize">
                           {p.colorName || p.color || 'N/A'}
                         </span>
                       </div>
                     </td>
-                    <td className="py-4 px-3 align-middle">
+                    <td className="py-4 px-2 align-middle">
                       <span
-                        className={`inline-flex items-center rounded-full border px-2 py-1 text-[10px] font-bold ${getProductStatus(p).className}`}
+                        className={`inline-flex items-center rounded-full border px-1.5 py-1 text-[9px] font-bold ${getProductStatus(p).className}`}
                       >
                         {getProductStatus(p).label}
                       </span>
                     </td>
-                    <td className="relative py-4 px-3 align-middle">
+                    <td className="relative py-4 px-2 align-middle">
                       <div className="flex items-center justify-center" data-row-action-root="true">
                         <button
                           type="button"
@@ -2427,11 +2466,15 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                             </button>
                             <button
                               type="button"
-                              disabled={isApiCallInProgress || p.isDeleted}
-                              onClick={() => handleRowActionDelete(p)}
-                              className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              disabled={isApiCallInProgress}
+                              onClick={() => handleRowActionToggleActive(p)}
+                              className={`w-full rounded-lg px-3 py-2 text-left text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${
+                                p.isDeleted || !p.isActive
+                                  ? 'text-emerald-700 hover:bg-emerald-50'
+                                  : 'text-amber-700 hover:bg-amber-50'
+                              }`}
                             >
-                              Delete
+                              {p.isDeleted || !p.isActive ? 'Active' : 'Inactive'}
                             </button>
                           </div>
                         )}
@@ -2532,6 +2575,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                     onChange={(e) => setActiveCategory(e.target.value)}
                     className="w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-[#840d5c]"
                   >
+                    <option value="" disabled>Category Filter</option>
                     {categories.map((c) => (
                       <option key={c}>{c}</option>
                     ))}
@@ -2548,11 +2592,11 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                       type="range"
                       min="0"
                       max={maxPriceLimit}
-                      value={maxPriceFilter}
+                      value={effectiveMaxPriceFilter}
                       onChange={(e) => setMaxPriceFilter(Number(e.target.value))}
                       className="h-1 w-full cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-[#840d5c]"
                     />
-                    <span className="text-[9px] font-bold text-neutral-400">₹{maxPriceFilter}</span>
+                    <span className="text-[9px] font-bold text-neutral-400">₹{effectiveMaxPriceFilter}</span>
                   </div>
                 </div>
 
@@ -2563,6 +2607,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                     onChange={(e) => setStockLevel(e.target.value)}
                     className="w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-[#840d5c]"
                   >
+                    <option value="" disabled>Stock Filter</option>
                     {['All', 'In Stock', 'Low Stock', 'Out of Stock'].map((s) => (
                       <option key={s}>{s}</option>
                     ))}
@@ -2613,7 +2658,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
               className="fixed inset-0 z-40 bg-neutral-900/60"
             />
             <div className="fixed inset-0 z-50 grid place-items-center p-4">
-              <div className="my-6 flex max-h-[calc(100vh-2rem)] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-2xl">
+              <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl">
                 <div className="overflow-y-auto p-5 sm:p-6">
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div>
@@ -2636,7 +2681,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
 
                 <div className="grid gap-4 lg:grid-cols-[1.15fr_1.85fr]">
                   <div>
-                    <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50">
+                    <div className="relative overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50">
                       {(viewingProductImages[previewImageIndex] || getImageUrl(viewingProduct.image)) ? (
                         <img
                           src={viewingProductImages[previewImageIndex] || getImageUrl(viewingProduct.image)}
@@ -2679,85 +2724,67 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                       )}
                     </div>
 
-                    {viewingProductImages.length > 1 && (
-                      <div className="mt-3 grid grid-cols-4 gap-2">
-                        {viewingProductImages.slice(0, 4).map((imageUrl, index) => (
-                          <button
-                            key={`${imageUrl}-${index}`}
-                            type="button"
-                            onClick={() => setPreviewImageIndex(index)}
-                            className={`overflow-hidden rounded-xl border ${
-                              previewImageIndex === index
-                                ? 'border-[#7a2a6d] ring-1 ring-[#7a2a6d]'
-                                : 'border-neutral-200'
-                            }`}
-                          >
-                            <img src={imageUrl} alt={`${viewingProduct.name} ${index + 1}`} className="h-16 w-full object-cover" />
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
 
                   <div className="space-y-3">
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                      <div className="rounded-2xl border border-neutral-200 p-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="rounded-xl border border-neutral-200 p-2">
                         <p className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#f7e8f1] text-[#7a2a6d]"><Tag className="h-4 w-4" /></p>
-                        <p className="mt-2 text-sm font-semibold text-neutral-500">Price</p>
-                        <p className="text-3xl font-black text-[#2a1031]">₹{viewingProduct.price}</p>
+                        <p className="mt-1.5 text-[11px] font-semibold text-neutral-500">Price</p>
+                        <p className="text-lg font-black text-[#2a1031]">₹{viewingProduct.price}</p>
                       </div>
-                      <div className="rounded-2xl border border-neutral-200 p-2">
+                      <div className="rounded-xl border border-neutral-200 p-2">
                         <p className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#f7e8f1] text-[#7a2a6d]"><Boxes className="h-4 w-4" /></p>
-                        <p className="mt-2 text-sm font-semibold text-neutral-500">Stock</p>
-                        <p className="text-3xl font-black text-[#2a1031]">{viewingProduct.stock}</p>
-                        <p className={`text-sm font-semibold ${viewingProduct.stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        <p className="mt-1.5 text-[11px] font-semibold text-neutral-500">Stock</p>
+                        <p className="text-lg font-black text-[#2a1031]">{viewingProduct.stock}</p>
+                        <p className={`text-[10px] font-semibold ${viewingProduct.stock > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                           {viewingProduct.stock > 0 ? '• In Stock' : '• Out of Stock'}
                         </p>
                       </div>
-                      <div className="rounded-2xl border border-neutral-200 p-2">
+                      <div className="rounded-xl border border-neutral-200 p-2">
                         <p className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#f7e8f1] text-[#7a2a6d]"><ShieldCheck className="h-4 w-4" /></p>
-                        <p className="mt-2 text-sm font-semibold text-neutral-500">Status</p>
-                        <span className={`mt-1 inline-flex rounded-full border px-3 py-1 text-sm font-bold ${getProductStatus(viewingProduct).className}`}>
+                        <p className="mt-1.5 text-[11px] font-semibold text-neutral-500">Status</p>
+                        <span className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${getProductStatus(viewingProduct).className}`}>
                           {getProductStatus(viewingProduct).label}
                         </span>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div className="rounded-2xl border border-neutral-200 p-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-xl border border-neutral-200 p-2">
                         <p className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#f7e8f1] text-[#7a2a6d]"><Boxes className="h-4 w-4" /></p>
-                        <p className="mt-2 text-sm font-semibold text-neutral-500">Category</p>
-                        <p className="text-xl font-black text-[#2a1031]">{viewingProduct.category}</p>
+                        <p className="mt-1.5 text-[11px] font-semibold text-neutral-500">Category</p>
+                        <p className="text-base font-black text-[#2a1031]">{viewingProduct.category}</p>
                       </div>
-                      <div className="rounded-2xl border border-neutral-200 p-2">
+                      <div className="rounded-xl border border-neutral-200 p-2">
                         <p className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#f7e8f1] text-[#7a2a6d]"><CalendarDays className="h-4 w-4" /></p>
-                        <p className="mt-2 text-sm font-semibold text-neutral-500">Created On</p>
-                        <p className="text-lg font-bold text-[#2a1031]">
+                        <p className="mt-1.5 text-[11px] font-semibold text-neutral-500">Created On</p>
+                        <p className="text-xs font-bold text-[#2a1031]">
                           {new Date(viewingProduct.createdAt).toLocaleString()}
                         </p>
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-neutral-200 p-2">
-                      <p className="text-sm font-black text-[#2a1031]">Description</p>
-                      <p className="mt-2 text-sm leading-relaxed text-neutral-700">
+                    <div className="rounded-xl border border-neutral-200 p-2">
+                      <p className="text-xs font-black text-[#2a1031]">Description</p>
+                      <p className="mt-2 text-xs leading-relaxed text-neutral-700">
                         {viewingProduct.description || 'No description available.'}
                       </p>
                     </div>
 
-                    <div className="rounded-2xl border border-neutral-200 p-2">
-                      <p className="text-sm font-black text-[#2a1031]">Sizes</p>
+                    <div className="rounded-xl border border-neutral-200 p-2">
+                      <p className="text-xs font-black text-[#2a1031]">Sizes</p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {(viewingProduct.sizes.length ? viewingProduct.sizes : ['N/A']).map((size) => (
-                          <span key={size} className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-1 text-sm font-semibold text-neutral-700">
+                          <span key={size} className="rounded-xl border border-[#840d5c] bg-[#840d5c] px-2.5 py-0.5 text-xs font-semibold text-white">
                             {size}
                           </span>
                         ))}
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-neutral-200 p-2">
-                      <p className="text-sm font-black text-[#2a1031]">Color</p>
+                    <div className="rounded-xl border border-neutral-200 p-2">
+                      <p className="text-xs font-black text-[#2a1031]">Color</p>
                       <div className="mt-3 inline-flex items-center gap-3">
                         <span
                           className="h-9 w-9 rounded-full border border-neutral-300"
@@ -2765,8 +2792,8 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                           title={viewingProduct.colorHex}
                         />
                         <div>
-                          <p className="text-base font-semibold text-neutral-700">{viewingProduct.colorName || viewingProduct.color || 'N/A'}</p>
-                          <p className="text-xs font-semibold uppercase text-neutral-400">{viewingProduct.colorHex}</p>
+                          <p className="text-sm font-semibold text-neutral-700">{viewingProduct.colorName || viewingProduct.color || 'N/A'}</p>
+                          <p className="text-[11px] font-semibold uppercase text-neutral-400">{viewingProduct.colorHex}</p>
                         </div>
                       </div>
                     </div>
@@ -2795,7 +2822,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
               className="fixed inset-0 z-40 bg-neutral-900/50"
             />
             <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4">
-              <div className="my-8 w-full max-w-md rounded-3xl border border-neutral-200 bg-white p-6 shadow-2xl">
+              <div className="my-8 w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3 className="text-base font-black text-[#840d5c]">Confirm Soft Delete</h3>
@@ -2850,7 +2877,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
               className="fixed inset-0 z-90 bg-neutral-900/50"
             />
             <div className="fixed inset-0 z-100 grid place-items-center overflow-y-auto p-4">
-              <div className="my-8 w-full max-w-md rounded-3xl border border-neutral-200 bg-white p-6 shadow-2xl">
+              <div className="my-8 w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3 className="text-base font-black text-[#840d5c]">{confirmModal.title}</h3>
@@ -2901,7 +2928,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
             <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4">
               <form
                 onSubmit={handleImportProducts}
-                className="my-8 w-full max-w-2xl rounded-3xl border border-neutral-200 bg-white p-6 shadow-2xl sm:p-7"
+                className="my-8 w-full max-w-2xl rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl sm:p-7"
               >
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-base font-black text-[#840d5c]">Import Products (Excel)</h3>
@@ -3093,7 +3120,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
               className="fixed inset-0 z-40 bg-neutral-900/50"
             />
             <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4">
-              <form onSubmit={handleAddProductDetail} className="my-8 max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-3xl border border-neutral-200 bg-white p-6 shadow-2xl sm:p-7">
+              <form onSubmit={handleAddProductDetail} className="my-8 max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl sm:p-7">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-base font-black text-[#840d5c]">New Product Wizard</h3>
                   <button
@@ -3251,7 +3278,7 @@ onClick={() => {
                       className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
                     />
                   </div>
-                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                  <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-[0.24em] text-neutral-500">Inventory</p>
@@ -3503,7 +3530,7 @@ onClick={() => {
               className="fixed inset-0 z-40 bg-neutral-900/50"
             />
             <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4">
-              <form onSubmit={handleUpdateProductDetail} className="my-8 max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-3xl border border-neutral-200 bg-white p-6 shadow-2xl sm:p-7">
+              <form onSubmit={handleUpdateProductDetail} className="my-8 max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl sm:p-7">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-base font-black text-[#840d5c]">Edit Product</h3>
                   <button
@@ -3660,7 +3687,7 @@ onClick={() => {
                       className="w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-xs"
                     />
                   </div>
-                  <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                  <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-[0.24em] text-neutral-500">Inventory</p>
                       <p className="mt-1 text-[11px] text-neutral-500">

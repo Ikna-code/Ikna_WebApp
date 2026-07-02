@@ -436,6 +436,9 @@ export async function PATCH(
     if (typeof body?.description === 'string') updateData.description = body.description;
     if (typeof body?.tag === 'string' || body?.tag === null) updateData.tag = body.tag;
     if (typeof body?.rating === 'number' || body?.rating === null) updateData.rating = body.rating;
+    if (typeof body?.isActive === 'boolean') updateData.isActive = body.isActive;
+    if (typeof body?.isDeleted === 'boolean') updateData.isDeleted = body.isDeleted;
+    if (body?.deletedAt === null || typeof body?.deletedAt === 'string') updateData.deletedAt = body.deletedAt;
     if (typeof body?.fabricType === 'string') updateData.fabricType = body.fabricType;
     if (typeof body?.colorHex === 'string' || body?.colorHex === null) {
       updateData.colorHex = typeof body?.colorHex === 'string' ? body.colorHex.trim() : null;
