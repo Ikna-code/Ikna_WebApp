@@ -139,7 +139,7 @@ const Footer = () => {
             <div className="flex gap-4">
               {/* Instagram */}
               <Link
-                href="https://instagram.com/ikna_official"
+                href="https://www.instagram.com/ikna_lingerie?igsh=MXZpMXVsNXF2bWZ4eg=="
                 target="_blank"
                 aria-label="Instagram"
                 className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 hover:scale-110 transition-all duration-300"
@@ -149,7 +149,7 @@ const Footer = () => {
 
               {/* Facebook */}
               <Link
-                href="https://facebook.com"
+                href="https://www.facebook.com/profile.php?id=61575937260657"
                 target="_blank"
                 aria-label="Facebook"
                 className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 hover:scale-110 transition-all duration-300"

@@ -318,8 +318,8 @@ export function getOrganizationJsonLd(): object {
     url: SITE_URL,
     logo: `${SITE_URL}/images/AI_images/logo1_ikna.png`,
     sameAs: [
-      'https://instagram.com/ikna_official',
-      'https://facebook.com',
+      'https://www.instagram.com/ikna_lingerie?igsh=MXZpMXVsNXF2bWZ4eg==',
+      'https://www.facebook.com/profile.php?id=61575937260657',
     ],
     contactPoint: {
       '@type': 'ContactPoint',
