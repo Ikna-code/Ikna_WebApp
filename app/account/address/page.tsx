@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import { MapPin, Plus, Trash2, Edit3, X, Loader2, CheckCircle2 } from 'lucide-react';
@@ -17,7 +17,7 @@ interface Address {
   isDefault: boolean;
 }
 
-const AddressPage = () => {
+const AddressPageContent = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [isPending, setIsPending] = useState(false);
@@ -335,6 +335,14 @@ const AddressPage = () => {
         .animate-zoom-in { @media (min-width: 640px) { animation: zoomIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; } }
       `}</style>
     </div>
+  );
+};
+
+const AddressPage = () => {
+  return (
+    <Suspense fallback={null}>
+      <AddressPageContent />
+    </Suspense>
   );
 };
 

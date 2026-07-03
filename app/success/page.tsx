@@ -1,12 +1,12 @@
 "use client";
-import React, { useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircle2, ShoppingBag, ArrowRight } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import { getShortOrderReference } from '@/lib/orderReference';
 
-const SuccessPage = () => {
+const SuccessPageContent = () => {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId');
   const shortOrderReference = getShortOrderReference(orderId);
@@ -54,6 +54,14 @@ const SuccessPage = () => {
         </div>
       </main>
     </div>
+  );
+};
+
+const SuccessPage = () => {
+  return (
+    <Suspense fallback={null}>
+      <SuccessPageContent />
+    </Suspense>
   );
 };
 

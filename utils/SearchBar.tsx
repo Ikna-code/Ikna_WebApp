@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { Suspense, useMemo, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, X, Tag } from "lucide-react";
 import { cn } from "@/utils/cn";
@@ -10,7 +10,7 @@ interface SearchBarProps {
   onClose: () => void;
 }
 
-const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose }) => {
+const SearchBarContent: React.FC<SearchBarProps> = ({ isOpen, onClose }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -308,6 +308,14 @@ const SearchBar: React.FC<SearchBarProps> = ({ isOpen, onClose }) => {
         </div>
       </div>
     </>
+  );
+};
+
+const SearchBar: React.FC<SearchBarProps> = (props) => {
+  return (
+    <Suspense fallback={null}>
+      <SearchBarContent {...props} />
+    </Suspense>
   );
 };
 

@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -9,7 +9,7 @@ import { ShoppingBag, User, Search, X, Menu } from 'lucide-react';
 import Navbar from './Navbar';
 import { useStore } from "@/store/useStore";
 
-const Header = () => {
+const HeaderContent = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [announcementIndex, setAnnouncementIndex] = useState(0);
@@ -343,6 +343,14 @@ const Header = () => {
         </div>
       )}
     </>
+  );
+};
+
+const Header = () => {
+  return (
+    <Suspense fallback={null}>
+      <HeaderContent />
+    </Suspense>
   );
 };
 

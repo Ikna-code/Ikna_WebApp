@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 
 import ProductGridPage from "@/components/product/ProductGridPage";
@@ -9,7 +9,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { useStore } from '@/store/useStore';
 
-export default function CategoryPage() {
+function CategoryPageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const category = decodeURIComponent(params.category as string);
@@ -88,5 +88,13 @@ export default function CategoryPage() {
         </PerspectiveGallery>
       </div>
     </>
+  );
+}
+
+export default function CategoryPage() {
+  return (
+    <Suspense fallback={null}>
+      <CategoryPageContent />
+    </Suspense>
   );
 }

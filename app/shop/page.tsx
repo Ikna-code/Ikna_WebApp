@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 import ProductGridPage from "@/components/product/ProductGridPage";
@@ -9,7 +9,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { useStore } from '@/store/useStore';
 
-export default function Shop() {
+function ShopContent() {
   const products = useStore((s) => s.products);
   const isProductsInitialized = useStore((s) => s.isProductsInitialized);
   const loadProducts = useStore((s) => s.loadProducts);
@@ -91,5 +91,13 @@ export default function Shop() {
         )}
       </div>
     </>
+  );
+}
+
+export default function Shop() {
+  return (
+    <Suspense fallback={null}>
+      <ShopContent />
+    </Suspense>
   );
 }

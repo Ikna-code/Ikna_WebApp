@@ -32,4 +32,17 @@ export function getSupabaseBrowserClient(): SupabaseClient {
   return browserClient;
 }
 
-export const supabaseBrowser = getSupabaseBrowserClient();
+// Keep imports safe during SSR/prerender by deferring browser client access
+// until a property is actually used in a browser runtime.
+export const supabaseBrowser = new Proxy({} as SupabaseClient, {
+  get(_target, property, receiver) {
+    const client = getSupabaseBrowserClient() as unknown as Record<PropertyKey, unknown>;
+    const value = Reflect.get(client, property, receiver);
+
+    if (typeof value === "function") {
+      return (value as Function).bind(client);
+    }
+
+    return value;
+  },
+}) as SupabaseClient;

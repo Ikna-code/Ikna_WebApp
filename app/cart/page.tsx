@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Script from "next/script";
@@ -165,7 +165,7 @@ export const calculateCheckoutSummary = ({
   };
 };
 
-const CartPage = () => {
+const CartPageContent = () => {
   // 1. STATE MANAGEMENT
   const [appliedCouponCode, setAppliedCouponCode] = useState<string | null>(null);
   const [couponDiscount, setCouponDiscount] = useState(0);
@@ -1380,6 +1380,14 @@ const CartPage = () => {
         </div>
       )}
     </div>
+  );
+};
+
+const CartPage = () => {
+  return (
+    <Suspense fallback={null}>
+      <CartPageContent />
+    </Suspense>
   );
 };
 
