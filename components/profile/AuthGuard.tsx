@@ -338,8 +338,22 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       clearStoredOtpEmail();
       clearStoredResendUntil();
       setAuthMessage('Email verified successfully. Redirecting...');
-      router.push('/');
-      router.refresh();
+      
+      // Get the newly established session
+      const { data: { session: newSession } } = await supabase.auth.getSession();
+      if (newSession) {
+        setSession(newSession);
+        setTimeout(() => {
+          router.push('/');
+          router.refresh();
+        }, 300);
+      } else {
+        // Fallback: just redirect and let AppInitializer load the user
+        setTimeout(() => {
+          router.push('/');
+          router.refresh();
+        }, 300);
+      }
     } catch (err: any) {
       setAuthError(getFriendlyOtpErrorMessage(err, 'OTP verification failed.'));
     } finally {

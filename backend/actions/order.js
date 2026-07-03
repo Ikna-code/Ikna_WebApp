@@ -115,7 +115,9 @@ export async function addToCart(
     return { success: true, cartItem };
   } catch (error) {
     console.error("Add to cart error:", error);
-    return { success: false, error: "Failed to add to cart" };
+    // Return the specific error message so the user knows what went wrong
+    const errorMessage = error?.message || error?.toString?.() || "Failed to add to cart";
+    return { success: false, error: errorMessage };
   }
 }
 /**

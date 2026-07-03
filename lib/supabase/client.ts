@@ -24,6 +24,12 @@ export function getSupabaseBrowserClient(): SupabaseClient {
     throw new Error("getSupabaseBrowserClient() must only be called in the browser.");
   }
 
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      "Missing Supabase env vars. Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in .env and restart the dev server."
+    );
+  }
+
   if (!globalThis.__iknaSupabaseBrowserClient) {
     globalThis.__iknaSupabaseBrowserClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
   }

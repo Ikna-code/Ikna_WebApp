@@ -583,19 +583,49 @@ const SingleProductPage = () => {
   const addCurrentVariantToCart = async (successMessage: string) => {
     const userId = user?.id;
     if (!userId) {
+      console.log('[DEBUG] No userId found, user object:', user);
       setToast({ message: "Please login first", type: 'error' });
       return false;
     }
+    
+    // Log user and userId after successful check
+    console.log('[DEBUG] userId validation passed:', { userId, user: user?.email || user?.id });
+    
     if (!selectedSize) {
+      console.log('[DEBUG] No size selected, validation failed');
       setToast({ message: "Please select a size", type: 'info' });
       return false;
     }
     if (!activeVariant || activeVariant.isDeleted || !activeVariant.isActive) {
+      console.log('[DEBUG] Product unavailable, validation failed:', {
+        hasActiveVariant: !!activeVariant,
+        isDeleted: activeVariant?.isDeleted,
+        isActive: activeVariant?.isActive,
+        variantId: activeVariant?.id
+      });
       setToast({ message: 'Product is no longer available.', type: 'error' });
       return false;
     }
 
+    console.log('[DEBUG] About to call addItemToCart with:', {
+      userId,
+      variantId: activeVariant?.id,
+      size: selectedSize,
+      quantity: 1,
+      category: activeVariant?.category,
+      isCombo: 0,
+      comboBundleId: ''
+    });
+
     await addItemToCart(userId, activeVariant?.id, selectedSize, 1, activeVariant?.category, 0, '');
+    
+    const storeStateAfterAdd = useStore.getState();
+    console.log('[DEBUG] After addItemToCart call, store state:', {
+      error: storeStateAfterAdd.error,
+      cartItems: storeStateAfterAdd.cartItems?.length || 0,
+      cartItemsPreview: storeStateAfterAdd.cartItems?.slice(-1) || []
+    });
+    
     if (!useStore.getState().error) {
       const variantKey = String(activeVariant?.id || '').trim();
       if (variantKey && selectedSize && sizeStockMap.has(selectedSize)) {
@@ -617,7 +647,16 @@ const SingleProductPage = () => {
       return true;
     }
 
-    setToast({ message: "Could not add product to bag. Please try again.", type: 'error' });
+    const storeError = useStore.getState().error;
+    console.log('[DEBUG] About to show error toast with storeError:', {
+      storeError,
+      type: typeof storeError,
+      isEmpty: !storeError
+    });
+    setToast({ 
+      message: storeError || "Could not add product to bag. Please try again.", 
+      type: 'error' 
+    });
     return false;
   };
 
