@@ -85,8 +85,8 @@ const Banner = () => {
                 priority={slide.id === 0}
                 unoptimized
                 quality={100}
-                sizes="1200px"
-                className="object-contain object-center h-auto w-auto"
+                sizes="100vw"
+                className="object-contain lg:object-cover object-center"
               />
 
               {(slide.title || slide.description) && (
