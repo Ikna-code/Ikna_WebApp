@@ -12,9 +12,12 @@ const OTP_EMAIL_STORAGE_KEY = 'ikna_signup_otp_email';
 const OTP_RESEND_UNTIL_STORAGE_KEY = 'ikna_signup_resend_until';
 
 function getAppBaseUrl() {
+  // In browser flows (Google OAuth), trust the current origin first.
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin.replace(/\/$/, '');
+  }
   const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
   if (configured) return configured.replace(/\/$/, '');
-  if (typeof window !== 'undefined') return window.location.origin;
   return 'http://localhost:3000';
 }
 
