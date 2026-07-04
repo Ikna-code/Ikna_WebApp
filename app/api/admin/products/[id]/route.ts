@@ -329,6 +329,141 @@ async function syncProductFilters(
   }
 }
 
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const adminId = await requireAdmin();
+
+  if (!adminId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const { id: rawId } = await params;
+    const id = extractIdFromSlug(rawId);
+
+    const product = await prisma.product.findUnique({
+      where: { id },
+      include: {
+        productType: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        subCategory: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        reviews: {
+          select: { rating: true },
+        },
+        images: {
+          select: {
+            id: true,
+            image_path: true,
+            is_primary: true,
+          },
+        },
+      },
+    });
+
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    const fabricRows = await prisma.$queryRaw<Array<{ id: string; fabricType: string | null }>>`
+      SELECT id, "fabricType" AS "fabricType"
+      FROM "Product"
+      WHERE id = ${id}
+    `;
+
+    const filterRows = await prisma.$queryRaw<Array<{
+      id: string;
+      productId: string;
+      filterOptionId: string;
+      optionId: string;
+      optionValue: string;
+      optionDisplayLabel: string;
+      groupId: string;
+      groupName: string;
+      groupDisplayName: string;
+      groupSlug: string;
+    }>>`
+      SELECT
+        pf.id,
+        pf."productId" AS "productId",
+        pf."filterOptionId" AS "filterOptionId",
+        fo.id AS "optionId",
+        fo.value AS "optionValue",
+        fo."displayLabel" AS "optionDisplayLabel",
+        fg.id AS "groupId",
+        fg.name AS "groupName",
+        fg."displayName" AS "groupDisplayName",
+        fg.slug AS "groupSlug"
+      FROM "product_filters" pf
+      INNER JOIN "filter_options" fo ON fo.id = pf."filterOptionId"
+      INNER JOIN "filter_groups" fg ON fg.id = fo."filterGroupId"
+      WHERE pf."productId" = ${id}
+    `;
+
+    const inventoryRows = await prisma
+      .$queryRaw<Array<{
+        id: string;
+        productId: string;
+        size: string;
+        stock: number;
+        reservedStock: number;
+        createdAt: Date;
+        updatedAt: Date;
+      }>>`
+        SELECT
+          id,
+          product_id AS "productId",
+          size,
+          stock,
+          reserved_stock AS "reservedStock",
+          created_at AS "createdAt",
+          updated_at AS "updatedAt"
+        FROM public.product_inventory
+        WHERE product_id = ${id}
+        ORDER BY size ASC
+      `
+      .catch(() => []);
+
+    return NextResponse.json({
+      ...product,
+      fabricType: String(fabricRows[0]?.fabricType || 'cotton'),
+      filters: filterRows.map((row) => ({
+        id: row.id,
+        filterOptionId: row.filterOptionId,
+        filterOption: {
+          id: row.optionId,
+          value: row.optionValue,
+          displayLabel: row.optionDisplayLabel,
+          filterGroup: {
+            id: row.groupId,
+            name: row.groupName,
+            displayName: row.groupDisplayName,
+            slug: row.groupSlug,
+          },
+        },
+      })),
+      inventory: inventoryRows,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message || 'Failed to load product' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
