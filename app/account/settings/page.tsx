@@ -35,10 +35,16 @@ interface AuthMeta {
   isGoogleAccount: boolean;
 }
 
+const CANONICAL_PROD_ORIGIN = 'https://www.iknaonline.com';
+
 /* ─── helpers ────────────────────────────────────────────────────────────── */
 function getAppBaseUrl(): string {
   // In browser flows, always prefer the live origin over build-time env.
   if (typeof window !== 'undefined' && window.location?.origin) {
+    const hostname = window.location.hostname.toLowerCase();
+    if (hostname === 'iknaonline.com' || hostname === 'www.iknaonline.com') {
+      return CANONICAL_PROD_ORIGIN;
+    }
     return window.location.origin.replace(/\/$/, '');
   }
   const configured =

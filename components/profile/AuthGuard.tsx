@@ -10,6 +10,7 @@ const OTP_LENGTH = 6;
 const RESEND_COOLDOWN_SECONDS = 60;
 const OTP_EMAIL_STORAGE_KEY = 'ikna_signup_otp_email';
 const OTP_RESEND_UNTIL_STORAGE_KEY = 'ikna_signup_resend_until';
+const CANONICAL_PROD_ORIGIN = 'https://www.iknaonline.com';
 
 function getAppBaseUrl() {
   // In browser flows (Google OAuth), trust the current origin first.
@@ -27,6 +28,23 @@ function getAppBaseUrl() {
 function buildRedirectUrl(path: string) {
   const normalized = path.startsWith('/') ? path : `/${path}`;
   return `${getAppBaseUrl()}${normalized}`;
+}
+
+function getOAuthRedirectOrigin() {
+  if (typeof window === 'undefined' || !window.location?.origin) {
+    return getAppBaseUrl();
+  }
+
+  const hostname = window.location.hostname.toLowerCase();
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return window.location.origin.replace(/\/$/, '');
+  }
+
+  if (hostname === 'iknaonline.com' || hostname === 'www.iknaonline.com') {
+    return CANONICAL_PROD_ORIGIN;
+  }
+
+  return window.location.origin.replace(/\/$/, '');
 }
 
 function getFriendlyAuthErrorMessage(error: any) {
@@ -397,12 +415,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     setIsSubmitting(true);
     resetAuthFeedback();
     try {
-      // Guard against stale build-time env values by deriving redirect from runtime origin.
-      const runtimeOrigin =
-        typeof window !== 'undefined' && window.location?.origin
-          ? window.location.origin.replace(/\/$/, '')
-          : '';
-      const redirectTo = runtimeOrigin ? `${runtimeOrigin}/` : buildRedirectUrl('/');
+      const redirectTo = `${getOAuthRedirectOrigin()}/`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
