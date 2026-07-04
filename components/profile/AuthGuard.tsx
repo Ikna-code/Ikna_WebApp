@@ -16,7 +16,10 @@ function getAppBaseUrl() {
   if (typeof window !== 'undefined' && window.location?.origin) {
     return window.location.origin.replace(/\/$/, '');
   }
-  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  const configured =
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    process.env.SITE_URL?.trim();
   if (configured) return configured.replace(/\/$/, '');
   return 'http://localhost:3000';
 }
@@ -394,10 +397,17 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     setIsSubmitting(true);
     resetAuthFeedback();
     try {
+      // Guard against stale build-time env values by deriving redirect from runtime origin.
+      const runtimeOrigin =
+        typeof window !== 'undefined' && window.location?.origin
+          ? window.location.origin.replace(/\/$/, '')
+          : '';
+      const redirectTo = runtimeOrigin ? `${runtimeOrigin}/` : buildRedirectUrl('/');
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: buildRedirectUrl('/'),
+          redirectTo,
         },
       });
       
