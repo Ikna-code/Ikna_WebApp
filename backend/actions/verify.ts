@@ -1,6 +1,9 @@
 "use server";
 import crypto from "crypto";
-import { db } from "@/backend/lib/db";
+import { OrderStatus, PaymentStatus } from '@prisma/client';
+
+import { syncOrderState } from '@/backend/lib/orderSync';
+import { runPostPaymentFulfillment } from '@/backend/services/postPaymentFulfillment';
 
 export async function verifyPayment(
   orderId: string, 
@@ -8,6 +11,11 @@ export async function verifyPayment(
   razorpaySignature: string,
   dbOrderId: string
 ) {
+  console.info('===== Razorpay Payment =====');
+  console.info('payment id', razorpayPaymentId);
+  console.info('order id', orderId);
+  console.info('signature', razorpaySignature);
+
   // 1. Generate the expected signature
   const body = orderId + "|" + razorpayPaymentId;
   const expectedSignature = crypto
@@ -19,32 +27,43 @@ export async function verifyPayment(
   const isAuthentic = expectedSignature === razorpaySignature;
 
   if (isAuthentic) {
-    const updatedOrder = await db.order.update({
-      where: { id: dbOrderId },
-      data: { status: "PAID" },
-      select: { id: true, userId: true, totalAmount: true },
-    });
-
-    await db.cartItem.deleteMany({
-      where: { userId: updatedOrder.userId },
-    });
-
-    await db.payment.upsert({
-      where: { orderId: dbOrderId },
-      update: {
-        amount: updatedOrder.totalAmount,
-        status: "COMPLETED",
-        provider: "RAZORPAY",
+    const updatedOrder = await syncOrderState({
+      orderId: dbOrderId,
+      razorpayOrderId: orderId,
+      orderStatus: OrderStatus.PAID,
+      clearCartOnPaid: true,
+      payment: {
+        provider: 'RAZORPAY',
+        status: PaymentStatus.COMPLETED,
         transactionId: razorpayPaymentId,
       },
-      create: {
-        orderId: dbOrderId,
-        amount: updatedOrder.totalAmount,
-        status: "COMPLETED",
-        provider: "RAZORPAY",
-        transactionId: razorpayPaymentId,
-      }
     });
+
+    if (updatedOrder?.id) {
+      try {
+        const shiprocketResult = await runPostPaymentFulfillment({
+          orderId: updatedOrder.id,
+          source: 'razorpay-verify',
+        });
+
+        return { success: true, shiprocketSuccess: Boolean(shiprocketResult?.created), shiprocketResult };
+      } catch (fulfillmentError) {
+        const message = fulfillmentError instanceof Error ? fulfillmentError.message : String(fulfillmentError);
+
+        console.error('[verify-payment] Post-payment fulfillment failed.', {
+          orderId: updatedOrder.id,
+          paymentStatus: PaymentStatus.COMPLETED,
+          error: message,
+          rawError: fulfillmentError,
+        });
+
+        return {
+          success: true,
+          shiprocketSuccess: false,
+          shiprocketError: message,
+        };
+      }
+    }
 
     return { success: true };
   } else {

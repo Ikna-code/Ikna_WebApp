@@ -268,6 +268,9 @@ const CartPageContent = () => {
           );
 
           if (result.success) {
+            if (result.shiprocketSuccess === false && result.shiprocketError) {
+              alert(`Payment successful, but shipment creation failed: ${result.shiprocketError}`);
+            }
             if (fetchCart) await fetchCart(userId, true);
             window.location.href = `/success?orderId=${orderData.dbOrderId}`;
           } else {

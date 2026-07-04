@@ -262,6 +262,7 @@ model Order {
   courierName       String?
   trackingUrl       String?
   shiprocketStatus  String?
+  shiprocketResponse Json?
   orderItems        OrderItem[]
   address           Address?    @relation(fields: [addressId], references: [id])
   coupon            Coupon?     @relation(fields: [couponAppliedId], references: [id])

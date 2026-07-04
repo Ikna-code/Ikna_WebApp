@@ -10,6 +10,7 @@ import { createOrderItemSnapshot } from '@/backend/services/productDeletion';
 import { decreaseInventory, ensureProductInventory, getInventoryForSize, increaseInventory } from '@/backend/services/inventory';
 
 const toPlainData = (value) => JSON.parse(JSON.stringify(value));
+const TX_OPTIONS = { maxWait: 10000, timeout: 30000 };
 
 function generateShortOrderId(length = 6) {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -109,7 +110,7 @@ export async function addToCart(
           category, // Store category for potential combo logic
         },
       });
-    });
+    }, TX_OPTIONS);
 
     revalidatePath("/cart");
     return { success: true, cartItem };
@@ -278,7 +279,7 @@ console.log("Parsed quantity:", qty);
           comboEligibleQuantity: boundedComboEligibleQty,
         },
       });
-    });
+    }, TX_OPTIONS);
 
     revalidatePath("/cart");
     return { success: true, item: updatedItem };
@@ -332,7 +333,7 @@ export async function removeFromCart(cartItemId) {
       return tx.cartItem.deleteMany({
         where: { id },
       });
-    });
+    }, TX_OPTIONS);
 
     if (!deleted.count) {
       return { success: false, error: "Cart item not found" };
@@ -369,7 +370,7 @@ export async function clearCart(userId) {
       await tx.cartItem.deleteMany({
         where: { userId: String(userId) },
       });
-    });
+    }, TX_OPTIONS);
 
     revalidatePath("/cart");
     return { success: true };
@@ -582,7 +583,7 @@ console.log("First Order Flag Active?:", isFirstTimeOfferApplied);
 console.log("Final Amount Charged to User:", workingSubtotal.toString());
 console.log("Total Saved Saved in Audit Log:", totalDiscountAccumulator.toString());
       return order;
-    });
+    }, TX_OPTIONS);
 
     revalidatePath("/orders");
     revalidatePath("/cart");
@@ -621,7 +622,7 @@ export async function confirmPayment(orderId, transactionId, provider) {
       });
 
       return newPayment;
-    });
+    }, TX_OPTIONS);
 
     revalidatePath("/orders");
     return { success: true, payment };

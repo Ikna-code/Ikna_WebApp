@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { OrderStatus, Role } from '@prisma/client';
+import { OrderStatus, PaymentStatus, Role } from '@prisma/client';
 import { db } from '@/backend/lib/db';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { restoreOrderInventory } from '@/backend/services/inventory';
+import { runPostPaymentFulfillment } from '@/backend/services/postPaymentFulfillment';
 
 const ALLOWED_STATUSES = new Set<OrderStatus>([
   OrderStatus.PENDING,
@@ -65,11 +66,17 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
         await restoreOrderInventory(orderId, tx);
       }
 
+      const shouldSetPaidAt = nextStatus === OrderStatus.PAID && !existingOrder.paidAt;
+
       return tx.order.update({
         where: { id: orderId },
-        data: { status: nextStatus },
+        data: {
+          status: nextStatus,
+          ...(shouldSetPaidAt ? { paidAt: new Date() } : {}),
+        },
         include: {
           address: true,
+          payment: true,
           user: {
             select: {
               id: true,
@@ -82,6 +89,36 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
         },
       });
     });
+
+    if (nextStatus === OrderStatus.PAID) {
+      await db.payment.upsert({
+        where: { orderId: updatedOrder.id },
+        update: {
+          status: PaymentStatus.COMPLETED,
+          provider: updatedOrder.payment?.provider || 'MANUAL_ADMIN',
+          amount: updatedOrder.totalAmount,
+        },
+        create: {
+          orderId: updatedOrder.id,
+          amount: updatedOrder.totalAmount,
+          status: PaymentStatus.COMPLETED,
+          provider: 'MANUAL_ADMIN',
+        },
+      });
+
+      try {
+        await runPostPaymentFulfillment({
+          orderId: updatedOrder.id,
+          source: 'admin-manual-paid',
+        });
+      } catch (fulfillmentError) {
+        console.error('[admin-orders] Post-payment fulfillment failed after marking paid.', {
+          orderId: updatedOrder.id,
+          paymentStatus: PaymentStatus.COMPLETED,
+          error: fulfillmentError,
+        });
+      }
+    }
 
     const relationAddress = updatedOrder.address
       ? [
@@ -105,6 +142,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    console.error('[admin-orders] Failed to update order status.', { orderId, error });
+    return NextResponse.json({ error: 'Failed to update order status' }, { status: 500 });
   }
 }

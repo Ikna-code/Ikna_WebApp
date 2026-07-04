@@ -4,6 +4,7 @@ import { OrderStatus, PaymentStatus } from '@prisma/client';
 import { NextResponse } from 'next/server';
 
 import { syncOrderState } from '@/backend/lib/orderSync';
+import { runPostPaymentFulfillment } from '@/backend/services/postPaymentFulfillment';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -94,6 +95,21 @@ export async function POST(request: Request) {
         transactionId: paymentId,
       },
     });
+
+    if (order?.id) {
+      try {
+        await runPostPaymentFulfillment({
+          orderId: order.id,
+          source: 'razorpay-webhook',
+        });
+      } catch (fulfillmentError) {
+        console.error('[razorpay-webhook] Post-payment fulfillment failed.', {
+          orderId: order.id,
+          paymentStatus: PaymentStatus.COMPLETED,
+          error: fulfillmentError,
+        });
+      }
+    }
 
     return NextResponse.json({ received: true, event, orderId: order?.id ?? null });
   }
