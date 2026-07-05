@@ -961,7 +961,11 @@ const mappedProducts = products.map((product, index) => {
   };
 
   const uploadImagesForProductId = async (productId: string, files: File[]) => {
-    if (!files.length) return [] as string[];
+    const validImageFiles = files.filter(
+      (file) => file.size > 0 && String(file.type || '').toLowerCase().startsWith('image/')
+    );
+
+    if (!validImageFiles.length) return [] as string[];
 
     if (!String(productId || '').trim()) {
       throw new Error('Product id is required to upload images');
@@ -970,7 +974,7 @@ const mappedProducts = products.map((product, index) => {
     const formData = new FormData();
     formData.append('productId', String(productId).trim());
 
-    files.forEach((file) => {
+    validImageFiles.forEach((file) => {
       const withPath = file as File & { webkitRelativePath?: string; _relativePath?: string };
       const relativePath = withPath._relativePath || withPath.webkitRelativePath || file.name;
       formData.append('files', file);

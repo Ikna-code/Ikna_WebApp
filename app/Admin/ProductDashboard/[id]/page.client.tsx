@@ -488,9 +488,14 @@ export default function EditProductPageClient({
   const appendNewImages = (files: FileList | null) => {
     if (!files?.length) return;
 
+    const imageFiles = Array.from(files).filter(
+      (file) => file.size > 0 && String(file.type || '').toLowerCase().startsWith('image/')
+    );
+    if (!imageFiles.length) return;
+
     setNewImageItems((current) => {
       const existing = new Set(current.map((item) => item.key));
-      const incoming = Array.from(files)
+      const incoming = imageFiles
         .map((file) => ({
           key: `${file.name}-${file.size}-${file.lastModified}`,
           file,
@@ -509,12 +514,16 @@ export default function EditProductPageClient({
   };
 
   const uploadImagesForProductId = async (id: string, files: File[]) => {
-    if (!files.length) return [] as string[];
+    const validImageFiles = files.filter(
+      (file) => file.size > 0 && String(file.type || '').toLowerCase().startsWith('image/')
+    );
+
+    if (!validImageFiles.length) return [] as string[];
 
     const formData = new FormData();
     formData.append('productId', String(id).trim());
 
-    files.forEach((file) => {
+    validImageFiles.forEach((file) => {
       formData.append('files', file);
       formData.append('paths', file.name);
     });

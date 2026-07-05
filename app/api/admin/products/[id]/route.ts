@@ -686,6 +686,9 @@ export async function PATCH(
       );
 
       return savedProduct;
+    }, {
+      maxWait: 10_000,
+      timeout: 30_000,
     });
 
     if (fabricTypeValue !== undefined) {

@@ -53,6 +53,21 @@ function isInventoryTableMissingError(error: any) {
   return mentionsInventoryTable && indicatesMissingTable;
 }
 
+function isClosedTransactionError(error: any) {
+  const code = String(error?.code || '').trim();
+  const message = String(error?.message || '').toLowerCase();
+
+  if (code === 'P2028') {
+    return true;
+  }
+
+  return (
+    message.includes('transaction not found') ||
+    message.includes('transaction already closed') ||
+    message.includes('expired transaction')
+  );
+}
+
 async function isProductInventoryTableAvailable(client?: PrismaLikeClient) {
   const prisma = getClient(client) as any;
 
@@ -324,6 +339,10 @@ export async function syncProductInventory(
     await syncAggregateProductStock(productId, prisma);
     return getProductInventory(productId, prisma);
   } catch (error) {
+    if (client && isClosedTransactionError(error)) {
+      return syncProductInventory(productId, sizes, requestedInventory, fallbackTotalStock, undefined, reason);
+    }
+
     if (isInventoryTableMissingError(error)) {
       await setLegacyProductStock(productId, fallbackTotalStock, prisma);
       return [] as InventoryRow[];

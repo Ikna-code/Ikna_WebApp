@@ -23,14 +23,21 @@ export async function POST(request: NextRequest) {
     const files = formData
       .getAll('files')
       .filter((item): item is File => item instanceof File);
+    const validImageFiles = files.filter(
+      (file) => file.size > 0 && String(file.type || '').toLowerCase().startsWith('image/')
+    );
 
     if (!files.length) {
       return NextResponse.json({ uploadedPaths: [], uploadedImages: [] });
     }
 
+    if (!validImageFiles.length) {
+      return NextResponse.json({ error: 'No valid image files found in upload.' }, { status: 400 });
+    }
+
     const uploadedImages: Array<{ url: string; publicId: string }> = [];
 
-    for (const file of files) {
+    for (const file of validImageFiles) {
       const uploaded = await uploadImage(file, {
         productId,
         fileName: file.name,
