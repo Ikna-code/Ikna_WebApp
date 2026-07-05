@@ -7,12 +7,12 @@ import Footer from '@/components/layout/Footer';
 
 export default function PrivacyPolicy() {
   return (
-    <div className="min-h-screen bg-[#fffaf7] text-gray-800">
+    <div className="min-h-screen bg-[#fffaf7] text-gray-800 pt-24 md:pt-28">
       
 <Header />
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-6 py-12 md:py-16">
+      <main className="max-w-4xl mx-auto px-6 py-5 md:py-5">
         
         {/* Page Header */}
         <header className="mb-12 border-b border-gray-200 pb-8">

@@ -441,7 +441,12 @@ body.ikna-modal-open .shop-content-layer {
     @apply bg-background text-foreground;
   }
   html {
+    scroll-padding-top: 7rem;
     @apply font-sans;
+  }
+
+  :where([id]) {
+    scroll-margin-top: 7rem;
   }
 }
 

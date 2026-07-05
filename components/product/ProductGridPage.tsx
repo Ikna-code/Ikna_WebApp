@@ -733,7 +733,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
 
   return (
     <>
-      <div className={`min-h-screen bg-[#fdf8fa] flex flex-col${searchQuery ? ' pt-24' : ''}`}>
+      <div className={`min-h-screen bg-[#fdf8fa] flex flex-col${searchQuery ? ' ' : ''}`}>
         
         {/* HEADER */}
         <header className="container mx-auto px-4 md:px-8 pt-8 pb-4 text-center">
@@ -820,7 +820,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
                 })}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="flex flex-col items-center justify-center  text-center">
                 <h3 className="text-2xl font-serif text-[#321327] mb-3">
                   No Products Found
                 </h3>

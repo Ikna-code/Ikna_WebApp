@@ -39,10 +39,10 @@ export default function AboutUs() {
       </section>
 
       {/* 1. HERO SECTION */}
-      <section className="relative w-full min-h-[60vh] bg-[#840d5c] flex flex-col justify-center items-center text-center px-4 overflow-hidden">
+      <section className="relative w-full min-h-[48vh] bg-[#840d5c] flex flex-col justify-center items-center text-center px-4 py-10 md:py-12 overflow-hidden">
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent pointer-events-none" />
         
-        <div className="max-w-4xl mx-auto z-10 space-y-4">
+        <div className="max-w-4xl mx-auto z-10 space-y-3 md:space-y-4">
           <span className={`text-xs uppercase tracking-widest ${goldText}`}>
             Our Story
           </span>
@@ -52,7 +52,7 @@ export default function AboutUs() {
               It's a feeling.
             </span>
           </h1>
-          <p className="text-pink-100/80 max-w-lg mx-auto text-sm md:text-base pt-4 border-t border-pink-700/50">
+          <p className="text-pink-100/80 max-w-lg mx-auto text-sm md:text-base pt-3 border-t border-pink-700/50">
             The story behind Ikna, and the simple question that started it all.
           </p>
         </div>
@@ -77,41 +77,41 @@ export default function AboutUs() {
             <h2 className="text-3xl md:text-4xl font-serif text-gray-900">The Ikna difference</h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {/* Card 1 */}
-            <div className="group bg-white border border-[#840d5c]/10 rounded-2xl p-8 text-center space-y-4 shadow-[0_10px_30px_-15px_rgba(132,13,92,0.1)] hover:shadow-[0_20px_40px_-15px_rgba(132,13,92,0.2)] transition-all duration-300 transform hover:-translate-y-1">
-              <div className="w-12 h-12 rounded-full bg-green-50 text-green-600 flex items-center justify-center mx-auto text-2xl group-hover:scale-110 transition-transform">
+            <div className="group bg-white border border-[#840d5c]/10 rounded-2xl p-5 md:p-8 text-center space-y-3 md:space-y-4 shadow-[0_10px_30px_-15px_rgba(132,13,92,0.1)] hover:shadow-[0_20px_40px_-15px_rgba(132,13,92,0.2)] transition-all duration-300 transform hover:-translate-y-1">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-green-50 text-green-600 flex items-center justify-center mx-auto text-xl md:text-2xl group-hover:scale-110 transition-transform">
                 🍃
               </div>
-              <h4 className="font-serif font-bold text-gray-900 text-lg">Skin-friendly fabrics</h4>
-              <p className="text-sm text-gray-500 leading-relaxed">Soft, natural materials that breathe with you, all day long.</p>
+              <h4 className="font-serif font-bold text-gray-900 text-base md:text-lg">Skin-friendly fabrics</h4>
+              <p className="text-xs md:text-sm text-gray-500 leading-relaxed">Soft, natural materials that breathe with you, all day long.</p>
             </div>
 
             {/* Card 2 */}
-            <div className="group bg-white border border-[#840d5c]/10 rounded-2xl p-8 text-center space-y-4 shadow-[0_10px_30px_-15px_rgba(132,13,92,0.1)] hover:shadow-[0_20px_40px_-15px_rgba(132,13,92,0.2)] transition-all duration-300 transform hover:-translate-y-1">
-              <div className="w-12 h-12 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center mx-auto text-2xl group-hover:scale-110 transition-transform">
+            <div className="group bg-white border border-[#840d5c]/10 rounded-2xl p-5 md:p-8 text-center space-y-3 md:space-y-4 shadow-[0_10px_30px_-15px_rgba(132,13,92,0.1)] hover:shadow-[0_20px_40px_-15px_rgba(132,13,92,0.2)] transition-all duration-300 transform hover:-translate-y-1">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center mx-auto text-xl md:text-2xl group-hover:scale-110 transition-transform">
                 💎
               </div>
-              <h4 className="font-serif font-bold text-gray-900 text-lg">Luxury, redefined</h4>
-              <p className="text-sm text-gray-500 leading-relaxed">Premium craftsmanship and finishing, without the premium tag.</p>
+              <h4 className="font-serif font-bold text-gray-900 text-base md:text-lg">Luxury, redefined</h4>
+              <p className="text-xs md:text-sm text-gray-500 leading-relaxed">Premium craftsmanship and finishing, without the premium tag.</p>
             </div>
 
             {/* Card 3 */}
-            <div className="group bg-white border border-[#840d5c]/10 rounded-2xl p-8 text-center space-y-4 shadow-[0_10px_30px_-15px_rgba(132,13,92,0.1)] hover:shadow-[0_20px_40px_-15px_rgba(132,13,92,0.2)] transition-all duration-300 transform hover:-translate-y-1">
-              <div className="w-12 h-12 rounded-full bg-pink-50 text-[#840d5c] flex items-center justify-center mx-auto text-2xl group-hover:scale-110 transition-transform">
+            <div className="group bg-white border border-[#840d5c]/10 rounded-2xl p-5 md:p-8 text-center space-y-3 md:space-y-4 shadow-[0_10px_30px_-15px_rgba(132,13,92,0.1)] hover:shadow-[0_20px_40px_-15px_rgba(132,13,92,0.2)] transition-all duration-300 transform hover:-translate-y-1">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-pink-50 text-[#840d5c] flex items-center justify-center mx-auto text-xl md:text-2xl group-hover:scale-110 transition-transform">
                 ❤️
               </div>
-              <h4 className="font-serif font-bold text-gray-900 text-lg">Designed for every body</h4>
-              <p className="text-sm text-gray-500 leading-relaxed">Inclusive sizing and silhouettes designed for real women.</p>
+              <h4 className="font-serif font-bold text-gray-900 text-base md:text-lg">Designed for every body</h4>
+              <p className="text-xs md:text-sm text-gray-500 leading-relaxed">Inclusive sizing and silhouettes designed for real women.</p>
             </div>
 
             {/* Card 4 */}
-            <div className="group bg-white border border-[#840d5c]/10 rounded-2xl p-8 text-center space-y-4 shadow-[0_10px_30px_-15px_rgba(132,13,92,0.1)] hover:shadow-[0_20px_40px_-15px_rgba(132,13,92,0.2)] transition-all duration-300 transform hover:-translate-y-1">
-              <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-2xl group-hover:scale-110 transition-transform">
+            <div className="group bg-white border border-[#840d5c]/10 rounded-2xl p-5 md:p-8 text-center space-y-3 md:space-y-4 shadow-[0_10px_30px_-15px_rgba(132,13,92,0.1)] hover:shadow-[0_20px_40px_-15px_rgba(132,13,92,0.2)] transition-all duration-300 transform hover:-translate-y-1">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-xl md:text-2xl group-hover:scale-110 transition-transform">
                 ✨
               </div>
-              <h4 className="font-serif font-bold text-gray-900 text-lg">Honestly priced</h4>
-              <p className="text-sm text-gray-500 leading-relaxed">Direct-to-you pricing, so you pay for the product, not the markup.</p>
+              <h4 className="font-serif font-bold text-gray-900 text-base md:text-lg">Honestly priced</h4>
+              <p className="text-xs md:text-sm text-gray-500 leading-relaxed">Direct-to-you pricing, so you pay for the product, not the markup.</p>
             </div>
           </div>
         </div>

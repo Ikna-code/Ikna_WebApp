@@ -79,7 +79,7 @@ const PerspectiveGallery = ({ products, children }) => {
         {/* Header */}
         <motion.div 
           style={{ opacity: useTransform(smoothProgress, [0.7, 0.85], [1, 0]) }}
-          className="relative z-10 text-center mb-4 md:mb-10"
+          className="relative z-10 text-center mb-4 md:mb-10 md:mt-6"
         >
           <h1 className="text-5xl md:text-[7rem] font-serif text-[#F9F3F5] leading-none">Elevate</h1>
           <p className="text-[#ffbec6] tracking-[1.2em] uppercase text-[9px] md:text-xs font-bold mt-4">The New Dimension</p>
@@ -157,7 +157,7 @@ const PerspectiveGallery = ({ products, children }) => {
               : 'overflow-hidden pointer-events-none touch-none'
           }`}
         >
-          <div className="max-w-8xl mx-auto py-12 px-4 text-[#321327]">
+          <div className="max-w-8xl mx-auto text-[#321327]">
             {children}
           </div>
         </motion.div>

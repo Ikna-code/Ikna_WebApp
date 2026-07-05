@@ -23,7 +23,7 @@ const HeaderContent = () => {
 
   const announcementLines = [
     <span key="welcome">
-      First time login? <span className="font-bold underline decoration-[#840d5c] underline-offset-4">Unlock ₹100 on your IKNA bra.</span>
+      First time login? <span className="font-bold  ">Unlock ₹100 on your IKNA bra.</span>
     </span>,
     <span key="shipping">Shop above ₹349 to avail free delivery.</span>,
   ];

@@ -1085,7 +1085,7 @@ const SingleProductPage = () => {
             <Image src={'/images/Confidence_Preview_4.png'} alt="Product Detail Image" width={1200} height={800} className="w-full h-auto rounded-3xl object-cover object-center shadow-lg" />
           </div>
 
-          <div ref={reviewRef}>
+          <div ref={reviewRef} className="scroll-mt-28 md:scroll-mt-32 lg:scroll-mt-36">
             <ReviewSection
               productId={productId}
               openComposerSignal={reviewComposerSignal}

@@ -180,7 +180,7 @@ export default function FAQPage() {
   const currentCategory = faqData.find((cat) => cat.id === activeTab) || faqData[0];
 
   return (
-    <div className="min-h-screen bg-[#FAF6F8] text-[#2D2D2D] font-sans antialiased flex flex-col">
+    <div className="min-h-screen bg-[#FAF6F8] text-[#2D2D2D] font-sans antialiased flex flex-col pt-24 md:pt-28">
       {/* TOP ANNOUNCEMENT BAR */}
       <Header />
 
@@ -257,9 +257,7 @@ export default function FAQPage() {
         <section className="flex-1 w-full bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100 min-h-[350px]">
           <h2 className="text-xl font-serif text-[#500b3e] border-b border-pink-100 pb-4 mb-6 flex items-center justify-between">
             <span>{currentCategory.category}</span>
-            <span className="text-xs font-sans font-medium text-gray-400 bg-[#FAF6F8] px-2.5 py-1 rounded-full">
-              {currentCategory.questions.length} Questions
-            </span>
+
           </h2>
 
           <div className="divide-y divide-gray-100">
