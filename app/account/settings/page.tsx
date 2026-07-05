@@ -52,6 +52,14 @@ function getAppBaseUrl(): string {
     process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
     process.env.SITE_URL?.trim();
   if (configured) return configured.replace(/\/$/, '');
+  
+  // Fail explicitly in production instead of defaulting to localhost
+  if (typeof window === 'undefined' && process.env.NODE_ENV === 'production') {
+    console.error(
+      'CRITICAL: Missing URL environment variables. ' +
+      'Set NEXT_PUBLIC_APP_URL or NEXT_PUBLIC_SITE_URL to your production domain.'
+    );
+  }
   return 'http://localhost:3000';
 }
 

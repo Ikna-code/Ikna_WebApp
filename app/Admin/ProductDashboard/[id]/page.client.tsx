@@ -9,13 +9,10 @@ import {
   CircleDollarSign,
   Images,
   Info,
-  Package,
   Plus,
   Search,
-  Settings2,
   ShieldCheck,
   Sparkles,
-  X,
 } from 'lucide-react';
 
 import { IMAGE_BASE_URL } from '@/public/constants/constants';
@@ -87,6 +84,52 @@ type ProductTaxonomyType = {
   subcategories: TaxonomySubCategory[];
 };
 
+type FilterOptionMeta = {
+  id: string;
+  value: string;
+  displayLabel: string;
+  colorHex?: string | null;
+};
+
+type FilterGroupMeta = {
+  id: string;
+  name: string;
+  displayName: string;
+  slug: string;
+  filterType: string;
+  filterOptions: FilterOptionMeta[];
+};
+
+type ProductTypeFilterMeta = {
+  id: string;
+  name: string;
+  slug: string;
+  filterGroups: FilterGroupMeta[];
+};
+
+type FilterApiOption = {
+  id?: unknown;
+  value?: unknown;
+  displayLabel?: unknown;
+  colorHex?: unknown;
+};
+
+type FilterApiGroup = {
+  id?: unknown;
+  name?: unknown;
+  displayName?: unknown;
+  slug?: unknown;
+  filterType?: unknown;
+  filterOptions?: FilterApiOption[];
+};
+
+type FilterApiProductType = {
+  id?: unknown;
+  name?: unknown;
+  slug?: unknown;
+  filterGroups?: FilterApiGroup[];
+};
+
 type EditableExistingImage = {
   id: string;
   imagePath: string;
@@ -115,6 +158,27 @@ const getCandidateTypeSlugs = (category: string) => {
   if (base === 'briefs') return ['briefs', 'panties'];
   if (base === 'panties') return ['panties', 'briefs'];
   return [base];
+};
+
+const applyFilterSelect = (
+  current: string[],
+  group: FilterGroupMeta,
+  nextOptionId: string,
+) => {
+  const isMultiSelect = group.filterType === 'multi' || group.slug === 'badges' || group.slug === 'tags';
+
+  if (isMultiSelect) {
+    return current.includes(nextOptionId)
+      ? current.filter((id) => id !== nextOptionId)
+      : [...current, nextOptionId];
+  }
+
+  const groupOptionIds = new Set(group.filterOptions.map((option) => option.id));
+  const next = current.filter((id) => !groupOptionIds.has(id));
+  if (nextOptionId) {
+    next.push(nextOptionId);
+  }
+  return next;
 };
 
 function getImageUrl(pathOrUrl: string) {
@@ -163,6 +227,14 @@ export default function EditProductPageClient({
   const [errorMessage, setErrorMessage] = useState('');
   const [activeTab, setActiveTab] = useState<'general' | 'images' | 'inventory' | 'pricing' | 'seo'>('inventory');
   const [productTaxonomy, setProductTaxonomy] = useState<ProductTaxonomyType[]>(initialTaxonomy || []);
+  const [filterMetadata, setFilterMetadata] = useState<ProductTypeFilterMeta[]>([]);
+  const [selectedFilterOptionIds, setSelectedFilterOptionIds] = useState<string[]>(
+    Array.isArray(initialProduct?.filters)
+      ? initialProduct.filters
+          .map((item) => String(item.filterOptionId || '').trim())
+          .filter(Boolean)
+      : [],
+  );
   const [form, setForm] = useState<ProductFormState>({
     name: '',
     price: '',
@@ -217,6 +289,13 @@ export default function EditProductPageClient({
       colorName: initialProduct.colorName || 'Grey',
       fabricType: initialProduct.fabricType || 'cotton',
     });
+    setSelectedFilterOptionIds(
+      Array.isArray(initialProduct.filters)
+        ? initialProduct.filters
+            .map((item) => String(item.filterOptionId || '').trim())
+            .filter(Boolean)
+        : [],
+    );
   }, [initialProduct]);
 
   const { rows: inventoryRows, totalStock, updateRowStock } = useInventoryDraft({
@@ -249,6 +328,80 @@ export default function EditProductPageClient({
     return Array.from(mapped.values());
   }, [form.category, productTaxonomy]);
 
+  const filterGroups = useMemo(() => {
+    const candidateSlugs = getCandidateTypeSlugs(form.category);
+    const groups = new Map<string, FilterGroupMeta>();
+
+    for (const type of filterMetadata) {
+      const typeSlug = normalizeSlug(type.slug || type.name);
+      if (!candidateSlugs.includes(typeSlug)) continue;
+
+      for (const group of type.filterGroups || []) {
+        if (!groups.has(group.id)) {
+          groups.set(group.id, group);
+        }
+      }
+    }
+
+    return Array.from(groups.values());
+  }, [filterMetadata, form.category]);
+
+  useEffect(() => {
+    const allowed = new Set(filterGroups.flatMap((group) => group.filterOptions.map((option) => option.id)));
+    setSelectedFilterOptionIds((current) => current.filter((id) => allowed.has(id)));
+  }, [filterGroups]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadFilterMetadata = async () => {
+      try {
+        const response = await fetch('/api/filters', { cache: 'no-store' });
+        if (!response.ok) return;
+
+        const payload = (await response.json()) as unknown;
+        if (!isMounted) return;
+
+        setFilterMetadata(
+          Array.isArray(payload)
+            ? (payload as FilterApiProductType[]).map((type) => ({
+                id: String(type?.id || ''),
+                name: String(type?.name || ''),
+                slug: String(type?.slug || ''),
+                filterGroups: Array.isArray(type?.filterGroups)
+                  ? type.filterGroups.map((group) => ({
+                      id: String(group?.id || ''),
+                      name: String(group?.name || ''),
+                      displayName: String(group?.displayName || ''),
+                      slug: String(group?.slug || ''),
+                      filterType: String(group?.filterType || ''),
+                      filterOptions: Array.isArray(group?.filterOptions)
+                        ? group.filterOptions.map((option) => ({
+                            id: String(option?.id || ''),
+                            value: String(option?.value || ''),
+                            displayLabel: String(option?.displayLabel || ''),
+                            colorHex: typeof option?.colorHex === 'string' ? option.colorHex : null,
+                          }))
+                        : [],
+                    }))
+                  : [],
+              }))
+            : [],
+        );
+      } catch {
+        if (isMounted) {
+          setFilterMetadata([]);
+        }
+      }
+    };
+
+    void loadFilterMetadata();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -259,9 +412,7 @@ export default function EditProductPageClient({
 
         const [productResponse, taxonomyResponse] = await Promise.all([
           fetch(`/api/admin/products/${productId}`, { cache: 'no-store' }),
-          productTaxonomy.length === 0
-            ? fetch('/api/admin/product-taxonomy', { cache: 'no-store' })
-            : Promise.resolve(new Response(JSON.stringify(productTaxonomy), { status: 200 })),
+          fetch('/api/admin/product-taxonomy', { cache: 'no-store' }),
         ]);
 
         if (!productResponse.ok) {
@@ -291,6 +442,13 @@ export default function EditProductPageClient({
           colorName: loadedProduct.colorName || 'Grey',
           fabricType: loadedProduct.fabricType || 'cotton',
         });
+        setSelectedFilterOptionIds(
+          Array.isArray(loadedProduct.filters)
+            ? loadedProduct.filters
+                .map((item) => String(item.filterOptionId || '').trim())
+                .filter(Boolean)
+            : [],
+        );
         setEditInventorySeed(
           Array.isArray(loadedProduct.inventory)
             ? loadedProduct.inventory.map((row) => ({ size: row.size, stock: String(row.stock) }))
@@ -325,7 +483,7 @@ export default function EditProductPageClient({
         return current;
       });
     };
-  }, [productId, productTaxonomy.length]);
+  }, [productId]);
 
   const appendNewImages = (files: FileList | null) => {
     if (!files?.length) return;
@@ -429,6 +587,7 @@ export default function EditProductPageClient({
         image: resolvedPrimaryImage,
         primaryImagePath: resolvedPrimaryImage,
         rating: form.rating ? Number(form.rating) : null,
+        filterOptionIds: selectedFilterOptionIds,
         imagePaths: uploadedPaths.length ? uploadedPaths : undefined,
         removeImageIds: removedImageIds,
         removeImagePaths: removedImagePaths,
@@ -622,6 +781,44 @@ export default function EditProductPageClient({
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-neutral-500">Description</label>
                   <textarea value={form.description} onChange={(e) => setForm((current) => ({ ...current, description: e.target.value }))} className="min-h-36 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm outline-none focus:border-[#8a0f5c]" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-neutral-500">Dynamic filters</label>
+                  {filterGroups.length > 0 ? (
+                    <div className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-3">
+                      {filterGroups.map((group) => (
+                        <div key={group.id}>
+                          <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[#8a0f5c]">{group.displayName || group.name}</p>
+                          <div className="flex flex-wrap gap-2">
+                            {group.filterOptions.map((option) => {
+                              const isSelected = selectedFilterOptionIds.includes(option.id);
+
+                              return (
+                                <button
+                                  type="button"
+                                  key={option.id}
+                                  onClick={() => {
+                                    setSelectedFilterOptionIds((current) => applyFilterSelect(current, group, option.id));
+                                  }}
+                                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                    isSelected
+                                      ? 'border-[#8a0f5c] bg-[#8a0f5c] text-white'
+                                      : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-100'
+                                  }`}
+                                >
+                                  {option.displayLabel}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 px-3 py-2 text-xs text-neutral-500">
+                      No dynamic filters configured for this category.
+                    </p>
+                  )}
                 </div>
               </div>
 

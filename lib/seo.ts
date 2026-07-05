@@ -13,7 +13,15 @@ import type { Metadata } from 'next';
 const RAW_SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ||
   process.env.SITE_URL ||
-  'http://localhost:3000';
+  (() => {
+    if (typeof window === 'undefined' && process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'CRITICAL: Missing NEXT_PUBLIC_SITE_URL or SITE_URL environment variable. '
+        + 'Set it to your production domain (e.g., https://www.iknaonline.com)'
+      );
+    }
+    return 'http://localhost:3000';
+  })();
 
 export const SITE_URL = RAW_SITE_URL.startsWith('http')
   ? RAW_SITE_URL

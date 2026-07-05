@@ -13,7 +13,15 @@ const rawSiteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
   process.env.NEXT_PUBLIC_APP_URL ||
   process.env.SITE_URL ||
-  "http://localhost:3000";
+  (() => {
+    if (typeof window === 'undefined' && process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'CRITICAL: Missing URL environment variables. '
+        + 'Set NEXT_PUBLIC_SITE_URL or NEXT_PUBLIC_APP_URL to your production domain.'
+      );
+    }
+    return "http://localhost:3000";
+  })();
 const siteUrl = rawSiteUrl.startsWith("http")
   ? rawSiteUrl
   : `https://${rawSiteUrl}`;

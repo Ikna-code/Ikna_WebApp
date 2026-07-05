@@ -70,7 +70,10 @@ const Banner = () => {
   }, [emblaApi, onSelect]);
 
   return (
-    <section className="relative w-full h-[25vh] md:h-[85vh] lg:h-[85vh] overflow-hidden bg-gray-100 group">
+    <section
+      className="relative w-full h-[25vh] md:h-auto overflow-hidden bg-gray-100 group"
+      style={{ aspectRatio: '1600 / 768' }}
+    >
       <div className="overflow-hidden h-full" ref={emblaRef}>
         <div className="flex h-full">
           {slides.map((slide) => (
@@ -86,7 +89,7 @@ const Banner = () => {
                 unoptimized
                 quality={100}
                 sizes="100vw"
-                className="object-contain lg:object-cover object-center"
+                className="object-contain object-center"
               />
 
               {(slide.title || slide.description) && (
