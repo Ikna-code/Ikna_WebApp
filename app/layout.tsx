@@ -72,17 +72,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/images/AI_images/logo1_ikna.png",
+        url: "/icon.png?v=ikna-1",
         type: "image/png",
       },
     ],
-    shortcut: ["/images/AI_images/logo1_ikna.png"],
-    apple: [
-      {
-        url: "/images/AI_images/logo1_ikna.png",
-        type: "image/png",
-      },
-    ],
+    shortcut: ["/icon.png?v=ikna-1"],
+    apple: ["/apple-icon.png?v=ikna-1"],
   },
   openGraph: {
     type: "website",
