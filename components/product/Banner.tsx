@@ -71,25 +71,25 @@ const Banner = () => {
 
   return (
     <section
-      className="relative w-full h-[25vh] md:h-auto overflow-hidden bg-gray-100 group"
-      style={{ aspectRatio: '1600 / 768' }}
+      className="relative w-full overflow-hidden group"
     >
-      <div className="overflow-hidden h-full" ref={emblaRef}>
-        <div className="flex h-full">
+      <div className="overflow-hidden" ref={emblaRef}>
+        <div className="flex">
           {slides.map((slide) => (
             <div 
               key={slide.id} 
-              className="relative w-full h-full flex-[0_0_100%] min-w-0 select-none"
+              className="relative w-full flex-[0_0_100%] min-w-0 select-none"
             >
               <Image
                 src={slide.src}
                 alt={slide.alt}
-                fill
+                width={1600}
+                height={768}
                 priority={slide.id === 0}
                 unoptimized
                 quality={100}
                 sizes="100vw"
-                className="object-contain object-center"
+                className="block h-auto w-full"
               />
 
               {(slide.title || slide.description) && (

@@ -36,7 +36,6 @@ export default function Home() {
   return (
     <>
     {/* <IknaLoader/> */}
-    <></>
     <div className="flex flex-col min-h-screen bg-ikna-beige text-ikna-dark bg-white text-black">
       <Header />
 
@@ -46,7 +45,7 @@ export default function Home() {
         <ProductGrid />
       </div>
 
-      <main className="flex-grow container mx-auto px-4 pt-6 md:pt-8 lg:pt-10 pb-5 md:pb-8 lg:pb-12 relative">
+      <main className="grow container mx-auto px-4 pt-6 md:pt-8 lg:pt-10 pb-5 md:pb-8 lg:pb-12 relative">
         
         {/* Main Grid: This is a strict 2-column grid on desktop, 1 on mobile */}
         <div id="home-main-grid" className="grid grid-cols-1 lg:grid-cols-2 gap-7 md:gap-10 xl:gap-20 lg:items-start">
