@@ -21,7 +21,7 @@ export default function TermsAndConditions() {
           </h1>
 
           <div className="text-sm text-gray-500 tracking-wide uppercase">
-            Effective Date: May 19, 2026
+            Effective Date: July 6, 2026
           </div>
         </header>
 
