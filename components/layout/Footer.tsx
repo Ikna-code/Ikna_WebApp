@@ -163,7 +163,7 @@ const Footer = () => {
 
         {/* Bottom Bar */}
         <div className="mt-8 pt-6 border-t border-white/5 flex flex-col md:flex-row justify-center items-center gap-4">
-          <p className="text-[10px] font-medium tracking-wide">
+          <p className="text-[10px] font-medium tracking-wide text-[white]/45 text-center">
             &copy; {currentYear} IKNA. ALL RIGHTS RESERVED.
           </p>
         </div>
