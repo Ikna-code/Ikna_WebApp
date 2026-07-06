@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import JsonLd from '@/components/seo/JsonLd';
 import { buildCanonical } from '@/lib/seo';
 
 export const metadata: Metadata = {
@@ -11,6 +12,14 @@ export const metadata: Metadata = {
   description:
     'Learn about IKNA, a comfort-first lingerie brand built on the belief that luxury is a feeling, not a price. Premium bras and lingerie designed for every woman.',
   keywords: ['about IKNA', 'IKNA brand story', 'comfort bras India', 'premium lingerie India'],
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
   alternates: { canonical: buildCanonical('/about-us') },
   openGraph: {
     title: 'About IKNA | Comfort-First Lingerie Brand',
@@ -184,6 +193,28 @@ export default function AboutUs() {
         </div>
       </section>
       <Footer/>
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "IKNA",
+        "url": buildCanonical('/'),
+        "logo": buildCanonical('/images/AI_images/logo1_ikna.png'),
+        "description": "IKNA is a comfort-first lingerie brand built on the belief that luxury is a feeling, not a price. We create premium-quality, beautifully crafted, and incredibly comfortable lingerie accessible to every woman.",
+        "sameAs": [
+          "https://www.instagram.com/iknaonline",
+          "https://www.facebook.com/iknaonline",
+          "https://twitter.com/iknaonline"
+        ],
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "Customer Service",
+          "url": buildCanonical('/FAQs')
+        },
+        "address": {
+          "@type": "PostalAddress",
+          "addressCountry": "IN"
+        }
+      }} />
     </div>
   );
 }

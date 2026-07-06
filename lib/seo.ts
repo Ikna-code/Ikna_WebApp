@@ -301,6 +301,24 @@ export function getProductJsonLd(
   };
 }
 
+/** WebSite schema for search result branding with logo. */
+export function getWebsiteJsonLd(): object {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: BRAND_NAME,
+    url: SITE_URL,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${SITE_URL}/shop?q={search_term_string}`,
+      },
+      'query-input': 'required name=search_term_string',
+    },
+  };
+}
+
 /** BreadcrumbList structured data (schema.org/BreadcrumbList). */
 export function getBreadcrumbJsonLd(
   items: Array<{ name: string; url?: string }>,
@@ -324,7 +342,14 @@ export function getOrganizationJsonLd(): object {
     '@type': 'Organization',
     name: BRAND_NAME,
     url: SITE_URL,
-    logo: `${SITE_URL}/images/AI_images/logo1_ikna.png`,
+    logo: {
+      '@type': 'ImageObject',
+      url: `${SITE_URL}/images/AI_images/logo1_ikna.png`,
+      width: 250,
+      height: 250,
+    },
+    image: `${SITE_URL}/images/AI_images/logo1_ikna.png`,
+    description: 'IKNA - Comfort-First Bras for Everyday Confidence',
     sameAs: [
       'https://www.instagram.com/ikna_lingerie?igsh=MXZpMXVsNXF2bWZ4eg==',
       'https://www.facebook.com/profile.php?id=61575937260657',

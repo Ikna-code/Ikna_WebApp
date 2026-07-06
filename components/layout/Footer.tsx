@@ -60,7 +60,7 @@ const Footer = () => {
                   href="/about-us"
                   className="hover:translate-x-1 inline-block transition-all duration-300"
                 >
-                  About us
+                  About Us
                 </Link>
               </li>
               <li>
