@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
 import AppInitializer from "@/components/utility/AppInitializer";
-import GlobalSpinner from "@/components/ui/GlobalSpinner";
 import { Toaster } from "sonner";
 import JsonLd from "@/components/seo/JsonLd";
 import { getOrganizationJsonLd } from "@/lib/seo";
@@ -135,7 +134,6 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <AppInitializer />
-        <GlobalSpinner />
         <JsonLd data={getOrganizationJsonLd()} />
         {children}
         <Toaster position="top-right" richColors closeButton />
