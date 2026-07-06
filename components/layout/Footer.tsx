@@ -41,7 +41,7 @@ const Footer = () => {
               <li>
                 <Link
                   href="/shop/bras"
-                  className="hover:translate-x-1 inline-block transition-all duration-300"
+                  className="hover:translate-x-1 inline-block transition-all duration-300 text-white/45 hover:text-white"
                 >
                   Bras
                 </Link>
@@ -58,7 +58,7 @@ const Footer = () => {
               <li>
                 <Link
                   href="/about-us"
-                  className="hover:translate-x-1 inline-block transition-all duration-300"
+                  className="hover:translate-x-1 inline-block transition-all duration-300 text-white/45 hover:text-white"
                 >
                   About Us
                 </Link>
@@ -66,7 +66,7 @@ const Footer = () => {
               <li>
                 <Link
                   href="/FAQs"
-                  className="hover:translate-x-1 inline-block transition-all duration-300"
+                  className="hover:translate-x-1 inline-block transition-all duration-300 text-white/45 hover:text-white"
                 >
                   FAQs
                 </Link>
@@ -74,7 +74,7 @@ const Footer = () => {
               <li>
                 <Link
                   href="/privacy-policy"
-                  className="hover:translate-x-1 inline-block transition-all duration-300"
+                  className="hover:translate-x-1 inline-block transition-all duration-300 text-white/45 hover:text-white"
                 >
                   Privacy Policy
                 </Link>
@@ -82,7 +82,7 @@ const Footer = () => {
               <li>
                 <Link
                   href="/terms-and-conditions"
-                  className="hover:translate-x-1 inline-block transition-all duration-300"
+                  className="hover:translate-x-1 inline-block transition-all duration-300 text-white/45 hover:text-white"
                 >
                   Terms and Conditions
                 </Link>
@@ -90,7 +90,7 @@ const Footer = () => {
               <li>
                 <Link
                   href="/sitemap"
-                  className="hover:translate-x-1 inline-block transition-all duration-300"
+                  className="hover:translate-x-1 inline-block transition-all duration-300 text-white/45 hover:text-white"
                 >
                   SiteMap
                 </Link>
@@ -109,7 +109,7 @@ const Footer = () => {
               {/* Phone */}
               <Link
                 href="tel:+919840349375"
-                className="flex items-center gap-2.5 md:gap-3 transition-colors duration-300"
+                className="flex items-center gap-2.5 md:gap-3 transition-colors duration-300 text-white/45 hover:text-white"
               >
                 <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
                   <FaPhoneAlt className="text-[#ffffff] text-[16px]" />
@@ -120,7 +120,7 @@ const Footer = () => {
               {/* Email */}
               <Link
                 href="mailto:admin@iknaonline.com"
-                className="flex items-center gap-2.5 md:gap-3 transition-colors duration-300"
+                className="flex items-center gap-2.5 md:gap-3 transition-colors duration-300 text-white/45 hover:text-white"
               >
                 <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
                   <FaEnvelope className="text-[#ffffff] text-[16px]" />
@@ -142,7 +142,7 @@ const Footer = () => {
                 href="https://www.instagram.com/ikna_lingerie?igsh=MXZpMXVsNXF2bWZ4eg=="
                 target="_blank"
                 aria-label="Instagram"
-                className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 hover:scale-110 transition-all duration-300"
+                className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/15 hover:scale-110 transition-all duration-300"
               >
                 <FaInstagram className="text-[#E1306C] text-[20px]" />
               </Link>
@@ -152,7 +152,7 @@ const Footer = () => {
                 href="https://www.facebook.com/profile.php?id=61575937260657"
                 target="_blank"
                 aria-label="Facebook"
-                className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 hover:scale-110 transition-all duration-300"
+                className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/15 hover:scale-110 transition-all duration-300"
               >
                 <FaFacebookF className="text-[#1877F2] text-[18px]" />
               </Link>
