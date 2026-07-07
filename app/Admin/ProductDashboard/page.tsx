@@ -319,6 +319,40 @@ const getProductSku = (product: DbProduct, fallbackIndex: number) => {
   return String(200001 + fallbackIndex);
 };
 
+const mapDbProductToDetail = (product: DbProduct, fallbackIndex: number): ProductDetail => {
+  const price = Number(product.price);
+  const reviewCount = product.reviews?.length || 0;
+  const primaryPath = product.image || product.images?.find((img) => img.is_primary)?.image_path || '';
+
+  return {
+    id: product.id,
+    sku: getProductSku(product, fallbackIndex),
+    name: product.name,
+    color: product.colorName || product.tag || 'N/A',
+    category: product.category,
+    productTypeId: product.productType?.id,
+    subCategoryId: product.subCategory?.id || undefined,
+    subCategoryName: product.subCategory?.name || undefined,
+    price,
+    stock: product.stock,
+    salesVelocity: `${Math.max(0, Math.round(reviewCount / 2))} units/week`,
+    image: primaryPath,
+    description: product.description || '',
+    sizes: product.sizes || [],
+    rating: typeof product.rating === 'number' ? product.rating : null,
+    createdAt: product.createdAt,
+    isActive: typeof product.isActive === 'boolean' ? product.isActive : true,
+    isDeleted: typeof product.isDeleted === 'boolean' ? product.isDeleted : false,
+    deletedAt: product.deletedAt || null,
+    images: Array.isArray(product.images) ? product.images : [],
+    filters: Array.isArray(product.filters) ? product.filters : [],
+    colorHex: product.colorHex || '#000000',
+    colorName: product.colorName || product.tag || 'Unspecified',
+    fabricType: product.fabricType || 'cotton',
+    inventory: Array.isArray(product.inventory) ? product.inventory : [],
+  };
+};
+
 const normalizeSlug = (value: string) =>
   String(value || '')
     .trim()
@@ -702,8 +736,28 @@ export default function ProductManagementDashboard() {
     return parts.slice(0, -1).join('/');
   };
 
-  const fetchProducts = useCallback(async () => {
-    setIsLoading(true);
+  const triggerCatalogRefresh = useCallback(() => {
+    void refreshProducts().catch(() => undefined);
+  }, [refreshProducts]);
+
+  const patchProductDetail = useCallback((id: string, updater: (product: ProductDetail) => ProductDetail) => {
+    setProductDetails((current) =>
+      current.map((product) => (product.id === id ? updater(product) : product))
+    );
+  }, []);
+
+  const removeProductsFromGrid = useCallback((ids: string[]) => {
+    if (!ids.length) return;
+    const idSet = new Set(ids);
+    setProductDetails((current) => current.filter((product) => !idSet.has(product.id)));
+    setSelectedProducts((current) => current.filter((id) => !idSet.has(id)));
+  }, []);
+
+  const fetchProducts = useCallback(async (options?: { showLoader?: boolean }) => {
+    const shouldShowLoader = options?.showLoader ?? true;
+    if (shouldShowLoader) {
+      setIsLoading(true);
+    }
     setErrorMessage('');
 
     try {
@@ -714,55 +768,25 @@ export default function ProductManagementDashboard() {
       }
 
       const products: DbProduct[] = await response.json();
-// Find this block around line 321 inside fetchProducts:
-const mappedProducts = products.map((product, index) => {
-  const price = Number(product.price);
-  const reviewCount = product.reviews?.length || 0;
-  const primaryPath = product.image || product.images?.find((img) => img.is_primary)?.image_path || '';
-
-  return {
-    id: product.id,
-    sku: getProductSku(product, index),
-    name: product.name,
-    color: product.colorName || product.tag || 'N/A', // Set colorName as primary fallback
-    category: product.category,
-    productTypeId: product.productType?.id,
-    subCategoryId: product.subCategory?.id || undefined,
-    subCategoryName: product.subCategory?.name || undefined,
-    price,
-    stock: product.stock,
-    salesVelocity: `${Math.max(0, Math.round(reviewCount / 2))} units/week`,
-    image: primaryPath,
-    description: product.description || '',
-    sizes: product.sizes || [],
-    rating: typeof product.rating === 'number' ? product.rating : null,
-    createdAt: product.createdAt,
-    isActive: typeof product.isActive === 'boolean' ? product.isActive : true,
-    isDeleted: typeof product.isDeleted === 'boolean' ? product.isDeleted : false,
-    deletedAt: product.deletedAt || null,
-    images: Array.isArray(product.images) ? product.images : [],
-    filters: Array.isArray(product.filters) ? product.filters : [],
-    colorHex: product.colorHex || '#000000',
-    colorName: product.colorName || product.tag || 'Unspecified',
-    fabricType: product.fabricType || 'cotton',
-    inventory: Array.isArray(product.inventory) ? product.inventory : [],
-  };
-});
+      const mappedProducts = products.map((product, index) => mapDbProductToDetail(product, index));
       setProductDetails(mappedProducts);
-
-      const maxSku = mappedProducts.reduce((max, product) => {
-        const skuNumber = parseSku(product.sku) || 200000;
-        return Math.max(max, skuNumber);
-      }, 200000);
-      const generatedSku = String(maxSku + 1);
-      setNextSku(generatedSku);
 
     } catch {
       setErrorMessage('Unable to load products right now.');
     } finally {
-      setIsLoading(false);
+      if (shouldShowLoader) {
+        setIsLoading(false);
+      }
     }
   }, []);
+
+  useEffect(() => {
+    const maxSku = productDetails.reduce((max, product) => {
+      const skuNumber = parseSku(product.sku) || 200000;
+      return Math.max(max, skuNumber);
+    }, 200000);
+    setNextSku(String(maxSku + 1));
+  }, [productDetails]);
 
   useEffect(() => {
     fetchProducts();
@@ -1224,7 +1248,8 @@ const payload = {
       setAddPrimaryImagePreviewKey('');
       setIsAddModalOpen(false);
       setNewFilterOptionIds([]);
-      await Promise.all([fetchProducts(), refreshProducts()]);
+      triggerCatalogRefresh();
+      void fetchProducts({ showLoader: false });
     } catch (error: any) {
       setErrorMessage(error?.message || 'Failed to create product.');
     } finally {
@@ -1251,17 +1276,51 @@ const payload = {
     if (!beginApiCall()) return;
 
     try {
-      await Promise.all(
-        selectedProducts.map((id) =>
-          fetch(`/api/admin/products/${id}`, {
+      const selectedSet = new Set(selectedProducts);
+      const previousById = new Map<string, ProductDetail>();
+
+      setProductDetails((current) =>
+        current.map((product) => {
+          if (!selectedSet.has(product.id)) return product;
+          previousById.set(product.id, product);
+          return { ...product, price: newPrice };
+        })
+      );
+
+      const results = await Promise.allSettled(
+        selectedProducts.map(async (id) => {
+          const response = await fetch(`/api/admin/products/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ price: newPrice }),
-          })
-        )
+          });
+
+          if (!response.ok) {
+            throw new Error(id);
+          }
+
+          return id;
+        })
       );
-      await Promise.all([fetchProducts(), refreshProducts()]);
+
+      const failedIds = results
+        .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+        .map((result) => String((result.reason as Error)?.message || '').trim())
+        .filter(Boolean);
+
+      if (failedIds.length > 0) {
+        const failedSet = new Set(failedIds);
+        setProductDetails((current) =>
+          current.map((product) => {
+            if (!failedSet.has(product.id)) return product;
+            return previousById.get(product.id) || product;
+          })
+        );
+        setErrorMessage('Some selected products failed to update price.');
+      }
+
       setSelectedProducts([]);
+      triggerCatalogRefresh();
     } catch {
       setErrorMessage('Failed to update prices.');
     } finally {
@@ -1287,17 +1346,51 @@ const payload = {
     if (!beginApiCall()) return;
 
     try {
-      await Promise.all(
-        selectedProducts.map((id) =>
-          fetch(`/api/admin/products/${id}`, {
+      const selectedSet = new Set(selectedProducts);
+      const previousById = new Map<string, ProductDetail>();
+
+      setProductDetails((current) =>
+        current.map((product) => {
+          if (!selectedSet.has(product.id)) return product;
+          previousById.set(product.id, product);
+          return { ...product, stock: newStock };
+        })
+      );
+
+      const results = await Promise.allSettled(
+        selectedProducts.map(async (id) => {
+          const response = await fetch(`/api/admin/products/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ stock: newStock }),
-          })
-        )
+          });
+
+          if (!response.ok) {
+            throw new Error(id);
+          }
+
+          return id;
+        })
       );
-      await Promise.all([fetchProducts(), refreshProducts()]);
+
+      const failedIds = results
+        .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+        .map((result) => String((result.reason as Error)?.message || '').trim())
+        .filter(Boolean);
+
+      if (failedIds.length > 0) {
+        const failedSet = new Set(failedIds);
+        setProductDetails((current) =>
+          current.map((product) => {
+            if (!failedSet.has(product.id)) return product;
+            return previousById.get(product.id) || product;
+          })
+        );
+        setErrorMessage('Some selected products failed to update stock.');
+      }
+
       setSelectedProducts([]);
+      triggerCatalogRefresh();
     } catch {
       setErrorMessage('Failed to update stock.');
     } finally {
@@ -1323,6 +1416,22 @@ const payload = {
     if (!beginApiCall()) return;
     setErrorMessage('');
 
+    let previousState: Pick<ProductDetail, 'isActive' | 'isDeleted' | 'deletedAt'> | null = null;
+    patchProductDetail(id, (product) => {
+      previousState = {
+        isActive: product.isActive,
+        isDeleted: product.isDeleted,
+        deletedAt: product.deletedAt,
+      };
+
+      return {
+        ...product,
+        isActive: nextIsActive,
+        isDeleted: false,
+        deletedAt: null,
+      };
+    });
+
     try {
       const response = await fetch(`/api/admin/products/${id}`, {
         method: 'PATCH',
@@ -1339,8 +1448,14 @@ const payload = {
         throw new Error(payload?.error || `Failed to mark product as ${nextIsActive ? 'active' : 'inactive'}`);
       }
 
-      await Promise.all([fetchProducts(), refreshProducts()]);
+      triggerCatalogRefresh();
     } catch (error: any) {
+      if (previousState) {
+        patchProductDetail(id, (product) => ({
+          ...product,
+          ...previousState,
+        }));
+      }
       setErrorMessage(error?.message || `Failed to mark product as ${nextIsActive ? 'active' : 'inactive'}.`);
     } finally {
       endApiCall();
@@ -1367,7 +1482,8 @@ const payload = {
             throw new Error(payload?.error || 'Failed to permanently delete product');
           }
 
-          await Promise.all([fetchProducts(), refreshProducts()]);
+          removeProductsFromGrid([id]);
+          triggerCatalogRefresh();
         } catch (error: any) {
           setErrorMessage(error?.message || 'Failed to permanently delete product.');
         } finally {
@@ -1403,14 +1519,29 @@ const payload = {
 
     try {
       if (deleteModal.mode === 'bulk') {
-        await Promise.all(
-          selectedProducts.map((id) =>
-            fetch(`/api/admin/products/${id}`, {
+        const results = await Promise.allSettled(
+          selectedProducts.map(async (id) => {
+            const response = await fetch(`/api/admin/products/${id}`, {
               method: 'DELETE',
-            })
-          )
+            });
+
+            if (!response.ok) {
+              throw new Error(id);
+            }
+
+            return id;
+          })
         );
-        setSelectedProducts([]);
+
+        const deletedIds = results
+          .filter((result): result is PromiseFulfilledResult<string> => result.status === 'fulfilled')
+          .map((result) => result.value);
+        const failedCount = results.length - deletedIds.length;
+
+        removeProductsFromGrid(deletedIds);
+        if (failedCount > 0) {
+          setErrorMessage(`Failed to delete ${failedCount} selected product(s).`);
+        }
       } else if (deleteModal.productId) {
         const response = await fetch(`/api/admin/products/${deleteModal.productId}`, {
           method: 'DELETE',
@@ -1420,11 +1551,11 @@ const payload = {
           throw new Error('Failed to delete product');
         }
 
-        setSelectedProducts((current) => current.filter((item) => item !== deleteModal.productId));
+        removeProductsFromGrid([deleteModal.productId]);
       }
 
       resetDeleteModal();
-      await Promise.all([fetchProducts(), refreshProducts()]);
+      triggerCatalogRefresh();
     } catch {
       setErrorMessage(
         deleteModal.mode === 'bulk'
@@ -1577,7 +1708,27 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
       setRemovedEditImagePaths([]);
       setEditPrimaryImagePreviewKey('');
       clearEditProductImages();
-      await Promise.all([fetchProducts(), refreshProducts()]);
+      patchProductDetail(editingProductId, (product) => ({
+        ...product,
+        name: editProductDetail.name.trim(),
+        price: Number(editProductDetail.price),
+        stock: Number(editProductDetail.stock),
+        description: editProductDetail.description.trim(),
+        sizes,
+        category: editProductDetail.category.trim(),
+        subCategoryId: editProductDetail.subCategoryId || undefined,
+        subCategoryName:
+          editSubcategoryOptions.find((option) => option.id === editProductDetail.subCategoryId)?.name ||
+          undefined,
+        image: resolvedPrimaryImage || product.image,
+        rating: editProductDetail.rating ? Number(editProductDetail.rating) : null,
+        color: editProductDetail.colorName.trim() || editProductDetail.tag.trim() || product.color,
+        colorHex: editProductDetail.colorHex.trim() || '#000000',
+        colorName: editProductDetail.colorName.trim() || 'Unspecified',
+        fabricType: editProductDetail.fabricType.trim() || 'cotton',
+      }));
+      triggerCatalogRefresh();
+      void fetchProducts({ showLoader: false });
     } catch (error: any) {
       setErrorMessage(error?.message || 'Failed to update product.');
     } finally {
@@ -1630,7 +1781,8 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
         errors: Array.isArray(data.errors) ? data.errors : [],
       });
 
-      await Promise.all([fetchProducts(), refreshProducts()]);
+      triggerCatalogRefresh();
+      void fetchProducts({ showLoader: false });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to import products.');
     } finally {
