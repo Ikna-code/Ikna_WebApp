@@ -1555,7 +1555,7 @@ const payload = {
       }
 
       resetDeleteModal();
-      triggerCatalogRefresh();
+      void fetchProducts({ showLoader: false });
     } catch {
       setErrorMessage(
         deleteModal.mode === 'bulk'
