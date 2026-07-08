@@ -138,14 +138,13 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   initialCategory = "",
   searchQuery = "",
 }) => {
-  console.log("Rendering ProductGridPage with products:", products);
   const user = useStore((state) => state.user);
   const cartItems = useStore((state) => state.cartItems);
   const wishlistItems = useStore((state) => state.wishlist);
   const toggleWishlist = useStore((state) => state.toggleWishlist);
 
   const wishlist = useMemo(
-    () => wishlistItems.map((item: any) => item.id),
+    () => new Set(wishlistItems.map((item: any) => item.id)),
     [wishlistItems]
   );
 
@@ -158,7 +157,6 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
       acc[normalizedCategory] = (acc[normalizedCategory] || 0) + Number(item?.quantity || 1);
       return acc;
     }, {});
-    console.log("Category quantities:", categoryQuantities);
     // Return set of categories with 3+ items
     return new Set(
       Object.entries(categoryQuantities)
@@ -798,7 +796,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
                       <ProductCard
                         product={activeVariant}
                         subtitleOverride={`${group.variants.length} item${group.variants.length > 1 ? 's' : ''}`}
-                        isWished={wishlist.includes(activeVariant.id)}
+                        isWished={wishlist.has(activeVariant.id)}
                         onToggleWishlist={handleLocalToggle}
                         userId={user?.id || null}
                         swatches={group.variants.map((variant, index) => ({

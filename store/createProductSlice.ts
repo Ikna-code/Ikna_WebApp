@@ -6,8 +6,23 @@ import { extractIdFromSlug } from "@/lib/seo";
 
 // Deduplicate concurrent detail requests (e.g., React Strict Mode double-invocation)
 const productDetailInFlight = new Map<string, Promise<any>>();
+const wishlistToggleInFlight = new Map<string, Promise<void>>();
 const FULL_DETAIL_FLAG = "__fullImageCollection";
 const PRODUCT_DETAIL_TIMEOUT_MS = 4000;
+
+const dedupeWishlistItems = (items: any[]) => {
+  const seen = new Set<string>();
+  const deduped: any[] = [];
+
+  for (const item of Array.isArray(items) ? items : []) {
+    const id = String(item?.id || "").trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    deduped.push(item);
+  }
+
+  return deduped;
+};
 
 const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -192,14 +207,53 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
   fetchWishlist: async (userId: string) => {
     if (get().isWishlistInitialized) return;
     const items = await getWishlist(userId);
-    set({ wishlist: items, isWishlistInitialized: true });
+    set({ wishlist: dedupeWishlistItems(items), isWishlistInitialized: true });
   },
 
   toggleWishlist: async (userId, productId) => {
-    const res = await toggleWishlistAction(userId, productId);
-    // Refetch wishlist to stay in sync after toggle
-    const items = await getWishlist(userId);
-    set({ wishlist: items });
+    const key = `${userId}:${productId}`;
+    const existingToggle = wishlistToggleInFlight.get(key);
+    if (existingToggle) {
+      await existingToggle;
+      return;
+    }
+
+    const togglePromise = (async () => {
+      const previousWishlist = get().wishlist;
+      const currentlyWished = previousWishlist.some((item: any) => item?.id === productId);
+
+      // Optimistic UI update so the heart state changes instantly.
+      set((state) => {
+        if (currentlyWished) {
+          return {
+            wishlist: state.wishlist.filter((item: any) => item?.id !== productId),
+          };
+        }
+
+        const fallbackProduct =
+          state.products.find((product: any) => product?.id === productId) ||
+          state.productDetailsById[productId] ||
+          { id: productId };
+
+        return {
+          wishlist: dedupeWishlistItems([...state.wishlist, fallbackProduct]),
+        };
+      });
+
+      const res = await toggleWishlistAction(userId, productId);
+      if (!res?.success) {
+        set({ wishlist: previousWishlist });
+        throw new Error(res?.error || "Failed to toggle wishlist");
+      }
+    })();
+
+    wishlistToggleInFlight.set(key, togglePromise);
+
+    try {
+      await togglePromise;
+    } finally {
+      wishlistToggleInFlight.delete(key);
+    }
   },
 
   fetchReviews: async (productId) => {

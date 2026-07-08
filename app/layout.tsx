@@ -1,12 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Script from "next/script";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import AppInitializer from "@/components/utility/AppInitializer";
 import { Toaster } from "sonner";
 import JsonLd from "@/components/seo/JsonLd";
 import { getOrganizationJsonLd, getWebsiteJsonLd } from "@/lib/seo";
 
+// GA Measurement ID - read from environment variable
+// Add to your .env.local file:
+// NEXT_PUBLIC_GA4_MEASUREMENT_ID=G-XXXXXXXXXX
 const GA4_ID = process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID;
 
 const rawSiteUrl =
@@ -138,22 +141,8 @@ export default function RootLayout({
         <JsonLd data={getWebsiteJsonLd()} />
         {children}
         <Toaster position="top-right" richColors closeButton />
-        {GA4_ID && (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${GA4_ID}`}
-              strategy="afterInteractive"
-            />
-            <Script id="ga4-init" strategy="afterInteractive">
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', '${GA4_ID}', { page_path: window.location.pathname });
-              `}
-            </Script>
-          </>
-        )}
+        {/* Google Analytics 4 using official @next/third-parties package */}
+        {GA4_ID && <GoogleAnalytics gaId={GA4_ID} />}
       </body>
     </html>
   );

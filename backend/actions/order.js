@@ -636,12 +636,6 @@ export async function confirmPayment(orderId, transactionId, provider) {
 
 export async function toggleWishlistAction(userId, productId) {
   try {
-    // 1. DATA INTEGRITY CHECK (The "Why is it failing?" check)
-    const userExists = await db.user.findUnique({ where: { id: userId } });
-    if (!userExists) {
-      return { success: false, error: `User ID ${userId} does not exist in Prisma User table.` };
-    }
-
     const productExists = await db.product.findUnique({ where: { id: productId } });
     if (!productExists) {
       return { success: false, error: `Product ID ${productId} does not exist in Prisma Product table.` };
@@ -665,13 +659,11 @@ export async function toggleWishlistAction(userId, productId) {
       await db.wishlistItem.delete({
         where: { id: existing.id },
       });
-      revalidatePath("/");
       return { success: true, message: "Removed" };
     } else {
       await db.wishlistItem.create({
         data: { userId, productId },
       });
-      revalidatePath("/");
       return { success: true, message: "Added" };
     }
   } catch (error) {

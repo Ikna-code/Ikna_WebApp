@@ -285,7 +285,6 @@ export const ProductCard = ({
             duration-500
             group-hover:scale-105
           "
-          priority
         />
         {resolvedProductBadges.length > 0 && (
           <div className="absolute bottom-2 -right-1 z-30 flex flex-col items-end gap-0.5 sm:gap-1 max-w-[80%]">
@@ -443,7 +442,7 @@ const ProductGrid = () => {
 
   const wishlist = useMemo(
     () =>
-      wishlistItems.map((item: any) => item.id),
+      new Set(wishlistItems.map((item: any) => item.id)),
     [wishlistItems]
   );
 
@@ -598,7 +597,7 @@ const ProductGrid = () => {
                   >
                     <ProductCard
                       product={activeVariant}
-                      isWished={wishlist.includes(activeVariant.id)}
+                      isWished={wishlist.has(activeVariant.id)}
                       onToggleWishlist={toggleWishlistInState}
                       userId={user?.id || null}
                       swatches={group.variants.map((variant, index) => ({
