@@ -53,6 +53,7 @@ type CartProductReference = {
   image?: string;
   image_path?: string;
   size?: string;
+  inventory?: { size: string; stock: number }[];
   subCategory?: {
     name?: string;
     slug?: string;
@@ -75,6 +76,7 @@ type CartDisplayItem = {
   selectedSize?: string;
   Product?: CartProductReference;
   product?: CartProductReference;
+  inventory?: { size: string; stock: number }[];
   subCategoryName?: string;
   subCategoryId?: string;
   subCategory?: string;
@@ -305,7 +307,15 @@ const CartPageContent = () => {
   // 6. UI ACTIONS: Linked directly to mutations + global state updates
   const updateQuantity = async (cartItemId: string, newQty: number) => {
     if (newQty < 1) return;
-    await storeUpdateQuantity(cartItemId, newQty);
+    const result = await storeUpdateQuantity(cartItemId, newQty);
+    if (result && !result.success) {
+      const msg = result.error || '';
+      if (msg.toLowerCase().includes('insufficient') || msg.toLowerCase().includes('inventory') || msg.toLowerCase().includes('stock')) {
+        toast.error('Not enough stock available for this item.');
+      } else {
+        toast.error('Failed to update quantity. Please try again.');
+      }
+    }
   };
 
   const removeItem = async (id: string) => {
@@ -826,6 +836,10 @@ const CartPageContent = () => {
                   const fallbackImage = targetProduct?.image || targetProduct?.image_path || '';
                   const fallbackName = targetProduct?.name || 'Product';
                   const fallbackPrice = targetProduct?.price || item?.price || 0;
+                  const itemInventory = (targetProduct?.inventory ?? []) as { size: string; stock: number }[];
+                  const inventoryForSize = itemInventory.find((inv) => inv.size === item.selectedSize);
+                  const maxStock = inventoryForSize ? Number(inventoryForSize.stock) : Infinity;
+                  const atMaxStock = Number(item.quantity || 1) >= maxStock;
 
                   return (
                     <div key={item.id} className={rowClasses}>
@@ -872,7 +886,20 @@ const CartPageContent = () => {
                           <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-xl border border-[#840d5c]/10 shadow-sm sm:min-w-26 sm:justify-between">
                             <button onClick={() => updateQuantity(item.id, (item.quantity || 1) - 1)} className="text-[#321327]/60 hover:text-[#840d5c] p-0.5"><Minus size={12} /></button>
                             <span className="text-xs font-bold text-[#321327] min-w-4 text-center">{item.quantity || 1}</span>
-                            <button onClick={() => updateQuantity(item.id, (item.quantity || 1) + 1)} className="text-[#321327]/60 hover:text-[#840d5c] p-0.5"><Plus size={12} /></button>
+                            <button
+                              onClick={() => {
+                                if (atMaxStock) {
+                                  toast.error('Maximum available stock reached for this item.');
+                                  return;
+                                }
+                                updateQuantity(item.id, (item.quantity || 1) + 1);
+                              }}
+                              disabled={atMaxStock}
+                              className={`p-0.5 ${atMaxStock ? 'text-[#321327]/20 cursor-not-allowed' : 'text-[#321327]/60 hover:text-[#840d5c]'}`}
+                              aria-label="Increase quantity"
+                            >
+                              <Plus size={12} />
+                            </button>
                           </div>
 
                           <button

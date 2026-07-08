@@ -139,7 +139,8 @@ export async function getCartItems(userId) {
       include: {
         product: {
           include: {
-            images: true, // Includes product images if needed for the UI
+            images: true,
+            inventory: true, // Include per-size inventory for stock limit enforcement in UI
           },
         },
       },
@@ -285,7 +286,8 @@ console.log("Parsed quantity:", qty);
     return { success: true, item: updatedItem };
   } catch (error) {
     console.error("Update quantity error:", error);
-    return { success: false, error: "Failed to update quantity" };
+    const errorMessage = error?.message || "Failed to update quantity";
+    return { success: false, error: errorMessage };
   }
 }
 

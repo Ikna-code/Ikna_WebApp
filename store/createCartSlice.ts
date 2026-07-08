@@ -20,7 +20,7 @@ export interface CartSlice {
   fetchOrders: (force?: boolean) => Promise<void>;
   fetchAdminOrders: (force?: boolean) => Promise<void>;
   addItemToCart: (userId: string, productId: string, selectedSize: string, quantity?: number, category?: string, comboEligibleQuantity?: number, comboBundleId?: string) => Promise<void>;
-  updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
+  updateQuantity: (cartItemId: string, quantity: number) => Promise<{ success: boolean; error?: string }>;
   removeItem: (cartItemId: string) => Promise<void>;
   checkout: (userId: string, couponCode?: string | null) => Promise<any>;
   finalizePayment: (orderId: string, txId: string, provider: string) => Promise<any>;
@@ -137,7 +137,9 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
       if (cartUserId) {
         await get().fetchCart(cartUserId, true);
       }
+      return { success: false, error: (res?.error as string) || "Failed to update quantity" };
     }
+    return { success: true };
   },
 
 removeItem: async (cartItemId: string) => {
