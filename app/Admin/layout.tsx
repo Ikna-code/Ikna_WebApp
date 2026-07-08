@@ -3,6 +3,9 @@ import { redirect } from 'next/navigation';
 import { Role } from '@prisma/client';
 import Sidebar from './Analytics/Sidebar';
 import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
+import AdminSessionGuard from './AdminSessionGuard';
+
+export const dynamic = 'force-dynamic';
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   let dbUser;
@@ -18,6 +21,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <div className="flex min-h-dvh w-full bg-[#f8eef4] text-[#2f1126] antialiased overflow-x-hidden isolate">
+      <AdminSessionGuard />
       
       <Sidebar adminUser={dbUser} />
       

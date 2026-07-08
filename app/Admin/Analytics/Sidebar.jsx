@@ -130,7 +130,7 @@ export default function Sidebar({ adminUser }) {
       });
 
       toast.success('Signed out successfully');
-      window.location.assign('/');
+      window.location.replace('/');
     } catch (error) {
       toast.error(error?.message || 'Failed to sign out');
     } finally {
