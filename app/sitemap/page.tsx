@@ -33,7 +33,6 @@ const formatRouteLabel = (route: string) => {
 };
 
 export default async function SiteMapPage() {
-  const dbProductTypeAny = (db as any).productType;
   let categoryBlocks: Array<{
     categoryName: string;
     categoryHref: string;
@@ -44,8 +43,16 @@ export default async function SiteMapPage() {
     const productTypes: Array<{
       name: string;
       subcategories?: Array<{ name: string }>;
-    }> = await dbProductTypeAny.findMany({
-      where: { isActive: true },
+    }> = await db.productType.findMany({
+      where: {
+        isActive: true,
+        products: {
+          some: {
+            isActive: true,
+            isDeleted: false,
+          },
+        },
+      },
       select: {
         name: true,
         subcategories: {
