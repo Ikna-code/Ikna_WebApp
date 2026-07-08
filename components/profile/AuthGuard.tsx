@@ -5,6 +5,7 @@ import { supabaseBrowser } from '@/lib/supabase/client';
 import { Lock, Mail, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { sendAuthEventNotification } from '@/backend/actions/auth';
+import { AccountPageSkeleton } from '@/components/utility/PageSkeletons';
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -444,8 +445,10 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (isInitializing) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#F9F3F5]">
-        <Loader2 className="animate-spin text-[#840d5c]" />
+      <div className="min-h-screen bg-[#F9F3F5] py-4 sm:py-6 px-3 sm:px-4 md:px-6 lg:px-8 pb-24 md:pb-16 overflow-x-hidden">
+        <div className="max-w-6xl mx-auto w-full">
+          <AccountPageSkeleton />
+        </div>
       </div>
     );
   }

@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { 
   Settings, Package, MapPin, Heart,
-  Loader2, ChevronRight, LayoutGrid
+  ChevronRight, LayoutGrid
 } from 'lucide-react';
 import AuthGuard from './AuthGuard';
 import { getUser } from '@/backend/actions/user';
@@ -16,6 +16,7 @@ import { useStore } from '@/store/useStore';
 import { getMyFitQuizResults } from '@/backend/actions/quiz';
 import MeasurementsModal from './MeasurementsModal';
 import { getMeasurements } from '@/backend/actions/measurements';
+import { AccountPageSkeleton } from '@/components/utility/PageSkeletons';
 
 // 1. Define your component/section views
 const DashboardView = ({ 
@@ -208,8 +209,10 @@ const UserProfile = () => {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-[#F9F3F5] flex items-center justify-center">
-        <Loader2 className="animate-spin text-[#840d5c]" />
+      <div className="min-h-screen bg-[#F9F3F5] py-4 sm:py-6 px-3 sm:px-4 md:px-6 lg:px-8 pb-24 md:pb-16 overflow-x-hidden">
+        <div className="max-w-6xl mx-auto w-full">
+          <AccountPageSkeleton />
+        </div>
       </div>
     );
   }
@@ -245,8 +248,8 @@ const UserProfile = () => {
       <div className="min-h-screen bg-[#F9F3F5] py-4 sm:py-6 px-3 sm:px-4 md:px-6 lg:px-8 pb-24 md:pb-16 overflow-x-hidden">
         <div className="max-w-6xl mx-auto w-full">
           {fetchingProfile ? (
-            <div className="flex h-64 sm:h-96 items-center justify-center">
-              <Loader2 className="animate-spin text-[#840d5c]" />
+            <div className="pt-3 sm:pt-4">
+              <AccountPageSkeleton />
             </div>
           ) : (
             <div className="flex flex-col gap-0">
