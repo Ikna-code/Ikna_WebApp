@@ -399,11 +399,6 @@ export const ProductCard = ({
 const ProductGrid = () => {
   const user = useStore((state) => state.user);
   const cartItems = useStore((state) => state.cartItems);
-  const loadProducts = useStore((state) => state.loadProducts);
-
-  const isAuthInitialized = useStore(
-    (state) => state.isAuthInitialized
-  );
 
   const products = useStore(
     (state) => state.products
@@ -412,25 +407,6 @@ const ProductGrid = () => {
   const isProductsInitialized = useStore(
     (state) => state.isProductsInitialized
   );
-
-  const [isBootstrappingProducts, setIsBootstrappingProducts] = useState(false);
-
-  useEffect(() => {
-    if (!isAuthInitialized || isProductsInitialized) return;
-
-    let isMounted = true;
-    setIsBootstrappingProducts(true);
-
-    Promise.resolve(loadProducts()).finally(() => {
-      if (isMounted) {
-        setIsBootstrappingProducts(false);
-      }
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isAuthInitialized, isProductsInitialized, loadProducts]);
 
   const wishlistItems = useStore(
     (state) => state.wishlist
@@ -547,7 +523,7 @@ const ProductGrid = () => {
     await toggleWishlist(user.id, id);
   };
 
-  const loading = !isAuthInitialized || (!isProductsInitialized && isBootstrappingProducts);
+  const loading = !isProductsInitialized && products.length === 0;
 
   return (
     <section className="bg-[#faf3f5] py-8 md:py-14 min-h-screen">

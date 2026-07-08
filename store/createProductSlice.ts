@@ -7,6 +7,7 @@ import { extractIdFromSlug } from "@/lib/seo";
 // Deduplicate concurrent detail requests (e.g., React Strict Mode double-invocation)
 const productDetailInFlight = new Map<string, Promise<any>>();
 const wishlistToggleInFlight = new Map<string, Promise<void>>();
+let productsRequestInFlight: Promise<void> | null = null;
 const FULL_DETAIL_FLAG = "__fullImageCollection";
 const PRODUCT_DETAIL_TIMEOUT_MS = 4000;
 
@@ -72,49 +73,63 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
 
   loadProducts: async (force = false) => {
     if (!force && get().isProductsInitialized) return;
-    set({ isLoading: true, error: null });
-    try {
-      const response = await fetch('/api/products', { cache: 'no-store' });
-      if (!response.ok) {
-        throw new Error("Failed to load products");
-      }
 
-      const payload = await response.json();
-      const rows = Array.isArray(payload) ? payload : [];
-
-      const hydratedProducts = rows.map((product: any) => {
-        const images = Array.isArray(product?.images) ? product.images : [];
-        const primary = images.find((img: any) => Boolean(img?.is_primary));
-        const fallback = images[0];
-        const imagePath = product?.image || primary?.image_path || fallback?.image_path || "";
-
-        return {
-          ...product,
-          image: imagePath,
-          product_images: images,
-          [FULL_DETAIL_FLAG]: true,
-        };
-      });
-
-      const fullDetailsById = hydratedProducts.reduce((acc: Record<string, any>, product: any) => {
-        if (product?.id) {
-          acc[product.id] = product;
-        }
-        return acc;
-      }, {});
-
-      set((state) => ({
-        products: hydratedProducts,
-        productDetailsById: {
-          ...state.productDetailsById,
-          ...fullDetailsById,
-        },
-        isLoading: false,
-        isProductsInitialized: true,
-      }));
-    } catch (e: any) {
-      set({ error: e?.message || "Failed to load products", isLoading: false });
+    if (!force && productsRequestInFlight) {
+      await productsRequestInFlight;
+      return;
     }
+
+    set({ isLoading: true, error: null });
+
+    const request = (async () => {
+      try {
+        const response = await fetch('/api/products', { cache: 'force-cache' });
+        if (!response.ok) {
+          throw new Error("Failed to load products");
+        }
+
+        const payload = await response.json();
+        const rows = Array.isArray(payload) ? payload : [];
+
+        const hydratedProducts = rows.map((product: any) => {
+          const images = Array.isArray(product?.images) ? product.images : [];
+          const primary = images.find((img: any) => Boolean(img?.is_primary));
+          const fallback = images[0];
+          const imagePath = product?.image || primary?.image_path || fallback?.image_path || "";
+
+          return {
+            ...product,
+            image: imagePath,
+            product_images: images,
+            [FULL_DETAIL_FLAG]: true,
+          };
+        });
+
+        const fullDetailsById = hydratedProducts.reduce((acc: Record<string, any>, product: any) => {
+          if (product?.id) {
+            acc[product.id] = product;
+          }
+          return acc;
+        }, {});
+
+        set((state) => ({
+          products: hydratedProducts,
+          productDetailsById: {
+            ...state.productDetailsById,
+            ...fullDetailsById,
+          },
+          isLoading: false,
+          isProductsInitialized: true,
+        }));
+      } catch (e: any) {
+        set({ error: e?.message || "Failed to load products", isLoading: false });
+      } finally {
+        productsRequestInFlight = null;
+      }
+    })();
+
+    productsRequestInFlight = request;
+    await request;
   },
 
   refreshProducts: async () => {

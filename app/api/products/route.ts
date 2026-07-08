@@ -53,9 +53,6 @@ export async function GET() {
             slug: true,
           },
         },
-        reviews: {
-          select: { rating: true },
-        },
         images: {
           select: {
             id: true,
@@ -64,9 +61,12 @@ export async function GET() {
           },
         },
         filters: {
-          include: {
+          select: {
             filterOption: {
-              include: {
+              select: {
+                id: true,
+                value: true,
+                displayLabel: true,
                 filterGroup: {
                   select: {
                     id: true,
@@ -125,7 +125,12 @@ export async function GET() {
     // Serialize Decimal values to numbers for JSON response
     const serializedProducts = serializeDecimal(normalizedProducts);
 
-    return NextResponse.json(serializedProducts);
+    return NextResponse.json(serializedProducts, {
+      headers: {
+        // Keep product listings snappy for repeated visits while still refreshing periodically.
+        'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+      },
+    });
   } catch (error) {
     console.error('[api/products] failed to fetch products:', error);
     return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
