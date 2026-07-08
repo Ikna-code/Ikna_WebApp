@@ -536,8 +536,23 @@ const ProductGrid = () => {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-10 h-10 border-4 border-[#840d5c] border-t-transparent rounded-full animate-spin"></div>
+          <div
+            className="
+              grid
+              grid-cols-2
+              md:grid-cols-4
+              lg:grid-cols-4
+              gap-4
+              md:gap-6
+            "
+          >
+            {Array.from({ length: 8 }).map((_, index) => (
+              <div key={index} className="rounded-3xl border border-[#321327]/10 bg-white p-3 md:p-4">
+                <div className="h-40 md:h-56 w-full rounded-2xl bg-[#321327]/10 animate-pulse" />
+                <div className="mt-3 h-4 w-3/4 rounded bg-[#321327]/10 animate-pulse" />
+                <div className="mt-2 h-3 w-1/2 rounded bg-[#321327]/10 animate-pulse" />
+              </div>
+            ))}
           </div>
         ) : (
           <>

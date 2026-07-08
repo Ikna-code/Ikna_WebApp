@@ -2,9 +2,10 @@
 
 import React, { useMemo } from 'react';
 import Link from 'next/link';
-import { Heart, Sparkles, Loader2 } from 'lucide-react';
+import { Heart, Sparkles } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { ProductCard } from '@/components/product/ProductGrid';
+import { AccountPageSkeleton } from '@/components/utility/PageSkeletons';
 
 const WishlistPage = () => {
   const user = useStore((s) => s.user);
@@ -32,8 +33,8 @@ const WishlistPage = () => {
   // AUTH LOADING STATE
   if (!isAuthInitialized) {
     return (
-      <div className="bg-[#FAF3F5] min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin text-[#840d5c]" size={32} />
+      <div className="bg-[#FAF3F5] min-h-screen">
+        <AccountPageSkeleton />
       </div>
     );
   }

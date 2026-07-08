@@ -2,9 +2,9 @@
 
 import React, { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Header from '@/components/layout/Header';
 import { MapPin, Plus, Trash2, Edit3, X, Loader2, CheckCircle2 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { AccountPageSkeleton } from '@/components/utility/PageSkeletons';
 
 interface Address {
   id: string;
@@ -140,8 +140,8 @@ const AddressPageContent = () => {
 
   if (!isAuthInitialized || isLoading) {
     return (
-      <div className="bg-[#FAF3F5] min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin text-[#840d5c]" size={32} />
+      <div className="bg-[#FAF3F5] min-h-screen">
+        <AccountPageSkeleton />
       </div>
     );
   }
@@ -185,8 +185,8 @@ const AddressPageContent = () => {
         {/* LIST OF ADDRESSES */}
         <div className="space-y-4">
           {isLoading ? (
-            <div className="flex justify-center py-16 bg-white/40 rounded-2xl sm:rounded-[3rem] border border-[#840d5c]/10">
-              <Loader2 className="animate-spin text-[#840d5c]" size={32} />
+            <div className="py-3">
+              <AccountPageSkeleton />
             </div>
           ) : (!addresses || addresses.length === 0) ? (
             <div className="text-center py-16 bg-white/40 rounded-2xl sm:rounded-[3rem] border-2 border-dashed border-[#840d5c]/10 text-[#321327]/30 italic text-sm px-4">

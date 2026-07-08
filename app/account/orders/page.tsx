@@ -1,12 +1,12 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-import Header from '@/components/layout/Header';
-import { Package, ChevronDown, CheckCircle2, MapPin, Loader2 } from 'lucide-react';
+import { Package, ChevronDown, CheckCircle2, MapPin } from 'lucide-react';
 import ShipmentTracker from './ShipmentTracker';
 import { useStore } from '@/store/useStore';
 import { getShortOrderReference } from '@/lib/orderReference';
 import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
+import { AccountPageSkeleton } from '@/components/utility/PageSkeletons';
 
 const OrdersPage = () => {
   const orders = useStore((s) => s.orders);
@@ -34,8 +34,8 @@ const OrdersPage = () => {
 
   if (loading) {
     return (
-      <div className="bg-[#FAF3F5] min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin text-[#840d5c]" size={32} />
+      <div className="bg-[#FAF3F5] min-h-screen">
+        <AccountPageSkeleton />
       </div>
     );
   }

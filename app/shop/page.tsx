@@ -6,8 +6,8 @@ import { useSearchParams } from 'next/navigation';
 import ProductGridPage from "@/components/product/ProductGridPage";
 import PerspectiveGallery from "@/utils/threeDBanner";
 import Header from '@/components/layout/Header';
-import Footer from '@/components/layout/Footer';
 import { useStore } from '@/store/useStore';
+import { ShopPageSkeleton } from '@/components/utility/PageSkeletons';
 
 function ShopContent() {
   const products = useStore((s) => s.products);
@@ -96,7 +96,7 @@ function ShopContent() {
 
 export default function Shop() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<ShopPageSkeleton />}>
       <ShopContent />
     </Suspense>
   );
