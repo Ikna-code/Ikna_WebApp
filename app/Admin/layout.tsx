@@ -17,28 +17,18 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   }
 
   return (
-    /* 
-      CRITICAL HARDENING: 
-      Changed 'min-h-screen' to 'h-screen' and forced 'overflow-hidden' + 'overscroll-none' globally.
-      This locks the browser layout container in place on both mobile and desktop.
-    */
-    <div className="h-screen w-screen bg-[#f8eef4] text-[#2f1126] antialiased flex overflow-hidden overscroll-none isolate">
+    <div className="flex min-h-dvh w-full bg-[#f8eef4] text-[#2f1126] antialiased overflow-x-hidden isolate">
       
       <Sidebar adminUser={dbUser} />
       
-      {/* 
-        CRITICAL SCROLL ISOLATION:
-        1. Changed 'overflow-visible' to 'overflow-y-auto' for ALL screen sizes. 
-           Mobile scrolling now happens inside this container, completely separating it from the root page view.
-        2. Added 'touch-pan-y' to let mobile users scroll vertically seamlessly, but it explicitly tells 
-           the browser's engine to ignore and block dual-finger viewport resizing (pinch-to-zoom) over this area.
-        3. Added 'overscroll-contain' to eliminate elastic bounce handling.
-      */}
       <main 
-        className="min-w-0 flex-1 h-full overflow-y-auto overflow-x-hidden px-4 pb-6 pt-20 sm:px-6 sm:pb-8 sm:pt-24 lg:px-8 lg:pb-10 lg:pt-8 overscroll-contain touch-pan-y"
-        style={{ WebkitOverflowScrolling: 'touch' }} // Smooth fluid momentum scrolling for iOS safari
+        className="min-w-0 min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-14 pt-20 sm:px-6 sm:pb-10 sm:pt-24 lg:px-8 lg:pb-10 lg:pt-8"
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          paddingBottom: 'max(4rem, calc(env(safe-area-inset-bottom) + 2rem))',
+        }}
       >
-        <div className="mx-auto w-full max-w-400 h-full">{children}</div>
+        <div className="mx-auto w-full max-w-400">{children}</div>
       </main>
 
     </div>
