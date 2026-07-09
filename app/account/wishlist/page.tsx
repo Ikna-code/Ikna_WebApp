@@ -115,7 +115,7 @@ const WishlistPage = () => {
             </div>
             <div className="relative z-10 max-w-lg">
               <h4 className="text-xl sm:text-2xl font-serif mb-2 sm:mb-4">Complete your look</h4>
-              <p className="text-xs sm:text-sm opacity-70 leading-relaxed mb-5 sm:mb-6">
+              <p className="text-xs sm:text-sm text-[#F6F2EE] leading-relaxed mb-5 sm:mb-6">
                 Based on your wishlist, we think you might also love our upcoming Summer Royale collection. 
               </p>
 
