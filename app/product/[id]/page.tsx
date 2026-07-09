@@ -28,6 +28,7 @@ import {
   getProductColorLabel,
   getProductSwatchColor,
 } from '@/lib/productVariants';
+import { animateFlyToCartFromElement } from '@/lib/microInteractions';
 
 function DescriptionAccordion({ description }: { description: string }) {
   const [expanded, setExpanded] = useState(true);
@@ -660,8 +661,11 @@ const SingleProductPage = () => {
     return false;
   };
 
-  const handleAddToBag = async () => {
-    await addCurrentVariantToCart("Added to bag!");
+  const handleAddToBag = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    const isAdded = await addCurrentVariantToCart("Added to bag!");
+    if (isAdded) {
+      animateFlyToCartFromElement(event.currentTarget);
+    }
   };
 
   const handleBuyNow = async () => {
@@ -1034,7 +1038,7 @@ const SingleProductPage = () => {
                   <div className="flex flex-col gap-2.5 pt-1.5">
                     <button
                       onClick={handleAddToBag}
-                      className="w-full text-white py-3 rounded-full font-bold uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 shadow-md transition-all active:scale-[0.98] bg-[#840d5c] hover:bg-[#321327] shadow-[#840d5c]/20"
+                      className="ikna-ripple w-full text-white py-3 rounded-full font-bold uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 shadow-md transition-all active:scale-[0.98] bg-[#840d5c] hover:bg-[#321327] shadow-[#840d5c]/20"
                     >
                       <ShoppingBag size={16} /> Add To Bag
                     </button>
@@ -1042,7 +1046,7 @@ const SingleProductPage = () => {
                     <button
                       onClick={handleBuyNow}
                       disabled={isBuyNowLoading}
-                      className="w-full bg-[#321327] text-white py-3 rounded-full font-bold uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 hover:bg-[#840d5c] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="ikna-ripple w-full bg-[#321327] text-white py-3 rounded-full font-bold uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 hover:bg-[#840d5c] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <ShieldCheck size={14} /> {isBuyNowLoading ? 'Processing...' : 'Buy Now'}
                     </button>
@@ -1052,7 +1056,7 @@ const SingleProductPage = () => {
                         setReviewComposerSignal((prev) => prev + 1);
                         scrollToReviews();
                       }}
-                      className="w-full bg-white border-2 border-[#321327]/10 text-[#321327] py-3 rounded-full font-bold uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 hover:border-[#840d5c] hover:text-[#840d5c] transition-all"
+                      className="ikna-ripple w-full bg-white border-2 border-[#321327]/10 text-[#321327] py-3 rounded-full font-bold uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 hover:border-[#840d5c] hover:text-[#840d5c] transition-all"
                     >
                       <MessageSquare size={14} /> Write A Review
                     </button>

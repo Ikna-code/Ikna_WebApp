@@ -42,6 +42,7 @@ export const ProductCard = ({
   subtitleOverride?: string;
 }) => {
   const [isPending, setIsPending] = useState(false);
+  const [showHeartBurst, setShowHeartBurst] = useState(false);
   const router = useRouter();
 
   const handleWishlistClick = async (
@@ -55,9 +56,14 @@ export const ProductCard = ({
     }
 
     setIsPending(true);
+    const shouldBurst = !isWished;
 
     try {
       await onToggleWishlist(product.id);
+      if (shouldBurst) {
+        setShowHeartBurst(true);
+        window.setTimeout(() => setShowHeartBurst(false), 700);
+      }
     } catch {
       toast.error("Something went wrong");
     } finally {
@@ -240,6 +246,7 @@ export const ProductCard = ({
           onClick={handleWishlistClick}
           disabled={isPending}
           className="
+            relative
             w-8
             h-8
             rounded-full
@@ -255,9 +262,20 @@ export const ProductCard = ({
           "
         >
           {isWished ? (
-            <FaHeart className="text-[#840d5c] text-sm" />
+            <FaHeart className={`text-[#840d5c] text-sm ${showHeartBurst ? 'ikna-heart-pop' : ''}`} />
           ) : (
             <FaRegHeart className="text-[#321327] text-sm" />
+          )}
+
+          {showHeartBurst && (
+            <span className="ikna-heart-burst">
+              <span style={{ ['--tx' as string]: '0px', ['--ty' as string]: '-18px' } as React.CSSProperties} />
+              <span style={{ ['--tx' as string]: '14px', ['--ty' as string]: '-12px' } as React.CSSProperties} />
+              <span style={{ ['--tx' as string]: '18px', ['--ty' as string]: '2px' } as React.CSSProperties} />
+              <span style={{ ['--tx' as string]: '0px', ['--ty' as string]: '18px' } as React.CSSProperties} />
+              <span style={{ ['--tx' as string]: '-14px', ['--ty' as string]: '10px' } as React.CSSProperties} />
+              <span style={{ ['--tx' as string]: '-18px', ['--ty' as string]: '-2px' } as React.CSSProperties} />
+            </span>
           )}
         </button>
       </div>
@@ -372,6 +390,7 @@ export const ProductCard = ({
             );
           }}
           className="
+            ikna-ripple
             w-full
             h-9
             sm:h-10
@@ -554,9 +573,9 @@ const ProductGrid = () => {
           >
             {Array.from({ length: 8 }).map((_, index) => (
               <div key={index} className="rounded-3xl border border-[#321327]/10 bg-white p-3 md:p-4">
-                <div className="h-40 md:h-56 w-full rounded-2xl bg-[#321327]/10 animate-pulse" />
-                <div className="mt-3 h-4 w-3/4 rounded bg-[#321327]/10 animate-pulse" />
-                <div className="mt-2 h-3 w-1/2 rounded bg-[#321327]/10 animate-pulse" />
+                <div className="ikna-skeleton h-40 md:h-56 w-full rounded-2xl" />
+                <div className="ikna-skeleton mt-3 h-4 w-3/4 rounded" />
+                <div className="ikna-skeleton mt-2 h-3 w-1/2 rounded" />
               </div>
             ))}
           </div>
@@ -573,7 +592,7 @@ const ProductGrid = () => {
                 md:gap-6
               "
             >
-              {featuredGroups.map((group) => {
+              {featuredGroups.map((group, index) => {
                 const activeVariantId = selectedVariantByCategory[group.categoryKey];
                 const activeVariant =
                   group.variants.find((variant) => variant.id === activeVariantId) ||
@@ -590,7 +609,8 @@ const ProductGrid = () => {
                         { scroll: true }
                       )
                     }
-                    className="cursor-pointer flex h-full"
+                    className="ikna-fade-card cursor-pointer flex h-full"
+                    style={{ animationDelay: `${Math.min(index, 12) * 55}ms` }}
                   >
                     <ProductCard
                       product={activeVariant}

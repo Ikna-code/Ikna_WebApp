@@ -3,7 +3,7 @@ type SkeletonBlockProps = {
 };
 
 function SkeletonBlock({ className }: SkeletonBlockProps) {
-  return <div className={`animate-pulse rounded-2xl bg-[#321327]/10 ${className}`} aria-hidden="true" />;
+  return <div className={`ikna-skeleton rounded-2xl ${className}`} aria-hidden="true" />;
 }
 
 export function HomePageSkeleton() {

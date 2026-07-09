@@ -21,7 +21,7 @@ const SuccessPageContent = () => {
           <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#840d5c]/5 rounded-full blur-3xl"></div>
           
           <div className="relative z-10 space-y-6">
-            <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto text-green-500 mb-8">
+            <div className="ikna-success-check w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto text-green-500 mb-8">
               <CheckCircle2 size={56} strokeWidth={1.5} />
             </div>
 
@@ -43,7 +43,7 @@ const SuccessPageContent = () => {
             <div className="pt-8 flex flex-col gap-4">
               <Link 
                 href="/shop" 
-                className="w-full bg-[#321327] text-white py-4 rounded-full font-bold uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-2 hover:bg-[#840d5c] transition-all shadow-lg"
+                className="ikna-ripple w-full bg-[#321327] text-white py-4 rounded-full font-bold uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-2 hover:bg-[#840d5c] transition-all shadow-lg"
               >
                 Continue Shopping <ArrowRight size={16} />
               </Link>

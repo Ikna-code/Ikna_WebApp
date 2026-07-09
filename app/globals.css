@@ -316,6 +316,176 @@ body.ikna-modal-open .shop-content-layer {
   transition: filter 220ms ease;
 }
 
+@keyframes ikna-shimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes ikna-fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes ikna-heart-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.24);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes ikna-heart-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--tx, 0px)), calc(-50% + var(--ty, 0px))) scale(1);
+  }
+}
+
+@keyframes ikna-success-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ikna-success-ring {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+
+.ikna-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(120deg, rgba(50, 19, 39, 0.08) 8%, rgba(50, 19, 39, 0.13) 18%, rgba(50, 19, 39, 0.08) 28%);
+}
+
+.ikna-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.65) 50%, transparent 80%);
+  transform: translateX(-120%);
+  animation: ikna-shimmer 1.4s ease-in-out infinite;
+}
+
+.ikna-fade-card {
+  opacity: 0;
+  animation: ikna-fade-up 420ms ease forwards;
+}
+
+.ikna-ripple {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.ikna-ripple::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  transform: translate(-50%, -50%) scale(0);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 72%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ikna-ripple:active::after {
+  width: 200%;
+  height: 200%;
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  transition: transform 260ms ease, opacity 420ms ease;
+}
+
+.ikna-heart-pop {
+  animation: ikna-heart-pop 280ms ease;
+}
+
+.ikna-heart-burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ikna-heart-burst span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: #a10f63;
+  animation: ikna-heart-burst 650ms ease-out forwards;
+}
+
+.ikna-success-check {
+  position: relative;
+  animation: ikna-success-pop 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ikna-success-check::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 9999px;
+  border: 2px solid rgba(16, 185, 129, 0.35);
+  animation: ikna-success-ring 900ms ease-out 120ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ikna-skeleton::after,
+  .ikna-fade-card,
+  .ikna-heart-pop,
+  .ikna-heart-burst span,
+  .ikna-success-check,
+  .ikna-success-check::before {
+    animation: none !important;
+  }
+
+  .ikna-ripple:active::after {
+    transition: none !important;
+  }
+}
+
 /* Privacy Policy Styles */
 /* 1. Announcement Bar */
 .announcementBar {

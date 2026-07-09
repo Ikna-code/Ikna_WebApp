@@ -760,7 +760,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
                 }
                 openMobileFilterDrawer();
               }}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#321327]/10 bg-[#faf6f8] px-4 py-3 text-xs font-semibold tracking-[0.12em] text-[#321327] uppercase"
+              className="ikna-ripple inline-flex items-center justify-center gap-2 rounded-xl border border-[#321327]/10 bg-[#faf6f8] px-4 py-3 text-xs font-semibold tracking-[0.12em] text-[#321327] uppercase"
             >
               <LuSlidersHorizontal className="text-[#840d5c] text-base" aria-hidden="true" />
               Filters & Sort
@@ -774,7 +774,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
           <main className="grow">
             {groupedProducts.length > 0 ? (
               <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
-                {groupedProducts.map((group) => {
+                {groupedProducts.map((group, index) => {
                   const activeVariantId = selectedVariantByCategory[group.categoryKey];
                   const activeVariant =
                     group.variants.find((variant) => variant.id === activeVariantId) ||
@@ -785,7 +785,8 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
                   return (
                     <div
                       key={group.categoryKey}
-                      className="cursor-pointer flex h-full"
+                      className="ikna-fade-card cursor-pointer flex h-full"
+                      style={{ animationDelay: `${Math.min(index, 16) * 45}ms` }}
                       onClick={() =>
                         router.push(
                           `/product/${generateProductSlug(activeVariant)}`,
@@ -871,7 +872,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
                 <button
                   type="button"
                   onClick={applyMobileFilters}
-                  className="w-full rounded-xl bg-[#321327] px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white shadow-sm transition-colors hover:bg-[#4a1b3a]"
+                  className="ikna-ripple w-full rounded-xl bg-[#321327] px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white shadow-sm transition-colors hover:bg-[#4a1b3a]"
                 >
                   Apply
                 </button>
@@ -910,14 +911,14 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsDesktopFilterDrawerOpen(false)}
-                  className="rounded-xl border border-[#840d5c] px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-[#840d5c] transition-colors hover:bg-[#840d5c] hover:text-white"
+                  className="ikna-ripple rounded-xl border border-[#840d5c] px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-[#840d5c] transition-colors hover:bg-[#840d5c] hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={applyDesktopFilters}
-                  className="rounded-xl bg-[#321327] px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white shadow-sm transition-colors hover:bg-[#4a1b3a]"
+                  className="ikna-ripple rounded-xl bg-[#321327] px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white shadow-sm transition-colors hover:bg-[#4a1b3a]"
                 >
                   Apply
                 </button>

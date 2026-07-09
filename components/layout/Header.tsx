@@ -205,7 +205,7 @@ const HeaderContent = () => {
             <button className="hidden md:block" aria-label="Account" onClick={() => setIsProfileOpen(true)}>
               <User size={20} strokeWidth={1.5} />
             </button>
-            <Link href="/cart" className="hidden md:block relative group" aria-label="Cart">
+            <Link href="/cart" className="hidden md:block relative group" aria-label="Cart" data-cart-anchor="true">
               <ShoppingBag size={20} strokeWidth={1.5} />
               {totalItems > 0 && (
                 <span className="absolute -top-2.5 -right-2.5 bg-[#840d5c] text-white text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
@@ -308,6 +308,7 @@ const HeaderContent = () => {
                 href="/cart" 
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="flex items-center space-x-4 text-[11px] font-bold tracking-[0.2em] text-[#321327]"
+                data-cart-anchor="true"
               >
                 <div className="relative">
                   <ShoppingBag size={20} />
