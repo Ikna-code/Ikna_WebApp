@@ -15,7 +15,7 @@ const resolveMetricIcon = (title) => {
 
 function MetricCard({ title, value, percentage, icon: Icon, iconBg, iconColor }) {
   return (
-    <div className="flex w-44 shrink-0 items-center gap-2 rounded-xl border border-[#e8bfd5] bg-white p-2.5 shadow-sm sm:w-full sm:gap-4 sm:rounded-2xl sm:p-5">
+    <div className="flex min-h-27 w-44 shrink-0 items-center gap-2 rounded-xl border border-[#e8bfd5] bg-white p-2.5 shadow-sm sm:w-full sm:min-h-31 sm:gap-4 sm:rounded-2xl sm:p-5">
       <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold sm:h-12 sm:w-12 sm:rounded-xl sm:text-lg ${iconBg} ${iconColor}`}>
         {Icon ? <Icon className="h-3.5 w-3.5 sm:h-5 sm:w-5" /> : '₹'}
       </div>
@@ -53,9 +53,9 @@ export default function MetricCardsGroup({ timePeriod = 'week', onTimePeriodChan
   ];
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 items-start">
+    <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[210px_minmax(0,1fr)]">
       {/* Time-range Filters */}
-      <div className="xl:col-span-1 flex xl:flex-col gap-1.5 p-1.5 bg-white rounded-2xl border border-[#e8bfd5] shadow-sm self-stretch justify-between">
+      <div className="flex gap-1.5 rounded-2xl border border-[#e8bfd5] bg-white p-1.5 shadow-sm xl:min-h-31 xl:flex-col xl:justify-between">
         {periodOptions.map((period) => (
           <button
             key={period.value}
@@ -73,13 +73,13 @@ export default function MetricCardsGroup({ timePeriod = 'week', onTimePeriodChan
 
       {/* Grid Indicators */}
       {hasMetrics ? (
-        <div className="xl:col-span-4 flex w-full flex-nowrap gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-5">
+        <div className="flex w-full flex-nowrap gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-5">
           {metricItems.map((item) => (
             <MetricCard key={item.title} {...item} />
           ))}
         </div>
       ) : (
-        <div className="xl:col-span-4 flex h-full min-h-24 items-center justify-center rounded-2xl border border-dashed border-[#e8bfd5] bg-white px-4 py-6 text-sm font-medium text-[#8a5f79] shadow-sm">
+        <div className="flex h-full min-h-24 items-center justify-center rounded-2xl border border-dashed border-[#e8bfd5] bg-white px-4 py-6 text-sm font-medium text-[#8a5f79] shadow-sm">
           No results found
         </div>
       )}

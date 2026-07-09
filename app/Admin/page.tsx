@@ -373,7 +373,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-6 lg:space-y-8">
+    <div className="admin-dashboard-page space-y-5 lg:space-y-6">
       <Header
         startDate={startDate}
         endDate={endDate}
@@ -394,7 +394,7 @@ export default function Dashboard() {
 
       <MetricCardsGroup timePeriod={timePeriod} onTimePeriodChange={handleTimePeriodChange} metrics={activeMetrics} />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 items-start">
+      <div className="admin-dashboard-primary-grid grid grid-cols-1 items-start gap-5 xl:grid-cols-12">
         <section className="xl:col-span-8">
           <SalesOverviewChart
             timePeriod={timePeriod}
@@ -412,7 +412,7 @@ export default function Dashboard() {
         </aside>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="admin-dashboard-secondary-grid grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
         <TopSellingProducts products={analytics.topProducts} isLoading={isLoading} />
         <SalesTrendChart
           data={analytics.trend.points as Array<{ date: string; orders: number; units: number }>}
