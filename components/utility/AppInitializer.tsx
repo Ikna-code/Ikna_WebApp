@@ -24,6 +24,7 @@ export default function AppInitializer() {
   const fetchOrders = useStore((s) => s.fetchOrders);
   const fetchAddresses = useStore((s) => s.fetchAddresses);
   const productRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasBootstrappedProductsRef = useRef(false);
 
   // Step 1: Authenticate the user (runs exactly once on mount)
   useEffect(() => {
@@ -94,7 +95,9 @@ export default function AppInitializer() {
 
   // Step 2: Products are public, so load regardless of auth state.
   useEffect(() => {
-    loadProducts();
+    if (hasBootstrappedProductsRef.current) return;
+    hasBootstrappedProductsRef.current = true;
+    void loadProducts();
   }, [loadProducts]);
 
   // Step 3: Once auth is resolved, load user-specific data.

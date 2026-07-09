@@ -83,9 +83,7 @@ export const createProductSlice: StateCreator<ProductSlice> = (set, get) => ({
 
     const request = (async () => {
       try {
-        const response = await fetch('/api/products', {
-          cache: force ? 'no-store' : 'force-cache',
-        });
+        const response = await fetch('/api/products', { cache: 'no-store' });
         if (!response.ok) {
           throw new Error("Failed to load products");
         }
