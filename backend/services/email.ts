@@ -3,6 +3,16 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY);
 const fromEmail = process.env.RESEND_FROM_EMAIL?.trim() || 'IKNA <onboarding@resend.dev>';
 
+function getCustomerPaymentMethodLabel(rawMethod: unknown): string {
+  const method = String(rawMethod || '').trim().toUpperCase();
+
+  if (method === 'COD' || method === 'MANUAL_ADMIN') {
+    return 'CASH ON DELIVERY';
+  }
+
+  return 'ONLINE PAYMENT';
+}
+
 export const emailService = {
   /**
    * Sends a receipt after a successful purchase.
@@ -13,7 +23,7 @@ export const emailService = {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       });
-      const paymentMethod = String(orderDetails?.paymentMethod || 'UNKNOWN').trim().toUpperCase();
+      const paymentMethod = getCustomerPaymentMethodLabel(orderDetails?.paymentMethod);
       const paymentStatus = String(orderDetails?.paymentStatus || 'PENDING').trim().toUpperCase();
 
       await resend.emails.send({
