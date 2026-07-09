@@ -56,7 +56,7 @@ export async function POST(request: Request, context: { params: Promise<{ orderI
       return NextResponse.json({ success: true, message: 'Order already cancelled.' });
     }
 
-    if (![OrderStatus.PENDING, OrderStatus.PAID].includes(order.status)) {
+    if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.PAID) {
       return NextResponse.json(
         { error: 'Order can only be cancelled before shipment.' },
         { status: 400 },
