@@ -74,7 +74,7 @@ const StatusBadge = ({
   icon: React.ReactNode;
 }) => (
   <span
-    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold leading-none ${badgeStyles[tone]}`}
+    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.04em] leading-none ${badgeStyles[tone]}`}
   >
     {icon}
     {label}
@@ -161,8 +161,6 @@ const OrdersPage = () => {
             {orders.map((order) => {
               const isOpen = activeOrderId === order.id;
               const accordionId = `order-panel-${order.id}`;
-              const itemCount =
-                order.orderItems?.reduce((count: number, item: any) => count + Number(item.quantity || 0), 0) || 0;
               const paymentBadge = getPaymentBadgeProps(order.status || 'PENDING');
               const deliveryBadge = getDeliveryBadgeProps(order.status || 'PENDING');
               const subtotal = Number(order.totalAmount || 0) + Number(order.discountAmount || 0);
@@ -235,41 +233,33 @@ const OrdersPage = () => {
                     onClick={() => toggleAccordion(order.id)}
                     aria-expanded={isOpen}
                     aria-controls={accordionId}
-                    className="w-full cursor-pointer px-4 py-4 text-left transition-colors duration-300 hover:bg-[#FAF3F5]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#840d5c]/30 sm:px-6 sm:py-5"
+                    className="w-full cursor-pointer px-3.5 py-3 text-left transition-colors duration-300 hover:bg-[#FAF3F5]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#840d5c]/30 sm:px-6 sm:py-5"
                   >
-                    <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center">
-                      <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                    <div className="flex items-center justify-between gap-3 sm:gap-4">
+                      <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
                         <div
-                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-colors sm:h-12 sm:w-12 ${
+                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors sm:h-12 sm:w-12 ${
                             isOpen
                               ? 'border-[#840d5c]/20 bg-[#840d5c] text-white'
                               : 'border-[#840d5c]/10 bg-[#FAF3F5] text-[#840d5c]'
                           }`}
                         >
-                          <Package size={20} className="sm:size-5.5" />
+                          <Package size={15} className="sm:size-5.5" />
                         </div>
                         <div className="min-w-0">
-                          <h3 className="truncate text-base font-bold text-[#321327] sm:text-lg">Order #{shortOrderReference}</h3>
-                          <p className="mt-1 text-xs text-[#321327]/55 sm:text-sm">
-                            {formatDate(order.createdAt) || 'Date unavailable'} • {itemCount} {itemCount === 1 ? 'Item' : 'Items'}
+                          <h3 className="truncate text-[14px] font-bold text-[#321327] sm:text-lg">#{shortOrderReference}</h3>
+                          <p className="mt-0.5 flex items-center gap-1.5 text-[11px] font-medium text-[#321327]/55 sm:mt-1 sm:gap-2 sm:text-sm">
+                            <span className="truncate">{formatDate(order.createdAt) || 'Date unavailable'}</span>
+                            <span aria-hidden="true">•</span>
+                            <span className="shrink-0 font-semibold text-[#321327]/60">₹{formatCurrency(order.totalAmount)}</span>
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center md:justify-center">
-                        <div className="rounded-xl border border-[#840d5c]/10 bg-[#fff8fb] px-3 py-2 text-right">
-                          <p className="text-[10px] uppercase tracking-[0.14em] text-[#321327]/45">Order Total</p>
-                          <p className="text-base font-semibold text-[#321327] sm:text-lg">₹{formatCurrency(order.totalAmount)}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-2 md:justify-end sm:gap-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <StatusBadge label={paymentBadge.label} tone={paymentBadge.tone} icon={paymentBadge.icon} />
-                          <StatusBadge label={deliveryBadge.label} tone={deliveryBadge.tone} icon={deliveryBadge.icon} />
-                        </div>
+                      <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+                        <StatusBadge label={paymentBadge.label} tone={paymentBadge.tone} icon={paymentBadge.icon} />
                         <ChevronDown
-                          size={18}
+                          size={16}
                           className={`text-[#321327]/35 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
                         />
                       </div>
