@@ -127,8 +127,8 @@ export async function GET() {
 
     return NextResponse.json(serializedProducts, {
       headers: {
-        // Keep product listings snappy for repeated visits while still refreshing periodically.
-        'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+        // Product filters/badges can change frequently from Admin; always serve fresh payload.
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
       },
     });
   } catch (error) {

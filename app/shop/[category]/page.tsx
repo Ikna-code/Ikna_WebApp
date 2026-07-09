@@ -43,7 +43,7 @@ function CategoryPageContent() {
 
     const fetchFallbackProducts = async () => {
       try {
-        const response = await fetch('/api/products', { cache: 'force-cache' });
+        const response = await fetch('/api/products', { cache: 'no-store' });
         if (!response.ok) return;
 
         const payload = await response.json();

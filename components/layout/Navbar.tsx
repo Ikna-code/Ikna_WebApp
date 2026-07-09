@@ -40,7 +40,7 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
       try {
         const [filtersRes, productsRes] = await Promise.all([
           fetch('/api/filters', { cache: 'no-store' }),
-          fetch('/api/products', { cache: 'force-cache' }),
+          fetch('/api/products', { cache: 'no-store' }),
         ]);
         if (!filtersRes.ok) return;
         const filtersData = await filtersRes.json();

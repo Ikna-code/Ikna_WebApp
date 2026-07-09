@@ -185,6 +185,15 @@ export default function AppInitializer() {
         },
         scheduleProductRefresh
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "product_filters",
+        },
+        scheduleProductRefresh
+      )
       .subscribe();
 
     return () => {
