@@ -9,11 +9,31 @@ export const emailService = {
    */
   sendOrderConfirmation: async (to: string, orderDetails: any) => {
     try {
+      const total = Number(orderDetails?.total || 0).toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      const paymentMethod = String(orderDetails?.paymentMethod || 'UNKNOWN').trim().toUpperCase();
+      const paymentStatus = String(orderDetails?.paymentStatus || 'PENDING').trim().toUpperCase();
+
       await resend.emails.send({
         from: fromEmail,
         to: [to],
         subject: `Order Confirmation #${orderDetails.id}`,
-        html: `<strong>Thank you for your purchase!</strong><p>Total: $${orderDetails.total}</p>`,
+        html: `
+          <div style="font-family:Arial,sans-serif;line-height:1.6;color:#321327;max-width:560px;margin:0 auto;">
+            <h2 style="margin:0 0 12px 0;color:#840d5c;">Thanks for shopping with IKNA</h2>
+            <p style="margin:0 0 12px 0;">Hi ${orderDetails?.customerName || 'Customer'}, your order has been recorded successfully.</p>
+            <div style="background:#faf3f7;border:1px solid #f0d6e2;border-radius:12px;padding:14px 16px;margin:12px 0;">
+              <p style="margin:0 0 8px 0;font-weight:700;">Order #${orderDetails.id}</p>
+              <p style="margin:0 0 6px 0;">Items: ${Number(orderDetails?.itemCount || 0)}</p>
+              <p style="margin:0 0 6px 0;">Payment Method: ${paymentMethod}</p>
+              <p style="margin:0 0 6px 0;">Payment Status: ${paymentStatus}</p>
+              <p style="margin:0;font-weight:700;">Total: ₹${total}</p>
+            </div>
+            <p style="margin:14px 0 0 0;color:#4b2a3f;">You can track order progress anytime from your IKNA account.</p>
+          </div>
+        `,
       });
       return { success: true };
     } catch (error) {

@@ -570,6 +570,23 @@ export async function createOrder(userId, couponCode = null, options = {}) {
         },
       });
 
+      await tx.payment.upsert({
+        where: { orderId: order.id },
+        update: {
+          provider: String(paymentMethod || 'ONLINE').trim().toUpperCase(),
+          status: 'PENDING',
+          amount: workingSubtotal,
+          transactionId: null,
+        },
+        create: {
+          orderId: order.id,
+          provider: String(paymentMethod || 'ONLINE').trim().toUpperCase(),
+          status: 'PENDING',
+          amount: workingSubtotal,
+          transactionId: null,
+        },
+      });
+
       // 6. Purge active items inside cart table
       if (clearCart) {
         await tx.cartItem.deleteMany({

@@ -4,6 +4,7 @@ import { OrderStatus } from '@prisma/client';
 import { NextResponse } from 'next/server';
 
 import { syncOrderState } from '@/backend/lib/orderSync';
+import { sendOrderConfirmationForOrder } from '@/backend/services/orderNotifications';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -119,6 +120,7 @@ export async function POST(request: Request) {
   const order = await syncOrderState({
     shiprocketOrderId,
     shipmentId,
+    markCodPaidOnDelivered: true,
     shipment: {
       shiprocketOrderId,
       shipmentId,
@@ -130,6 +132,10 @@ export async function POST(request: Request) {
     },
     orderStatus: mappedStatus.orderStatus,
   });
+
+  if ((order as any)?._paymentJustCompleted && order?.id) {
+    await sendOrderConfirmationForOrder(order.id);
+  }
 
   return NextResponse.json({
     received: true,

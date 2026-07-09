@@ -16,6 +16,7 @@ import {
   Truck,
   XCircle,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import ShipmentTracker from './ShipmentTracker';
 import { useStore } from '@/store/useStore';
 import { getShortOrderReference } from '@/lib/orderReference';
@@ -82,16 +83,28 @@ const StatusBadge = ({
 );
 
 const getPaymentBadgeProps = (status: string) => {
-  if (['PAID', 'SHIPPED', 'DELIVERED'].includes(status)) {
+  const normalized = String(status || 'PENDING').trim().toUpperCase();
+
+  if (normalized === 'COMPLETED') {
     return { label: 'Paid', tone: 'green' as const, icon: <CheckCircle2 size={12} /> };
   }
-  if (status === 'CANCELLED') {
+  if (normalized === 'FAILED') {
     return { label: 'Failed', tone: 'red' as const, icon: <XCircle size={12} /> };
+  }
+  if (normalized === 'REFUNDED') {
+    return { label: 'Refunded', tone: 'gray' as const, icon: <XCircle size={12} /> };
   }
   return { label: 'Pending', tone: 'amber' as const, icon: <Clock3 size={12} /> };
 };
 
-const getDeliveryBadgeProps = (status: string) => {
+const getDeliveryBadgeProps = (order: any) => {
+  const status = String(order?.status || 'PENDING').trim().toUpperCase();
+  const shiprocketStatus = String(order?.shiprocketStatus || '').trim().toUpperCase();
+
+  if (shiprocketStatus.includes('RETURN_REQUESTED')) {
+    return { label: 'Return Requested', tone: 'amber' as const, icon: <Clock3 size={12} /> };
+  }
+
   if (status === 'DELIVERED') {
     return { label: 'Delivered', tone: 'blue' as const, icon: <Truck size={12} /> };
   }
@@ -106,13 +119,42 @@ const getDeliveryBadgeProps = (status: string) => {
 
 const getPaymentMethodLabel = (order: any) => {
   const provider = String(order?.payment?.provider || '').trim().toUpperCase();
-  if (provider === 'RAZORPAY' || order?.razorpayOrderId) {
+  if (provider === 'COD') {
+    return 'Cash On Delivery';
+  }
+  if (provider === 'ONLINE' || provider === 'RAZORPAY' || order?.razorpayOrderId) {
     return 'Online Payment';
+  }
+  if (provider === 'MANUAL_ADMIN') {
+    return 'Manual Settlement';
   }
   if (provider) {
     return toTitleCase(provider);
   }
   return 'Not Available';
+};
+
+const getPaymentStatusLabel = (order: any) => {
+  const paymentStatus = String(order?.payment?.status || 'PENDING').trim().toUpperCase();
+  const paymentMethod = String(order?.payment?.provider || '').trim().toUpperCase();
+
+  if (paymentStatus === 'COMPLETED') {
+    return paymentMethod === 'COD' ? 'Paid on Delivery' : 'Paid';
+  }
+
+  if (paymentStatus === 'FAILED') {
+    return 'Payment Failed';
+  }
+
+  if (paymentStatus === 'REFUNDED') {
+    return 'Refunded';
+  }
+
+  if (paymentMethod === 'COD') {
+    return 'Pending (Pay on Delivery)';
+  }
+
+  return 'Pending';
 };
 
 const OrdersPage = () => {
@@ -122,6 +164,33 @@ const OrdersPage = () => {
   const user = useStore((s) => s.user);
   const fetchOrders = useStore((s) => s.fetchOrders);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const [actionLoadingKey, setActionLoadingKey] = useState<string | null>(null);
+
+  const handleOrderAction = async (orderId: string, action: 'cancel' | 'return') => {
+    const loadingKey = `${orderId}:${action}`;
+    setActionLoadingKey(loadingKey);
+
+    try {
+      const response = await fetch(`/api/orders/${orderId}/actions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Could not process order action.');
+      }
+
+      toast.success(payload?.message || 'Order updated successfully.');
+      await fetchOrders(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not process order action.';
+      toast.error(message);
+    } finally {
+      setActionLoadingKey(null);
+    }
+  };
 
   useEffect(() => {
     if (!isAuthInitialized || !user?.id || isOrdersInitialized) {
@@ -161,8 +230,8 @@ const OrdersPage = () => {
             {orders.map((order) => {
               const isOpen = activeOrderId === order.id;
               const accordionId = `order-panel-${order.id}`;
-              const paymentBadge = getPaymentBadgeProps(order.status || 'PENDING');
-              const deliveryBadge = getDeliveryBadgeProps(order.status || 'PENDING');
+              const paymentBadge = getPaymentBadgeProps(order?.payment?.status || 'PENDING');
+              const deliveryBadge = getDeliveryBadgeProps(order);
               const subtotal = Number(order.totalAmount || 0) + Number(order.discountAmount || 0);
               const discount = Number(order.discountAmount || 0);
               const shipping = 0;
@@ -172,6 +241,9 @@ const OrdersPage = () => {
                 formatDate(order.packedAt) ||
                 'To be confirmed';
               const hasShipmentTracking = order.status === 'SHIPPED' && order.shipmentId;
+              const canCancelOrder = ['PENDING', 'PAID'].includes(String(order.status || '').toUpperCase());
+              const isReturnRequested = String(order?.shiprocketStatus || '').toUpperCase().includes('RETURN_REQUESTED');
+              const canRequestReturn = String(order.status || '').toUpperCase() === 'DELIVERED' && !isReturnRequested;
 
               const timelineSteps = [
                 {
@@ -288,6 +360,12 @@ const OrdersPage = () => {
                             <div className="mt-2 flex items-center gap-2 text-sm font-medium text-[#321327]">
                               <CreditCard size={14} className="text-[#840d5c]" />
                               <span>{getPaymentMethodLabel(order)}</span>
+                            </div>
+                          </div>
+                          <div className="rounded-xl border border-[#840d5c]/10 bg-[#fff9fc] p-4">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#321327]/50">Payment Status</p>
+                            <div className="mt-2">
+                              <StatusBadge label={getPaymentStatusLabel(order)} tone={paymentBadge.tone} icon={paymentBadge.icon} />
                             </div>
                           </div>
                           <div className="rounded-xl border border-[#840d5c]/10 bg-[#fff9fc] p-4">
@@ -419,6 +497,31 @@ const OrdersPage = () => {
                         )}
 
                         <div className="mt-6 flex flex-wrap gap-3 border-t border-[#f2e5eb] pt-5">
+                          {canCancelOrder && (
+                            <button
+                              onClick={() => void handleOrderAction(order.id, 'cancel')}
+                              disabled={actionLoadingKey === `${order.id}:cancel`}
+                              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm font-medium text-rose-700 transition-colors hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 disabled:opacity-60 sm:w-auto"
+                            >
+                              <XCircle size={15} />
+                              {actionLoadingKey === `${order.id}:cancel` ? 'Cancelling...' : 'Cancel Order'}
+                            </button>
+                          )}
+                          {canRequestReturn && (
+                            <button
+                              onClick={() => void handleOrderAction(order.id, 'return')}
+                              disabled={actionLoadingKey === `${order.id}:return`}
+                              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 disabled:opacity-60 sm:w-auto"
+                            >
+                              <Clock3 size={15} />
+                              {actionLoadingKey === `${order.id}:return` ? 'Submitting...' : 'Request Return'}
+                            </button>
+                          )}
+                          {isReturnRequested && (
+                            <span className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 sm:w-auto">
+                              <Clock3 size={15} /> Return Requested
+                            </span>
+                          )}
                           {hasShipmentTracking && (
                             <a
                               href={`#track-${order.id}`}

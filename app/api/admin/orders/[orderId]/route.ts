@@ -3,6 +3,7 @@ import { OrderStatus, PaymentStatus, Role } from '@prisma/client';
 import { db } from '@/backend/lib/db';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { restoreOrderInventory } from '@/backend/services/inventory';
+import { sendOrderConfirmationForOrder } from '@/backend/services/orderNotifications';
 import { runPostPaymentFulfillment } from '@/backend/services/postPaymentFulfillment';
 
 const ALLOWED_STATUSES = new Set<OrderStatus>([
@@ -47,31 +48,41 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
   const { orderId } = await context.params;
   const body = await request.json().catch(() => null);
   const nextStatus = body?.status as OrderStatus | undefined;
+  const nextPaymentStatus = body?.paymentStatus as PaymentStatus | undefined;
 
-  if (!nextStatus || !ALLOWED_STATUSES.has(nextStatus)) {
+  if ((!nextStatus || !ALLOWED_STATUSES.has(nextStatus)) && nextPaymentStatus !== PaymentStatus.COMPLETED) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
   }
 
   try {
+    let paymentWasAlreadyCompleted = false;
+
     const updatedOrder = await db.$transaction(async (tx) => {
       const existingOrder = await tx.order.findUnique({
         where: { id: orderId },
+        include: { payment: true },
       });
 
       if (!existingOrder) {
         throw new Error('ORDER_NOT_FOUND');
       }
 
+      paymentWasAlreadyCompleted = Boolean(
+        existingOrder.paidAt || existingOrder.payment?.status === PaymentStatus.COMPLETED
+      );
+
       if (nextStatus === OrderStatus.CANCELLED && existingOrder.status !== OrderStatus.CANCELLED) {
         await restoreOrderInventory(orderId, tx);
       }
 
-      const shouldSetPaidAt = nextStatus === OrderStatus.PAID && !existingOrder.paidAt;
+      const shouldSetPaidAt =
+        (nextStatus === OrderStatus.PAID || nextPaymentStatus === PaymentStatus.COMPLETED) &&
+        !existingOrder.paidAt;
 
-      return tx.order.update({
+      const nextOrder = await tx.order.update({
         where: { id: orderId },
         data: {
-          status: nextStatus,
+          ...(nextStatus ? { status: nextStatus } : {}),
           ...(shouldSetPaidAt ? { paidAt: new Date() } : {}),
         },
         include: {
@@ -88,9 +99,28 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
           orderItems: true,
         },
       });
+
+      if (nextPaymentStatus === PaymentStatus.COMPLETED) {
+        await tx.payment.upsert({
+          where: { orderId: nextOrder.id },
+          update: {
+            status: PaymentStatus.COMPLETED,
+            provider: existingOrder.payment?.provider || 'MANUAL_ADMIN',
+            amount: nextOrder.totalAmount,
+          },
+          create: {
+            orderId: nextOrder.id,
+            amount: nextOrder.totalAmount,
+            status: PaymentStatus.COMPLETED,
+            provider: 'MANUAL_ADMIN',
+          },
+        });
+      }
+
+      return nextOrder;
     });
 
-    if (nextStatus === OrderStatus.PAID) {
+    if (nextStatus === OrderStatus.PAID || nextPaymentStatus === PaymentStatus.COMPLETED) {
       await db.payment.upsert({
         where: { orderId: updatedOrder.id },
         update: {
@@ -106,6 +136,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
         },
       });
 
+      if (!paymentWasAlreadyCompleted) {
+        await sendOrderConfirmationForOrder(updatedOrder.id);
+      }
+
       try {
         await runPostPaymentFulfillment({
           orderId: updatedOrder.id,
@@ -120,22 +154,39 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
       }
     }
 
-    const relationAddress = updatedOrder.address
+    const refreshedOrder = await db.order.findUnique({
+      where: { id: updatedOrder.id },
+      include: {
+        address: true,
+        payment: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        orderItems: true,
+      },
+    });
+
+    const relationAddress = refreshedOrder?.address
       ? [
-          updatedOrder.address.name,
-          updatedOrder.address.street,
-          updatedOrder.address.city,
-          updatedOrder.address.state,
-          updatedOrder.address.zip,
-          updatedOrder.address.country,
+          refreshedOrder.address.name,
+          refreshedOrder.address.street,
+          refreshedOrder.address.city,
+          refreshedOrder.address.state,
+          refreshedOrder.address.zip,
+          refreshedOrder.address.country,
         ]
           .filter(Boolean)
           .join(', ')
       : null;
 
     return NextResponse.json({
-      ...updatedOrder,
-      address: updatedOrder.shippingAddress || relationAddress || null,
+      ...(refreshedOrder || updatedOrder),
+      address: (refreshedOrder?.shippingAddress || updatedOrder.shippingAddress) || relationAddress || null,
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'ORDER_NOT_FOUND') {

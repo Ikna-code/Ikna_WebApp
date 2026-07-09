@@ -11,6 +11,8 @@ type SyncOrderInput = {
   awbCode?: string | null;
   orderStatus?: OrderStatus | null;
   clearCartOnPaid?: boolean;
+  promoteOrderStatusOnPayment?: boolean;
+  markCodPaidOnDelivered?: boolean;
   payment?: {
     provider: string;
     status: PaymentStatus;
@@ -88,12 +90,23 @@ export async function syncOrderState(input: SyncOrderInput) {
 
   const now = new Date();
   const nextOrderStatus = pickHigherStatus(order.status, input.orderStatus ?? undefined);
-  const shouldMarkPaid = input.payment?.status === PaymentStatus.COMPLETED;
+  const shouldPromoteOrderStatusOnPayment = input.promoteOrderStatusOnPayment ?? true;
+  const shouldMarkPaidFromInput = input.payment?.status === PaymentStatus.COMPLETED;
+  const shouldMarkCodPaidOnDelivered =
+    Boolean(input.markCodPaidOnDelivered) &&
+    nextOrderStatus === OrderStatus.DELIVERED &&
+    order.payment?.provider === 'COD' &&
+    order.payment?.status !== PaymentStatus.COMPLETED;
+  const shouldMarkPaid = shouldMarkPaidFromInput || shouldMarkCodPaidOnDelivered;
   const shouldRestoreInventory = nextOrderStatus === OrderStatus.CANCELLED && order.status !== OrderStatus.CANCELLED;
+  const paymentWasJustCompleted = shouldMarkPaid && !order.paidAt;
 
   const updatedOrder = await db.$transaction(async (tx) => {
     const orderUpdateData: Record<string, unknown> = {
-      status: shouldMarkPaid ? pickHigherStatus(nextOrderStatus, OrderStatus.PAID) : nextOrderStatus,
+      status:
+        shouldMarkPaid && shouldPromoteOrderStatusOnPayment
+          ? pickHigherStatus(nextOrderStatus, OrderStatus.PAID)
+          : nextOrderStatus,
     };
 
     const razorpayOrderId = coerceString(input.razorpayOrderId);
@@ -138,22 +151,32 @@ export async function syncOrderState(input: SyncOrderInput) {
       include: { payment: true },
     });
 
-    if (input.payment) {
-      const amount = input.payment.amount ?? Number(order.totalAmount);
+    if (input.payment || shouldMarkCodPaidOnDelivered) {
+      const nextProvider = shouldMarkCodPaidOnDelivered
+        ? order.payment?.provider || 'COD'
+        : input.payment?.provider || order.payment?.provider || 'ONLINE';
+      const nextStatus = shouldMarkCodPaidOnDelivered
+        ? PaymentStatus.COMPLETED
+        : input.payment?.status || order.payment?.status || PaymentStatus.PENDING;
+      const amount = input.payment?.amount ?? Number(order.totalAmount);
+      const transactionId =
+        coerceString(input.payment?.transactionId) ??
+        coerceString(order.payment?.transactionId);
+
       await tx.payment.upsert({
         where: { orderId: order.id },
         update: {
-          provider: input.payment.provider,
-          status: input.payment.status,
+          provider: nextProvider,
+          status: nextStatus,
           amount,
-          transactionId: coerceString(input.payment.transactionId) ?? undefined,
+          transactionId: transactionId ?? undefined,
         },
         create: {
           orderId: order.id,
-          provider: input.payment.provider,
-          status: input.payment.status,
+          provider: nextProvider,
+          status: nextStatus,
           amount,
-          transactionId: coerceString(input.payment.transactionId),
+          transactionId,
         },
       });
     }
@@ -164,7 +187,10 @@ export async function syncOrderState(input: SyncOrderInput) {
       });
     }
 
-    return next;
+    return {
+      ...next,
+      _paymentJustCompleted: paymentWasJustCompleted,
+    };
   });
 
   return updatedOrder;

@@ -2,6 +2,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { db } from "@/backend/lib/db";
+import { serializeDecimal } from '@/backend/lib/serializeDecimal';
 // cookies() is automatically resolved in Next.js, no need to pass it to the function
 import { cookies } from "next/headers"; 
 
@@ -22,7 +23,8 @@ export async function GET(request: Request) {
     orderBy: { createdAt: 'desc' },
     include: {
       address: true,
-      orderItems: true
+      orderItems: true,
+      payment: true,
     }
   });
 
@@ -46,7 +48,7 @@ export async function GET(request: Request) {
     };
   });
 
-  return NextResponse.json(normalizedOrders, {
+  return NextResponse.json(serializeDecimal(normalizedOrders), {
     headers: {
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
       Pragma: 'no-cache',

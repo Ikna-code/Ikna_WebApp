@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 
 import { syncOrderState } from '@/backend/lib/orderSync';
+import { sendOrderConfirmationForOrder } from '@/backend/services/orderNotifications';
 import { runPostPaymentFulfillment } from '@/backend/services/postPaymentFulfillment';
 
 export async function verifyPayment(
@@ -30,8 +31,8 @@ export async function verifyPayment(
     const updatedOrder = await syncOrderState({
       orderId: dbOrderId,
       razorpayOrderId: orderId,
-      orderStatus: OrderStatus.PAID,
       clearCartOnPaid: true,
+      promoteOrderStatusOnPayment: false,
       payment: {
         provider: 'RAZORPAY',
         status: PaymentStatus.COMPLETED,
@@ -40,6 +41,10 @@ export async function verifyPayment(
     });
 
     if (updatedOrder?.id) {
+      if ((updatedOrder as any)?._paymentJustCompleted) {
+        await sendOrderConfirmationForOrder(updatedOrder.id);
+      }
+
       try {
         const shiprocketResult = await runPostPaymentFulfillment({
           orderId: updatedOrder.id,

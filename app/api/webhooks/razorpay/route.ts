@@ -4,6 +4,7 @@ import { OrderStatus, PaymentStatus } from '@prisma/client';
 import { NextResponse } from 'next/server';
 
 import { syncOrderState } from '@/backend/lib/orderSync';
+import { sendOrderConfirmationForOrder } from '@/backend/services/orderNotifications';
 import { runPostPaymentFulfillment } from '@/backend/services/postPaymentFulfillment';
 
 type JsonRecord = Record<string, unknown>;
@@ -87,8 +88,8 @@ export async function POST(request: Request) {
     const order = await syncOrderState({
       orderId: dbOrderId,
       razorpayOrderId,
-      orderStatus: OrderStatus.PAID,
       clearCartOnPaid: true,
+      promoteOrderStatusOnPayment: false,
       payment: {
         provider: 'RAZORPAY',
         status: PaymentStatus.COMPLETED,
@@ -97,6 +98,10 @@ export async function POST(request: Request) {
     });
 
     if (order?.id) {
+      if ((order as any)?._paymentJustCompleted) {
+        await sendOrderConfirmationForOrder(order.id);
+      }
+
       try {
         await runPostPaymentFulfillment({
           orderId: order.id,

@@ -14,6 +14,8 @@ interface Order {
   items: string;
   total: number;
   status: 'Processing' | 'In Transit' | 'Packed' | 'Delivered' | 'Cancelled';
+  paymentMethod: string;
+  paymentStatus: string;
   orderItems: Array<{
     id: string;
     quantity: number;
@@ -29,6 +31,10 @@ type BackendOrder = {
   status?: string;
   totalAmount?: number | string;
   createdAt?: string;
+  payment?: {
+    provider?: string;
+    status?: string;
+  };
   user?: {
     email?: string;
     firstName?: string | null;
@@ -49,7 +55,7 @@ type BackendOrder = {
 
 // FIX: Changed pagination limit to 10 items per page
 const ITEMS_PER_PAGE = 10;
-const ORDER_STATUSES: Array<Exclude<Order['status'], 'Cancelled'>> = ['Processing', 'Packed', 'In Transit', 'Delivered'];
+const ORDER_STATUSES: Order['status'][] = ['Processing', 'Packed', 'In Transit', 'Delivered', 'Cancelled'];
 
 const statusBadgeClassMap: Record<Order['status'], string> = {
   Processing: 'bg-amber-100 text-amber-800 border-amber-200',
@@ -86,6 +92,25 @@ const uiToBackendStatusMap: Record<Exclude<Order['status'], 'Cancelled'>, string
   Delivered: 'DELIVERED',
 };
 
+function getPaymentMethodLabel(provider?: string) {
+  const normalized = String(provider || '').trim().toUpperCase();
+  if (normalized === 'COD') return 'Cash On Delivery';
+  if (normalized === 'ONLINE' || normalized === 'RAZORPAY') return 'Online Payment';
+  if (normalized === 'MANUAL_ADMIN') return 'Manual Settlement';
+  return normalized ? normalized.replace(/_/g, ' ') : 'Not Available';
+}
+
+function getPaymentStatusLabel(status?: string, provider?: string) {
+  const normalizedStatus = String(status || 'PENDING').trim().toUpperCase();
+  const normalizedProvider = String(provider || '').trim().toUpperCase();
+
+  if (normalizedStatus === 'COMPLETED') return normalizedProvider === 'COD' ? 'Paid on Delivery' : 'Paid';
+  if (normalizedStatus === 'FAILED') return 'Payment Failed';
+  if (normalizedStatus === 'REFUNDED') return 'Refunded';
+  if (normalizedProvider === 'COD') return 'Pending (Pay on Delivery)';
+  return 'Pending';
+}
+
 function formatCustomerName(order: BackendOrder) {
   const first = order.user?.firstName?.trim();
   const last = order.user?.lastName?.trim();
@@ -118,6 +143,8 @@ function mapOrderToUi(order: BackendOrder): Order {
     items: `${count} Item${count === 1 ? '' : 's'}`,
     total: Number.isFinite(total) ? total : 0,
     status: uiStatus,
+    paymentMethod: getPaymentMethodLabel(order.payment?.provider),
+    paymentStatus: getPaymentStatusLabel(order.payment?.status, order.payment?.provider),
     orderItems: mappedItems,
   };
 }
@@ -166,11 +193,12 @@ export default function Orders() {
       Packed: 0,
       'In Transit': 0,
       Delivered: 0,
+      Cancelled: 0,
     } as Record<Order['status'], number>
   );
 
-  const handleUpdateStatus = async (orderId: string, newStatus: Exclude<Order['status'], 'Cancelled'>) => {
-    const backendStatus = uiToBackendStatusMap[newStatus];
+  const handleUpdateStatus = async (orderId: string, newStatus: Order['status']) => {
+    const backendStatus = newStatus === 'Cancelled' ? 'CANCELLED' : uiToBackendStatusMap[newStatus as Exclude<Order['status'], 'Cancelled'>];
     if (!backendStatus) return;
 
     try {
@@ -182,6 +210,28 @@ export default function Orders() {
       setIsUpdating(null);
     }
     setSelectedStatusOrder(null);
+  };
+
+  const markPaymentPaid = async (orderId: string) => {
+    try {
+      setIsUpdating(orderId);
+      const response = await fetch(`/api/admin/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentStatus: 'COMPLETED' }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({ error: 'Failed to update payment status' }));
+        throw new Error(payload.error || 'Failed to update payment status');
+      }
+
+      await fetchAdminOrders(true);
+    } catch (error) {
+      console.error('Failed to mark payment as paid:', error);
+    } finally {
+      setIsUpdating(null);
+    }
   };
 
   // Base list containing all filtered records
@@ -327,7 +377,7 @@ export default function Orders() {
             {/* FIX: Added safety margin room to the bottom wrapper to ensure the absolute dropdown is completely visible on the last row */}
             <tbody className={`divide-y divide-neutral-100 text-neutral-600 font-medium transition-all duration-200 ${selectedStatusOrder ? 'pb-32' : ''}`}>
               {paginatedOrders.map((o) => (
-                <tr key={o.id} className="hover:bg-neutral-50 transition h-[49px]">
+                <tr key={o.id} className="h-12.25 hover:bg-neutral-50 transition">
                   <td className="py-3 px-6 font-mono font-bold text-neutral-800 truncate">{o.id}</td>
                   <td className="py-3 px-4 truncate">{o.date}</td>
                   <td className="py-3 px-4 text-neutral-800 font-semibold truncate">{o.customer}</td>
@@ -454,6 +504,27 @@ export default function Orders() {
                 </p>
               ) : (
                 <div className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-[#efd7e4] bg-white/90 p-3 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">Payment Method</p>
+                      <p className="mt-1 text-sm font-semibold text-neutral-800">{activeOrderDetails.paymentMethod}</p>
+                    </div>
+                    <div className="rounded-2xl border border-[#efd7e4] bg-white/90 p-3 shadow-sm">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">Payment Status</p>
+                      <p className="mt-1 text-sm font-semibold text-neutral-800">{activeOrderDetails.paymentStatus}</p>
+                    </div>
+                  </div>
+
+                  {activeOrderDetails.paymentMethod === 'Cash On Delivery' && activeOrderDetails.paymentStatus !== 'Paid on Delivery' && activeOrderDetails.paymentStatus !== 'Paid' && (
+                    <button
+                      onClick={() => void markPaymentPaid(activeOrderDetails.id)}
+                      disabled={isUpdating === activeOrderDetails.id}
+                      className="w-full rounded-2xl bg-[#321327] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#840d5c] disabled:opacity-60"
+                    >
+                      {isUpdating === activeOrderDetails.id ? 'Updating Payment...' : 'Mark COD Payment as Paid'}
+                    </button>
+                  )}
+
                   {activeOrderDetails.orderItems.map((item) => (
                     <div key={item.id} className="flex items-center gap-3 rounded-2xl border border-[#efd7e4] bg-white/90 p-3 shadow-sm sm:gap-4 sm:p-4">
                       <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50 sm:h-20 sm:w-16">
