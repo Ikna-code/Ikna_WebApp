@@ -42,6 +42,7 @@ export const ProductCard = ({
   subtitleOverride?: string;
 }) => {
   const [isPending, setIsPending] = useState(false);
+  const router = useRouter();
 
   const handleWishlistClick = async (
     e: React.MouseEvent
@@ -362,8 +363,11 @@ export const ProductCard = ({
         {/* BUTTON ATTACHED WELL TO BOTTOM */}
         <button
           onClick={(e) => {
-            // Prevent triggering card click navigation when adding to cart
             e.stopPropagation();
+            router.push(
+              `/product/${generateProductSlug(product)}`,
+              { scroll: true }
+            );
           }}
           className="
             w-full
