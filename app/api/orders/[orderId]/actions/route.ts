@@ -2,14 +2,13 @@ import { OrderStatus } from '@prisma/client';
 import { NextResponse } from 'next/server';
 
 import { db } from '@/backend/lib/db';
-import { restoreOrderInventory } from '@/backend/services/inventory';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
-type OrderAction = 'cancel' | 'return';
+type OrderAction = 'return';
 
 function normalizeAction(value: unknown): OrderAction | null {
   const normalized = String(value || '').trim().toLowerCase();
-  if (normalized === 'cancel' || normalized === 'return') {
+  if (normalized === 'return') {
     return normalized;
   }
   return null;
@@ -34,7 +33,7 @@ export async function POST(request: Request, context: { params: Promise<{ orderI
   const action = normalizeAction(body?.action);
 
   if (!action) {
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid action. Only return requests are supported.' }, { status: 400 });
   }
 
   const order = await db.order.findFirst({
@@ -49,36 +48,6 @@ export async function POST(request: Request, context: { params: Promise<{ orderI
 
   if (!order) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-  }
-
-  if (action === 'cancel') {
-    if (order.status === OrderStatus.CANCELLED) {
-      return NextResponse.json({ success: true, message: 'Order already cancelled.' });
-    }
-
-    if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.PAID) {
-      return NextResponse.json(
-        { error: 'Order can only be cancelled before shipment.' },
-        { status: 400 },
-      );
-    }
-
-    await db.$transaction(async (tx) => {
-      await restoreOrderInventory(order.id, tx);
-
-      await tx.order.update({
-        where: { id: order.id },
-        data: {
-          status: OrderStatus.CANCELLED,
-          shiprocketStatus: 'CANCELLED_BY_CUSTOMER',
-        },
-      });
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: 'Order cancelled successfully.',
-    });
   }
 
   if (order.status !== OrderStatus.DELIVERED) {

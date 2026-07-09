@@ -166,7 +166,7 @@ const OrdersPage = () => {
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [actionLoadingKey, setActionLoadingKey] = useState<string | null>(null);
 
-  const handleOrderAction = async (orderId: string, action: 'cancel' | 'return') => {
+  const handleOrderAction = async (orderId: string, action: 'return') => {
     const loadingKey = `${orderId}:${action}`;
     setActionLoadingKey(loadingKey);
 
@@ -241,7 +241,6 @@ const OrdersPage = () => {
                 formatDate(order.packedAt) ||
                 'To be confirmed';
               const hasShipmentTracking = order.status === 'SHIPPED' && order.shipmentId;
-              const canCancelOrder = ['PENDING', 'PAID'].includes(String(order.status || '').toUpperCase());
               const isReturnRequested = String(order?.shiprocketStatus || '').toUpperCase().includes('RETURN_REQUESTED');
               const canRequestReturn = String(order.status || '').toUpperCase() === 'DELIVERED' && !isReturnRequested;
 
@@ -497,16 +496,6 @@ const OrdersPage = () => {
                         )}
 
                         <div className="mt-6 flex flex-wrap gap-3 border-t border-[#f2e5eb] pt-5">
-                          {canCancelOrder && (
-                            <button
-                              onClick={() => void handleOrderAction(order.id, 'cancel')}
-                              disabled={actionLoadingKey === `${order.id}:cancel`}
-                              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm font-medium text-rose-700 transition-colors hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 disabled:opacity-60 sm:w-auto"
-                            >
-                              <XCircle size={15} />
-                              {actionLoadingKey === `${order.id}:cancel` ? 'Cancelling...' : 'Cancel Order'}
-                            </button>
-                          )}
                           {canRequestReturn && (
                             <button
                               onClick={() => void handleOrderAction(order.id, 'return')}
