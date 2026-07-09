@@ -316,28 +316,6 @@ body.ikna-modal-open .shop-content-layer {
   transition: filter 220ms ease;
 }
 
-/* Admin dashboard capture profile for 1536x768-like screenshots. */
-@media (min-width: 1480px) and (max-width: 1600px) and (min-height: 730px) and (max-height: 820px) {
-  .admin-main-content {
-    padding-top: 1.25rem !important;
-    padding-bottom: 1.75rem !important;
-  }
-
-  .admin-dashboard-page {
-    zoom: 0.82;
-    transform-origin: top left;
-    width: calc(100% / 0.82);
-  }
-
-  @supports not (zoom: 1) {
-    .admin-dashboard-page {
-      transform: scale(0.82);
-      transform-origin: top left;
-      width: calc(100% / 0.82);
-    }
-  }
-}
-
 /* Privacy Policy Styles */
 /* 1. Announcement Bar */
 .announcementBar {
