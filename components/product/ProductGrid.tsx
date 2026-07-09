@@ -99,8 +99,10 @@ export const ProductCard = ({
   }, [product]);
 
   const resolvedProductBadges = useMemo(() => {
-    const combined = [...productBadges, ...derivedBadgeLabels]
-      .map((label) => String(label || '').trim())
+    const sourceBadges = productBadges.length > 0 ? productBadges : derivedBadgeLabels;
+
+    const combined = sourceBadges
+      .map((label: string) => String(label || '').trim())
       .filter(Boolean);
 
     const deduped: string[] = [];

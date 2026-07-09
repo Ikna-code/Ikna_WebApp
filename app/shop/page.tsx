@@ -42,7 +42,7 @@ function ShopContent() {
 
     const fetchFallbackProducts = async () => {
       try {
-        const response = await fetch('/api/products', { cache: 'no-store' });
+        const response = await fetch('/api/products', { cache: 'force-cache' });
         if (!response.ok) return;
 
         const payload = await response.json();
