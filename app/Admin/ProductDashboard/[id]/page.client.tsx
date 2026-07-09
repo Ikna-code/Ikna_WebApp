@@ -347,9 +347,12 @@ export default function EditProductPageClient({
   }, [filterMetadata, form.category]);
 
   useEffect(() => {
+    // Skip cleanup until filter metadata has loaded — otherwise the initial empty
+    // filterGroups would wipe out the pre-selected IDs (e.g. "Limited Stock" badge).
+    if (filterMetadata.length === 0) return;
     const allowed = new Set(filterGroups.flatMap((group) => group.filterOptions.map((option) => option.id)));
     setSelectedFilterOptionIds((current) => current.filter((id) => allowed.has(id)));
-  }, [filterGroups]);
+  }, [filterGroups, filterMetadata]);
 
   useEffect(() => {
     let isMounted = true;
