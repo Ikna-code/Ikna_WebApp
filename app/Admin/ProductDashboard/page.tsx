@@ -2247,48 +2247,48 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm">
-          <div className="mb-2.5 flex items-center justify-center gap-2">
-            <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#f7e8f1] text-[#840d5c]">
-              <Package className="h-4 w-4" />
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:mb-6 sm:gap-3 xl:grid-cols-4">
+        <div className="rounded-2xl border border-neutral-200 bg-white px-3 py-3 shadow-sm sm:px-4 sm:py-4">
+          <div className="mb-1.5 flex items-center justify-center gap-1.5 sm:mb-2.5 sm:gap-2">
+            <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#f7e8f1] text-[#840d5c] sm:h-10 sm:w-10">
+              <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </div>
-            <p className="text-base font-semibold text-neutral-600">Total Products</p>
+            <p className="text-[13px] font-semibold text-neutral-600 sm:text-base">Total Products</p>
           </div>
-          <p className="text-center text-4xl font-black leading-none text-[#6f1454]">{totalSkus}</p>
+          <p className="text-center text-3xl font-black leading-none text-[#6f1454] sm:text-4xl">{totalSkus}</p>
           <p className="mt-1.5 hidden text-center text-xs font-medium text-neutral-500 sm:block">{activeProductsCount} active products</p>
         </div>
 
-        <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm">
-          <div className="mb-2.5 flex items-center justify-center gap-2">
-            <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-50 text-amber-500">
-              <AlertCircle className="h-4 w-4" />
+        <div className="rounded-2xl border border-neutral-200 bg-white px-3 py-3 shadow-sm sm:px-4 sm:py-4">
+          <div className="mb-1.5 flex items-center justify-center gap-1.5 sm:mb-2.5 sm:gap-2">
+            <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-50 text-amber-500 sm:h-10 sm:w-10">
+              <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </div>
-            <p className="text-base font-semibold text-neutral-600">Low Stock</p>
+            <p className="text-[13px] font-semibold text-neutral-600 sm:text-base">Low Stock</p>
           </div>
-          <p className="text-center text-4xl font-black leading-none text-amber-600">{lowStockCount}</p>
+          <p className="text-center text-3xl font-black leading-none text-amber-600 sm:text-4xl">{lowStockCount}</p>
           <p className="mt-1.5 hidden text-center text-xs font-medium text-neutral-500 sm:block">Products running low</p>
         </div>
 
-        <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm">
-          <div className="mb-2.5 flex items-center justify-center gap-2">
-            <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-500">
-              <CircleX className="h-4 w-4" />
+        <div className="rounded-2xl border border-neutral-200 bg-white px-3 py-3 shadow-sm sm:px-4 sm:py-4">
+          <div className="mb-1.5 flex items-center justify-center gap-1.5 sm:mb-2.5 sm:gap-2">
+            <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-red-50 text-red-500 sm:h-10 sm:w-10">
+              <CircleX className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </div>
-            <p className="text-base font-semibold text-neutral-600">Out of Stock</p>
+            <p className="text-[13px] font-semibold text-neutral-600 sm:text-base">Out of Stock</p>
           </div>
-          <p className="text-center text-4xl font-black leading-none text-red-600">{outOfStockCount}</p>
+          <p className="text-center text-3xl font-black leading-none text-red-600 sm:text-4xl">{outOfStockCount}</p>
           <p className="mt-1.5 hidden text-center text-xs font-medium text-neutral-500 sm:block">Currently unavailable</p>
         </div>
 
-        <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm">
-          <div className="mb-2.5 flex items-center justify-center gap-2">
-            <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-600">
-              <ShieldCheck className="h-4 w-4" />
+        <div className="rounded-2xl border border-neutral-200 bg-white px-3 py-3 shadow-sm sm:px-4 sm:py-4">
+          <div className="mb-1.5 flex items-center justify-center gap-1.5 sm:mb-2.5 sm:gap-2">
+            <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 text-neutral-600 sm:h-10 sm:w-10">
+              <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </div>
-            <p className="text-base font-semibold text-neutral-600">Inactive / Deleted</p>
+            <p className="text-[13px] font-semibold text-neutral-600 sm:text-base">Inactive / Deleted</p>
           </div>
-          <p className="text-center text-4xl font-black leading-none text-neutral-700">{inactiveDeletedProductsCount}</p>
+          <p className="text-center text-3xl font-black leading-none text-neutral-700 sm:text-4xl">{inactiveDeletedProductsCount}</p>
           <p className="mt-1.5 hidden text-center text-xs font-medium text-neutral-500 sm:block">Needs review or restore</p>
         </div>
 
