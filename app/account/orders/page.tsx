@@ -350,7 +350,7 @@ const OrdersPage = () => {
                           isOpen ? 'py-6 sm:py-7' : 'py-0'
                         }`}
                       >
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                           <div className="rounded-xl border border-[#840d5c]/10 bg-[#fff9fc] p-4">
                             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#321327]/50">Order Total</p>
                             <p className="mt-2 text-lg font-semibold text-[#321327]">₹{formatCurrency(order.totalAmount)}</p>
