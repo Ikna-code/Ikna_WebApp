@@ -624,8 +624,8 @@ export default function Customers() {
   };
 
   return (
-    <div className="space-y-6 pb-6">
-      <div className="flex flex-col gap-4">
+    <div className="space-y-4 pb-6">
+      <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-black text-[#840d5c] dark:text-white">Customers</h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage customers, checkout activity, and abandoned carts.</p>
@@ -961,19 +961,19 @@ export default function Customers() {
           </table>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-neutral-200 bg-[#fff8fc] dark:bg-neutral-800 dark:border-neutral-700 w-full min-w-0">
-          <div className="text-xs font-semibold text-neutral-600 dark:text-neutral-300 order-2 sm:order-1">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t border-neutral-200 bg-[#fff8fc] dark:bg-neutral-800 dark:border-neutral-700 w-full min-w-0">
+          <div className="text-xs font-semibold text-neutral-600 dark:text-neutral-300 order-2 sm:order-1 whitespace-nowrap">
             Showing {rows.length} of {totalItems.toLocaleString('en-IN')} customers
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-2 order-1 sm:order-2 w-full sm:w-auto min-w-0">
+          <div className="flex items-center gap-1.5 order-1 sm:order-2 w-full sm:w-auto">
             <select
               value={String(pageSize)}
               onChange={(e) => {
                 setPage(1);
                 setPageSize(Number(e.target.value));
               }}
-              className="rounded-xl border border-neutral-200 bg-white px-2 py-1.5 text-xs font-semibold dark:bg-neutral-900 dark:border-neutral-700 flex-1 sm:flex-initial min-w-0"
+              className="rounded-lg border border-neutral-200 bg-white px-2 py-1 text-xs font-semibold dark:bg-neutral-900 dark:border-neutral-700 shrink-0"
             >
               {PAGE_SIZE_OPTIONS.map((size) => (
                 <option key={size} value={String(size)}>
@@ -986,22 +986,22 @@ export default function Customers() {
               type="button"
               onClick={() => setPage((prev) => Math.max(1, prev - 1))}
               disabled={page <= 1 || isLoading}
-              className="inline-flex items-center justify-center gap-1 rounded-xl border border-neutral-200 bg-white px-2 sm:px-3 py-1.5 text-xs font-bold disabled:opacity-50 dark:bg-neutral-900 dark:border-neutral-700 flex-1 sm:flex-initial"
+              className="inline-flex items-center justify-center rounded-lg border border-neutral-200 bg-white px-1.5 py-1 text-xs font-bold disabled:opacity-50 dark:bg-neutral-900 dark:border-neutral-700 shrink-0"
             >
-              <ChevronLeft className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Prev</span>
+              <ChevronLeft className="h-4 w-4" />
             </button>
 
-            <span className="text-xs font-bold text-neutral-700 dark:text-neutral-200 whitespace-nowrap">Page {page}/{Math.max(totalPages, 1)}</span>
+            <span className="text-xs font-bold text-neutral-700 dark:text-neutral-200 whitespace-nowrap px-1 shrink-0">
+              {page}/{Math.max(totalPages, 1)}
+            </span>
 
             <button
               type="button"
               onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
               disabled={page >= totalPages || isLoading}
-              className="inline-flex items-center justify-center gap-1 rounded-xl border border-neutral-200 bg-white px-2 sm:px-3 py-1.5 text-xs font-bold disabled:opacity-50 dark:bg-neutral-900 dark:border-neutral-700 flex-1 sm:flex-initial"
+              className="inline-flex items-center justify-center rounded-lg border border-neutral-200 bg-white px-1.5 py-1 text-xs font-bold disabled:opacity-50 dark:bg-neutral-900 dark:border-neutral-700 shrink-0"
             >
-              <span className="hidden sm:inline">Next</span>
-              <ChevronRight className="h-4 w-4 shrink-0" />
+              <ChevronRight className="h-4 w-4" />
             </button>
           </div>
         </div>
