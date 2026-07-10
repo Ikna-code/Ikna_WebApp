@@ -691,7 +691,7 @@ export default function Customers() {
                 <th className="px-4 py-3 font-extrabold">Current Cart</th>
                 <th className="px-4 py-3 font-extrabold">Checkout Step</th>
                 <th className="px-4 py-3 font-extrabold">Status</th>
-                <th className="px-4 py-3 font-extrabold sticky right-0 bg-[#fff8fc] dark:bg-neutral-800">Actions</th>
+                <th className="px-4 py-3 font-extrabold sticky right-0 bg-[#fff8fc] dark:bg-neutral-800 hidden">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -708,7 +708,6 @@ export default function Customers() {
                 rows.map((row) => {
                   const stepClass = checkoutStepStyles[row.checkoutStep] || checkoutStepStyles.BROWSING;
                   const statusClass = statusStyles[row.status] || statusStyles.INACTIVE;
-                  const typeClass = customerTypeStyles[row.customerType] || customerTypeStyles.New;
 
                   return (
                     <tr
@@ -720,14 +719,8 @@ export default function Customers() {
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-[#f7e8f1] text-[#840d5c] flex items-center justify-center text-xs font-black">
-                            {row.avatar}
-                          </div>
                           <div>
                             <p className="text-sm font-extrabold text-neutral-800 dark:text-neutral-100">{row.name}</p>
-                            <span className={`inline-flex mt-1 rounded-full border px-2 py-0.5 text-[10px] font-extrabold ${typeClass}`}>
-                              {row.customerType}
-                            </span>
                           </div>
                         </div>
                       </td>
@@ -762,7 +755,7 @@ export default function Customers() {
                         </div>
                       </td>
 
-                      <td className={`px-2 sm:px-4 py-3 sticky right-0 ${row.isAbandoned ? 'bg-rose-50/95 dark:bg-rose-950/30' : 'bg-white dark:bg-neutral-900'}`}>
+                      <td className={`px-2 sm:px-4 py-3 sticky right-0 hidden ${row.isAbandoned ? 'bg-rose-50/95 dark:bg-rose-950/30' : 'bg-white dark:bg-neutral-900'}`}>
                         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
