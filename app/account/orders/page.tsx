@@ -75,10 +75,10 @@ const StatusBadge = ({
   icon: React.ReactNode;
 }) => (
   <span
-    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.04em] leading-none ${badgeStyles[tone]}`}
+    className={`inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.04em] leading-none ${badgeStyles[tone]}`}
   >
     {icon}
-    {label}
+    <span className="min-w-0 truncate">{label}</span>
   </span>
 );
 
@@ -250,7 +250,7 @@ const OrdersPage = () => {
             <p className="text-xs text-[#321327]/60">When you place an order, it will appear here.</p>
           </div>
         ) : (
-          <div className="space-y-4 sm:space-y-5">
+          <div className="w-full min-w-0 max-w-full space-y-4 box-border sm:space-y-5">
             {orders.map((order) => {
               const isOpen = activeOrderId === order.id;
               const accordionId = `order-panel-${order.id}`;
@@ -321,7 +321,7 @@ const OrdersPage = () => {
                   ref={(element) => {
                     orderCardRefs.current[order.id] = element;
                   }}
-                  className={`overflow-hidden rounded-2xl sm:rounded-[2rem] border bg-white shadow-[0_12px_30px_-18px_rgba(132,13,92,0.25)] transition-all duration-300 ${
+                  className={`w-full min-w-0 max-w-full box-border rounded-2xl sm:rounded-[2rem] border bg-white shadow-[0_12px_30px_-18px_rgba(132,13,92,0.25)] transition-all duration-300 ${
                     isOpen
                       ? 'border-[#840d5c]/25 ring-1 ring-[#840d5c]/10'
                       : 'border-[#840d5c]/10 hover:border-[#840d5c]/20'
@@ -331,10 +331,10 @@ const OrdersPage = () => {
                     onClick={() => toggleAccordion(order.id)}
                     aria-expanded={isOpen}
                     aria-controls={accordionId}
-                    className="w-full cursor-pointer px-3.5 py-3 text-left transition-colors duration-300 hover:bg-[#FAF3F5]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#840d5c]/30 sm:px-6 sm:py-5"
+                    className="w-full min-w-0 max-w-full box-border cursor-pointer px-3.5 py-3 text-left transition-colors duration-300 hover:bg-[#FAF3F5]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#840d5c]/30 sm:px-6 sm:py-5"
                   >
-                    <div className="flex items-center justify-between gap-3 sm:gap-4">
-                      <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
+                    <div className="flex w-full min-w-0 max-w-full flex-wrap items-center justify-between gap-3 box-border sm:flex-nowrap sm:gap-4">
+                      <div className="flex w-full min-w-0 flex-1 items-center gap-2.5 sm:w-auto sm:gap-4">
                         <div
                           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors sm:h-12 sm:w-12 ${
                             isOpen
@@ -354,7 +354,7 @@ const OrdersPage = () => {
                         </div>
                       </div>
 
-                      <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+                      <div className="flex w-full min-w-0 max-w-full items-center justify-end gap-1.5 box-border sm:w-auto sm:shrink-0 sm:gap-3">
                         <StatusBadge label={paymentBadge.label} tone={paymentBadge.tone} icon={paymentBadge.icon} />
                         <ChevronDown
                           size={16}
@@ -366,38 +366,38 @@ const OrdersPage = () => {
 
                   <div
                     id={accordionId}
-                    className={`grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ease-out ${
+                    className={`grid w-full min-w-0 max-w-full overflow-hidden box-border transition-[grid-template-rows,opacity] duration-300 ease-out ${
                       isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                     }`}
                   >
-                    <div className="min-h-0">
+                    <div className="min-h-0 w-full min-w-0 max-w-full box-border">
                       <div
-                        className={`border-t border-[#840d5c]/10 px-4 transition-[padding] duration-300 sm:px-6 md:px-8 ${
+                        className={`w-full min-w-0 max-w-full box-border border-t border-[#840d5c]/10 px-4 transition-[padding] duration-300 sm:px-6 md:px-8 ${
                           isOpen ? 'py-6 sm:py-7' : 'py-0'
                         }`}
                       >
-                        <div className="rounded-xl border border-[#840d5c]/10 bg-[#fff9fc] p-4 sm:p-5 lg:hidden">
+                        <div className="w-full min-w-0 max-w-full box-border rounded-xl border border-[#840d5c]/10 bg-[#fff9fc] p-4 sm:p-5 lg:hidden">
                           <h4 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#840d5c]">Order Summary</h4>
-                          <div className="mt-3 space-y-2 rounded-lg border border-[#840d5c]/8 bg-white/55 p-3">
-                            <div className="rounded-md border border-[#840d5c]/8 bg-white/70 px-3 py-2.5">
+                          <div className="mt-3 w-full min-w-0 max-w-full space-y-2 box-border rounded-lg border border-[#840d5c]/8 bg-white/55 p-3">
+                            <div className="w-full min-w-0 max-w-full box-border rounded-md border border-[#840d5c]/8 bg-white/70 px-3 py-2.5">
                               <p className="text-[12px] font-medium text-[#321327]/65">Order Total</p>
-                              <p className="mt-1 text-sm font-semibold leading-relaxed text-[#321327] wrap-break-word">₹{formatCurrency(order.totalAmount)}</p>
+                              <p className="mt-1 overflow-hidden text-ellipsis wrap-break-word text-sm font-semibold leading-relaxed text-[#321327]">₹{formatCurrency(order.totalAmount)}</p>
                             </div>
-                            <div className="rounded-md border border-[#840d5c]/8 bg-white/70 px-3 py-2.5">
+                            <div className="w-full min-w-0 max-w-full box-border rounded-md border border-[#840d5c]/8 bg-white/70 px-3 py-2.5">
                               <p className="text-[12px] font-medium text-[#321327]/65">Payment Method</p>
-                              <p className="mt-1 text-sm font-semibold leading-relaxed text-[#321327] wrap-break-word">{getPaymentMethodLabel(order)}</p>
+                              <p className="mt-1 overflow-hidden text-ellipsis wrap-break-word text-sm font-semibold leading-relaxed text-[#321327]">{getPaymentMethodLabel(order)}</p>
                             </div>
-                            <div className="rounded-md border border-[#840d5c]/8 bg-white/70 px-3 py-2.5">
+                            <div className="w-full min-w-0 max-w-full box-border rounded-md border border-[#840d5c]/8 bg-white/70 px-3 py-2.5">
                               <p className="text-[12px] font-medium text-[#321327]/65">Payment Status</p>
-                              <p className="mt-1 text-sm font-semibold leading-relaxed text-[#321327] wrap-break-word">{getPaymentStatusLabel(order)}</p>
+                              <p className="mt-1 overflow-hidden text-ellipsis wrap-break-word text-sm font-semibold leading-relaxed text-[#321327]">{getPaymentStatusLabel(order)}</p>
                             </div>
-                            <div className="rounded-md border border-[#840d5c]/8 bg-white/70 px-3 py-2.5">
+                            <div className="w-full min-w-0 max-w-full box-border rounded-md border border-[#840d5c]/8 bg-white/70 px-3 py-2.5">
                               <p className="text-[12px] font-medium text-[#321327]/65">Order Status</p>
-                              <p className="mt-1 text-sm font-semibold leading-relaxed text-[#321327] wrap-break-word">{toTitleCase(order.status)}</p>
+                              <p className="mt-1 overflow-hidden text-ellipsis wrap-break-word text-sm font-semibold leading-relaxed text-[#321327]">{toTitleCase(order.status)}</p>
                             </div>
-                            <div className="rounded-md border border-[#840d5c]/8 bg-white/70 px-3 py-2.5">
+                            <div className="w-full min-w-0 max-w-full box-border rounded-md border border-[#840d5c]/8 bg-white/70 px-3 py-2.5">
                               <p className="text-[12px] font-medium text-[#321327]/65">Estimated Delivery</p>
-                              <p className="mt-1 text-sm font-semibold leading-relaxed text-[#321327] wrap-break-word">{estimatedDeliveryDate}</p>
+                              <p className="mt-1 overflow-hidden text-ellipsis wrap-break-word text-sm font-semibold leading-relaxed text-[#321327]">{estimatedDeliveryDate}</p>
                             </div>
                           </div>
                         </div>
@@ -435,13 +435,13 @@ const OrdersPage = () => {
                           </div>
                         </div>
 
-                        <div className="mt-6 sm:mt-8">
+                        <div className="mt-6 w-full min-w-0 max-w-full box-border sm:mt-8">
                           <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.15em] text-[#840d5c]">Items in this order</h4>
-                          <div className="space-y-3">
+                          <div className="w-full min-w-0 max-w-full space-y-3 box-border">
                             {order.orderItems?.map((item: any) => (
                               <div
                                 key={item.id}
-                                className="flex flex-col gap-3 rounded-2xl border border-[#840d5c]/10 bg-[#fffafd] p-3 shadow-[0_8px_18px_-16px_rgba(50,19,39,0.7)] sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4"
+                                className="flex w-full min-w-0 max-w-full box-border flex-col gap-3 rounded-2xl border border-[#840d5c]/10 bg-[#fffafd] p-3 shadow-[0_8px_18px_-16px_rgba(50,19,39,0.7)] sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4"
                               >
                                 <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                                   <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-lg border border-[#840d5c]/8 bg-white sm:h-20 sm:w-14">
@@ -456,22 +456,22 @@ const OrdersPage = () => {
                                   <div className="min-w-0">
                                     <h5 className="truncate text-sm font-semibold text-[#321327] sm:text-base">{item.productName || 'Product'}</h5>
                                     <div className="mt-1.5 space-y-1 text-[11px] text-[#321327]/65 sm:text-xs">
-                                      <p>Size: {item.productSize || item.selectedSize || 'N/A'}</p>
-                                      <p>Color: {item.productColorName || 'N/A'}</p>
-                                      <p>Qty: {item.quantity || 0}</p>
+                                      <p className="wrap-break-word">Size: {item.productSize || item.selectedSize || 'N/A'}</p>
+                                      <p className="wrap-break-word">Color: {item.productColorName || 'N/A'}</p>
+                                      <p className="wrap-break-word">Qty: {item.quantity || 0}</p>
                                     </div>
                                   </div>
                                 </div>
-                                <p className="text-sm font-semibold text-[#321327] sm:text-base">₹{formatCurrency(item.price)}</p>
+                                <p className="wrap-break-word text-sm font-semibold text-[#321327] sm:text-base">₹{formatCurrency(item.price)}</p>
                               </div>
                             ))}
                           </div>
                         </div>
 
-                        <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
-                          <div className="rounded-2xl border border-[#840d5c]/10 bg-white p-4 sm:p-5">
+                        <div className="mt-6 grid w-full min-w-0 max-w-full grid-cols-1 gap-5 box-border lg:grid-cols-2 lg:gap-6">
+                          <div className="w-full min-w-0 max-w-full box-border rounded-2xl border border-[#840d5c]/10 bg-white p-4 sm:p-5">
                             <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.15em] text-[#840d5c]">Order Timeline</h4>
-                            <div className="relative space-y-6 pl-1">
+                            <div className="relative w-full min-w-0 max-w-full space-y-6 pl-1 box-border">
                               <div className="absolute bottom-3 left-2.75 top-2 w-px bg-[#e9d9e2]" />
                               {timelineSteps.map((step, idx) => (
                                 <div key={idx} className="relative flex items-start gap-3 sm:gap-4">
@@ -501,18 +501,18 @@ const OrdersPage = () => {
                             </div>
                           </div>
 
-                          <div className="space-y-4">
-                            <div className="rounded-2xl border border-[#840d5c]/10 bg-[#fff9fc] p-4 sm:p-5">
+                          <div className="w-full min-w-0 max-w-full space-y-4 box-border">
+                            <div className="w-full min-w-0 max-w-full box-border rounded-2xl border border-[#840d5c]/10 bg-[#fff9fc] p-4 sm:p-5">
                               <div className="flex items-center gap-2 text-[#840d5c]">
                                 <MapPin size={15} />
                                 <span className="text-xs font-semibold uppercase tracking-[0.15em]">Shipping Address</span>
                               </div>
-                              {addressObject?.name && <p className="mt-3 text-sm font-semibold text-[#321327]">{addressObject.name}</p>}
-                              <p className="mt-2 text-sm leading-relaxed text-[#321327]/70 wrap-break-word">{resolvedAddress}</p>
-                              {addressObject?.phone && <p className="mt-2 text-xs text-[#321327]/55">Phone: {addressObject.phone}</p>}
+                              {addressObject?.name && <p className="mt-3 wrap-break-word text-sm font-semibold text-[#321327]">{addressObject.name}</p>}
+                              <p className="mt-2 wrap-break-word text-sm leading-relaxed text-[#321327]/70">{resolvedAddress}</p>
+                              {addressObject?.phone && <p className="mt-2 wrap-break-word text-xs text-[#321327]/55">Phone: {addressObject.phone}</p>}
                             </div>
 
-                            <div className="rounded-2xl border border-[#840d5c]/10 bg-white p-4 sm:p-5">
+                            <div className="w-full min-w-0 max-w-full box-border rounded-2xl border border-[#840d5c]/10 bg-white p-4 sm:p-5">
                               <h4 className="text-xs font-semibold uppercase tracking-[0.15em] text-[#840d5c]">Price Summary</h4>
                               <div className="mt-3 space-y-2 text-sm text-[#321327]/75">
                                 <div className="flex items-center justify-between gap-4">
