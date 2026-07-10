@@ -631,9 +631,9 @@ export default function Customers() {
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage customers, checkout activity, and abandoned carts.</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 w-full">
-          <div className="flex items-center gap-2 bg-white px-3 py-2.5 rounded-2xl border border-neutral-200 shadow-sm w-full dark:bg-neutral-900 dark:border-neutral-700">
-            <Search className="w-4 h-4 text-neutral-400" />
+        <div className="flex gap-2 sm:gap-3 w-full">
+          <div className="flex items-center gap-2 bg-white px-3 py-2.5 rounded-2xl border border-neutral-200 shadow-sm flex-1 dark:bg-neutral-900 dark:border-neutral-700">
+            <Search className="w-4 h-4 text-neutral-400 shrink-0" />
             <input
               type="text"
               placeholder="Search customer..."
@@ -643,25 +643,14 @@ export default function Customers() {
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            {/* <button
-              type="button"
-              onClick={() => setShowFilters((prev) => !prev)}
-              className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl border border-neutral-200 bg-white text-xs font-bold text-neutral-700 shadow-sm hover:bg-neutral-50 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-200 flex-1 sm:flex-initial"
-            >
-              <Filter className="h-4 w-4" />
-              Filter
-            </button> */}
-
-            <button
-              type="button"
-              onClick={exportCsv}
-              className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl border border-neutral-200 bg-white text-xs font-bold text-neutral-700 shadow-sm hover:bg-neutral-50 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-200 flex-1 sm:flex-initial"
-            >
-              <Download className="h-4 w-4" />
-              Export
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={exportCsv}
+            className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl border border-neutral-200 bg-white text-xs font-bold text-neutral-700 shadow-sm hover:bg-neutral-50 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-200 shrink-0"
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Export</span>
+          </button>
         </div>
       </div>
 
@@ -842,7 +831,7 @@ export default function Customers() {
                 <th className="px-2 sm:px-4 py-3 font-extrabold text-left whitespace-nowrap">Current Cart</th>
                 <th className="px-2 sm:px-4 py-3 font-extrabold text-left whitespace-nowrap">Checkout Step</th>
                 <th className="px-2 sm:px-4 py-3 font-extrabold text-left whitespace-nowrap">Status</th>
-                <th className="px-2 sm:px-4 py-3 font-extrabold sticky right-0 bg-[#fff8fc] dark:bg-neutral-800 hidden whitespace-nowrap">Actions</th>
+                {/* <th className="px-2 sm:px-4 py-3 font-extrabold sticky right-0 bg-[#fff8fc] dark:bg-neutral-800 hidden whitespace-nowrap">Actions</th> */}
               </tr>
             </thead>
             <tbody>
@@ -916,7 +905,7 @@ export default function Customers() {
                         )}
                       </td>
 
-                      <td className={`px-2 sm:px-4 py-3 sticky right-0 hidden ${row.isAbandoned ? 'bg-rose-50/95 dark:bg-rose-950/30' : 'bg-white dark:bg-neutral-900'}`}>
+                      {/* <td className={`px-2 sm:px-4 py-3 sticky right-0 hidden ${row.isAbandoned ? 'bg-rose-50/95 dark:bg-rose-950/30' : 'bg-white dark:bg-neutral-900'}`}>
                         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
@@ -939,7 +928,7 @@ export default function Customers() {
                             <Mail className="h-4 w-4 text-neutral-600" />
                           </button>
                         </div>
-                      </td>
+                      </td> */}
                     </tr>
                   );
                 })}
