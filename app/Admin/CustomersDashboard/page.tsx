@@ -7,14 +7,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  Eye,
   Filter,
   IndianRupee,
   Loader2,
   Mail,
   MessageCircle,
-  MoreHorizontal,
-  PhoneCall,
   Search,
   ShoppingCart,
   Users,
@@ -451,6 +448,34 @@ export default function Customers() {
 
   const customerForDrawer = useMemo(() => rows.find((row) => row.id === selectedCustomerId) || null, [rows, selectedCustomerId]);
 
+  const sendCartReminderEmail = (customer: { name?: string; email?: string; currentCartValue?: number }) => {
+    const recipientEmail = String(customer?.email || '').trim();
+    if (!recipientEmail) return;
+
+    const customerName = String(customer?.name || 'there').trim() || 'there';
+    const cartValue = Number(customer?.currentCartValue || 0);
+    const subject = 'Reminder: Complete your IKNA checkout';
+    const body = [
+      `Hi ${customerName},`,
+      '',
+      'You left items in your IKNA cart before completing checkout.',
+      cartValue > 0 ? `Current cart value: ${formatCurrency(cartValue)}` : '',
+      '',
+      'Complete your order here:',
+      `${window.location.origin}/cart`,
+      '',
+      'Need help? Reply to this email and our team will assist you.',
+      '',
+      'Regards,',
+      'Team IKNA',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    const mailtoUrl = `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoUrl;
+  };
+
   return (
     <div className="space-y-6 pb-6">
       <div className="flex justify-between items-center flex-wrap gap-4">
@@ -459,7 +484,7 @@ export default function Customers() {
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Manage customers, checkout activity, and abandoned carts.</p>
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto">
+        <div className="flex items-center gap-2 w-full md:w-auto flex-wrap sm:flex-nowrap">
           <div className="flex items-center gap-2 bg-white px-3 py-2.5 rounded-2xl border border-neutral-200 shadow-sm w-full md:w-72 dark:bg-neutral-900 dark:border-neutral-700">
             <Search className="w-4 h-4 text-neutral-400" />
             <input
@@ -659,7 +684,7 @@ export default function Customers() {
 
       <div className="rounded-3xl border border-neutral-200 bg-white shadow-sm overflow-hidden dark:bg-neutral-900 dark:border-neutral-700">
         <div className="overflow-auto max-h-[70vh]">
-          <table className="min-w-300 w-full text-left">
+          <table className="min-w-245 w-full text-left">
             <thead className="sticky top-0 z-20 bg-[#fff8fc] border-b border-neutral-200 dark:bg-neutral-800 dark:border-neutral-700">
               <tr className="text-[11px] uppercase tracking-[0.14em] text-neutral-500">
                 <th className="px-4 py-3 font-extrabold">Customer</th>
@@ -743,22 +768,27 @@ export default function Customers() {
 
                       <td className="px-4 py-3 text-xs font-semibold text-neutral-600 dark:text-neutral-300">{row.lastActivityLabel || getTimeAgo(row.lastActivityAt)}</td>
 
-                      <td className={`px-4 py-3 sticky right-0 ${row.isAbandoned ? 'bg-rose-50/95 dark:bg-rose-950/30' : 'bg-white dark:bg-neutral-900'}`}>
+                      <td className={`px-2 sm:px-4 py-3 sticky right-0 ${row.isAbandoned ? 'bg-rose-50/95 dark:bg-rose-950/30' : 'bg-white dark:bg-neutral-900'}`}>
                         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                          <button type="button" className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800" title="View">
-                            <Eye className="h-4 w-4 text-neutral-600" />
-                          </button>
-                          <button type="button" className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800" title="Call">
-                            <PhoneCall className="h-4 w-4 text-neutral-600" />
-                          </button>
-                          <button type="button" className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800" title="WhatsApp">
+                          <button
+                            type="button"
+                            disabled
+                            className="p-2 rounded-lg opacity-40 cursor-not-allowed"
+                            title="WhatsApp is currently disabled"
+                          >
                             <MessageCircle className="h-4 w-4 text-neutral-600" />
                           </button>
-                          <button type="button" className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800" title="Email">
+                          <button
+                            type="button"
+                            onClick={() => sendCartReminderEmail({
+                              name: row.name,
+                              email: row.email,
+                              currentCartValue: row.currentCartValue,
+                            })}
+                            className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                            title="Send cart checkout reminder"
+                          >
                             <Mail className="h-4 w-4 text-neutral-600" />
-                          </button>
-                          <button type="button" className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800" title="More">
-                            <MoreHorizontal className="h-4 w-4 text-neutral-600" />
                           </button>
                         </div>
                       </td>
@@ -838,18 +868,18 @@ export default function Customers() {
             onClick={() => setSelectedCustomerId(null)}
           />
 
-          <aside className="fixed right-0 top-0 z-50 h-full w-full max-w-2xl bg-white shadow-2xl border-l border-neutral-200 dark:bg-neutral-900 dark:border-neutral-700 overflow-y-auto">
-            <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white/95 backdrop-blur px-5 py-4 flex items-center justify-between dark:bg-neutral-900/95 dark:border-neutral-700">
+          <aside className="fixed right-0 top-0 z-50 h-full w-full max-w-2xl bg-white shadow-2xl border-l border-neutral-200 dark:bg-neutral-900 dark:border-neutral-700 overflow-y-auto text-[13px] leading-relaxed">
+            <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white/95 backdrop-blur px-4 sm:px-5 py-3 sm:py-4 flex items-center justify-between dark:bg-neutral-900/95 dark:border-neutral-700">
               <div>
-                <h2 className="text-lg font-black text-[#840d5c] dark:text-white">Customer Details</h2>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">{customerForDrawer?.name || 'Loading customer...'}</p>
+                <h2 className="text-base font-black text-[#840d5c] dark:text-white">Customer Details</h2>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400">{customerForDrawer?.name || 'Loading customer...'}</p>
               </div>
               <button type="button" onClick={() => setSelectedCustomerId(null)} className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="p-5 space-y-6">
+            <div className="p-4 sm:p-5 space-y-4 sm:space-y-6">
               {drawerLoading && (
                 <div className="rounded-2xl border border-neutral-200 p-6 flex items-center gap-3 text-sm font-semibold text-neutral-600 dark:border-neutral-700 dark:text-neutral-300">
                   <Loader2 className="h-5 w-5 animate-spin" /> Loading customer details...
@@ -865,8 +895,8 @@ export default function Customers() {
               {!drawerLoading && !drawerError && drawerData?.customer && (
                 <>
                   <section className="rounded-3xl border border-neutral-200 p-4 dark:border-neutral-700">
-                    <h3 className="text-sm font-black text-neutral-800 dark:text-neutral-100">Customer Information</h3>
-                    <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                    <h3 className="text-xs font-black text-neutral-800 dark:text-neutral-100 uppercase tracking-[0.12em]">Customer Information</h3>
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
                       <div>
                         <p className="text-neutral-400 font-bold uppercase tracking-[0.12em]">Name</p>
                         <p className="font-semibold text-neutral-700 dark:text-neutral-200 mt-1">{drawerData.customer.name}</p>
@@ -907,10 +937,10 @@ export default function Customers() {
                   </section>
 
                   <section className="rounded-3xl border border-neutral-200 p-4 dark:border-neutral-700">
-                    <h3 className="text-sm font-black text-neutral-800 dark:text-neutral-100">Current Cart</h3>
+                    <h3 className="text-xs font-black text-neutral-800 dark:text-neutral-100 uppercase tracking-[0.12em]">Current Cart</h3>
                     <div className="mt-3 space-y-3">
                       {(drawerData.currentCart?.items || []).map((item) => (
-                        <div key={item.id} className="rounded-2xl border border-neutral-100 p-3 text-xs dark:border-neutral-800">
+                        <div key={item.id} className="rounded-2xl border border-neutral-100 p-3 text-[11px] dark:border-neutral-800">
                           <p className="font-bold text-neutral-800 dark:text-neutral-100">{item.name}</p>
                           <p className="text-neutral-500 mt-1">Size {item.size} • {item.color} • Qty {item.quantity}</p>
                           <div className="mt-2 flex items-center justify-between font-semibold">
@@ -921,10 +951,10 @@ export default function Customers() {
                       ))}
 
                       {(drawerData.currentCart?.items || []).length === 0 && (
-                        <p className="text-xs text-neutral-500">No active cart items.</p>
+                        <p className="text-[11px] text-neutral-500">No active cart items.</p>
                       )}
 
-                      <div className="rounded-2xl bg-neutral-50 p-3 text-xs space-y-1 dark:bg-neutral-800">
+                      <div className="rounded-2xl bg-neutral-50 p-3 text-[11px] space-y-1 dark:bg-neutral-800">
                         <div className="flex justify-between"><span>Coupon</span><span>{drawerData.currentCart?.coupon || '-'}</span></div>
                         <div className="flex justify-between"><span>Shipping</span><span>{formatCurrency(drawerData.currentCart?.shipping || 0)}</span></div>
                         <div className="flex justify-between font-black text-neutral-800 dark:text-neutral-100"><span>Total</span><span>{formatCurrency(drawerData.currentCart?.total || 0)}</span></div>
@@ -933,10 +963,10 @@ export default function Customers() {
                   </section>
 
                   <section className="rounded-3xl border border-neutral-200 p-4 dark:border-neutral-700">
-                    <h3 className="text-sm font-black text-neutral-800 dark:text-neutral-100">Checkout Timeline</h3>
+                    <h3 className="text-xs font-black text-neutral-800 dark:text-neutral-100 uppercase tracking-[0.12em]">Checkout Timeline</h3>
                     <div className="mt-3 space-y-2">
                       {(drawerData.checkoutSession?.timeline || []).slice(0, 8).map((entry, index) => (
-                        <div key={`${entry.at || 'time'}-${index}`} className="flex items-start gap-3 text-xs">
+                        <div key={`${entry.at || 'time'}-${index}`} className="flex items-start gap-3 text-[11px]">
                           <div className="mt-0.5 h-2.5 w-2.5 rounded-full bg-[#840d5c]" />
                           <div>
                             <p className="font-semibold text-neutral-700 dark:text-neutral-200">{entry.note || entry.event || labelize(String(entry.step || 'Activity'))}</p>
@@ -946,16 +976,16 @@ export default function Customers() {
                       ))}
 
                       {(drawerData.checkoutSession?.timeline || []).length === 0 && (
-                        <p className="text-xs text-neutral-500">No timeline events available.</p>
+                        <p className="text-[11px] text-neutral-500">No timeline events available.</p>
                       )}
                     </div>
                   </section>
 
                   <section className="rounded-3xl border border-neutral-200 p-4 dark:border-neutral-700">
-                    <h3 className="text-sm font-black text-neutral-800 dark:text-neutral-100">Previous Orders</h3>
+                    <h3 className="text-xs font-black text-neutral-800 dark:text-neutral-100 uppercase tracking-[0.12em]">Previous Orders</h3>
                     <div className="mt-3 space-y-2">
                       {(drawerData.previousOrders || []).map((order) => (
-                        <div key={order.id} className="rounded-2xl border border-neutral-100 p-3 text-xs dark:border-neutral-800">
+                        <div key={order.id} className="rounded-2xl border border-neutral-100 p-3 text-[11px] dark:border-neutral-800">
                           <div className="flex justify-between items-center">
                             <p className="font-bold">#{order.id}</p>
                             <span className="font-semibold">{formatCurrency(order.amount)}</span>
@@ -973,20 +1003,34 @@ export default function Customers() {
                       ))}
 
                       {(drawerData.previousOrders || []).length === 0 && (
-                        <p className="text-xs text-neutral-500">No previous orders found.</p>
+                        <p className="text-[11px] text-neutral-500">No previous orders found.</p>
                       )}
                     </div>
                   </section>
 
                   <section className="rounded-3xl border border-neutral-200 p-4 dark:border-neutral-700">
-                    <h3 className="text-sm font-black text-neutral-800 dark:text-neutral-100">Recovery Actions</h3>
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <button type="button" className="rounded-xl border border-neutral-200 px-3 py-2 text-xs font-bold hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800">Call</button>
-                      <button type="button" className="rounded-xl border border-neutral-200 px-3 py-2 text-xs font-bold hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800">WhatsApp</button>
-                      <button type="button" className="rounded-xl border border-neutral-200 px-3 py-2 text-xs font-bold hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800">Copy Email</button>
-                      <button type="button" className="rounded-xl border border-neutral-200 px-3 py-2 text-xs font-bold hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800">Copy Phone</button>
-                      <button type="button" className="rounded-xl border border-neutral-200 px-3 py-2 text-xs font-bold hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800">Mark Contacted</button>
-                      <button type="button" className="rounded-xl border border-dashed border-neutral-300 px-3 py-2 text-xs font-bold text-neutral-500 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800">Future Email Recovery</button>
+                    <h3 className="text-xs font-black text-neutral-800 dark:text-neutral-100 uppercase tracking-[0.12em]">Recovery Actions</h3>
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        disabled
+                        className="rounded-xl border border-neutral-200 px-3 py-2 text-[11px] font-bold text-neutral-400 cursor-not-allowed dark:border-neutral-700"
+                      >
+                        WhatsApp (Disabled)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          sendCartReminderEmail({
+                            name: drawerData.customer?.name,
+                            email: drawerData.customer?.email,
+                            currentCartValue: drawerData.currentCart?.total || customerForDrawer?.currentCartValue || 0,
+                          })
+                        }
+                        className="rounded-xl border border-neutral-200 px-3 py-2 text-[11px] font-bold hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                      >
+                        Send Reminder Email
+                      </button>
                     </div>
                   </section>
                 </>
