@@ -351,27 +351,27 @@ const OrdersPage = () => {
                       >
                         <div className="rounded-xl border border-[#840d5c]/10 bg-[#fff9fc] p-4 sm:p-5 lg:hidden">
                           <h4 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#840d5c]">Order Summary</h4>
-                          <div className="mt-3 divide-y divide-[#f2e6ec] rounded-lg border border-[#840d5c]/8 bg-white/55">
-                            <div className="flex items-start justify-between gap-3 px-3 py-2.5 text-sm">
-                              <span className="font-medium text-[#321327]/65">Order Total</span>
-                              <span className="text-right font-semibold text-[#321327]">₹{formatCurrency(order.totalAmount)}</span>
-                            </div>
-                            <div className="flex items-start justify-between gap-3 px-3 py-2.5 text-sm">
-                              <span className="font-medium text-[#321327]/65">Payment Method</span>
-                              <span className="text-right font-semibold text-[#321327]">{getPaymentMethodLabel(order)}</span>
-                            </div>
-                            <div className="flex items-start justify-between gap-3 px-3 py-2.5 text-sm">
-                              <span className="font-medium text-[#321327]/65">Payment Status</span>
-                              <span className="text-right font-semibold text-[#321327]">{getPaymentStatusLabel(order)}</span>
-                            </div>
-                            <div className="flex items-start justify-between gap-3 px-3 py-2.5 text-sm">
-                              <span className="font-medium text-[#321327]/65">Order Status</span>
-                              <span className="text-right font-semibold text-[#321327]">{toTitleCase(order.status)}</span>
-                            </div>
-                            <div className="flex items-start justify-between gap-3 px-3 py-2.5 text-sm">
-                              <span className="font-medium text-[#321327]/65">Estimated Delivery</span>
-                              <span className="text-right font-semibold text-[#321327]">{estimatedDeliveryDate}</span>
-                            </div>
+                          <div className="mt-3 space-y-2 rounded-lg border border-[#840d5c]/8 bg-white/55 p-3">
+                            <p className="text-sm leading-relaxed text-[#321327]">
+                              <span className="font-medium text-[#321327]/65">Order Total: </span>
+                              <span className="font-semibold wrap-break-word">₹{formatCurrency(order.totalAmount)}</span>
+                            </p>
+                            <p className="text-sm leading-relaxed text-[#321327]">
+                              <span className="font-medium text-[#321327]/65">Payment Method: </span>
+                              <span className="font-semibold wrap-break-word">{getPaymentMethodLabel(order)}</span>
+                            </p>
+                            <p className="text-sm leading-relaxed text-[#321327]">
+                              <span className="font-medium text-[#321327]/65">Payment Status: </span>
+                              <span className="font-semibold wrap-break-word">{getPaymentStatusLabel(order)}</span>
+                            </p>
+                            <p className="text-sm leading-relaxed text-[#321327]">
+                              <span className="font-medium text-[#321327]/65">Order Status: </span>
+                              <span className="font-semibold wrap-break-word">{toTitleCase(order.status)}</span>
+                            </p>
+                            <p className="text-sm leading-relaxed text-[#321327]">
+                              <span className="font-medium text-[#321327]/65">Estimated Delivery: </span>
+                              <span className="font-semibold wrap-break-word">{estimatedDeliveryDate}</span>
+                            </p>
                           </div>
                         </div>
 
