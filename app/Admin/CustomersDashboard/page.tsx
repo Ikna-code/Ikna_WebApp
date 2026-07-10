@@ -838,7 +838,7 @@ export default function Customers() {
               {isLoading &&
                 Array.from({ length: 8 }).map((_, idx) => (
                   <tr key={`skeleton-${idx}`} className="border-b border-neutral-100 dark:border-neutral-800 w-full min-w-0">
-                    <td className="px-2 sm:px-4 py-4 min-w-0" colSpan={8}>
+                    <td className="px-2 sm:px-4 py-4 min-w-0" colSpan={7}>
                       <div className="h-10 rounded-xl bg-neutral-100 animate-pulse dark:bg-neutral-800 w-full min-w-0" />
                     </td>
                   </tr>
@@ -935,7 +935,7 @@ export default function Customers() {
 
               {!isLoading && rows.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-16 text-center w-full min-w-0">
+                  <td colSpan={7} className="px-4 py-16 text-center w-full min-w-0">
                     <div className="mx-auto max-w-sm">
                       <Users className="mx-auto h-10 w-10 text-neutral-300" />
                       <p className="mt-3 text-sm font-bold text-neutral-700 dark:text-neutral-200">
