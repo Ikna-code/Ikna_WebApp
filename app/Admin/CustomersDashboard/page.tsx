@@ -284,11 +284,13 @@ function KpiCard({
   value,
   tone,
   icon,
+  description,
 }: {
   title: string;
   value: string;
   tone: 'pink' | 'violet' | 'sky' | 'rose' | 'amber';
   icon: React.ReactNode;
+  description?: string;
 }) {
   const toneClasses: Record<typeof tone, string> = {
     pink: 'border-[#e8bfd5] bg-white',
@@ -308,13 +310,12 @@ function KpiCard({
 
   return (
     <div className={`rounded-2xl p-3 sm:p-5 shadow-sm border ${toneClasses[tone]} dark:bg-neutral-900 dark:border-neutral-700`}>
-      <div className="flex items-center justify-between gap-2 sm:gap-4">
-        <div className="min-w-0 flex-1">
-          <p className="text-[9px] sm:text-[11px] font-bold uppercase tracking-[0.12em] text-neutral-500 dark:text-neutral-400">{title}</p>
-          <h3 className="mt-1 sm:mt-2 text-lg sm:text-2xl font-black text-[#840d5c] dark:text-white">{value}</h3>
-        </div>
-        <div className={`h-8 w-8 sm:h-11 sm:w-11 shrink-0 rounded-lg sm:rounded-2xl flex items-center justify-center ${iconTone[tone]}`}>{icon}</div>
+      <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+        <div className={`h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-lg sm:rounded-xl flex items-center justify-center ${iconTone[tone]}`}>{icon}</div>
+        <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.12em] text-neutral-500 dark:text-neutral-400 flex-1">{title}</p>
       </div>
+      <h3 className="text-3xl sm:text-4xl font-black text-[#840d5c] dark:text-white mb-2">{value}</h3>
+      {description && <p className="text-[11px] sm:text-xs text-neutral-600 dark:text-neutral-400">{description}</p>}
     </div>
   );
 }
@@ -586,14 +587,14 @@ export default function Customers() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <button
+            {/* <button
               type="button"
               onClick={() => setShowFilters((prev) => !prev)}
               className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl border border-neutral-200 bg-white text-xs font-bold text-neutral-700 shadow-sm hover:bg-neutral-50 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-200 flex-1 sm:flex-initial"
             >
               <Filter className="h-4 w-4" />
               Filter
-            </button>
+            </button> */}
 
             <button
               type="button"
@@ -760,10 +761,10 @@ export default function Customers() {
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full min-w-0">
-        <KpiCard title="Total Customers" value={summary.totalCustomers.toLocaleString('en-IN')} tone="pink" icon={<Users className="h-5 w-5" />} />
-        <KpiCard title="Customers with Orders" value={summary.customersWithOrders.toLocaleString('en-IN')} tone="violet" icon={<CheckCircle2 className="h-5 w-5" />} />
-        <KpiCard title="Customers in Checkout" value={summary.customersInCheckout.toLocaleString('en-IN')} tone="sky" icon={<ShoppingCart className="h-5 w-5" />} />
-        <KpiCard title="Abandoned Carts" value={summary.abandonedCarts.toLocaleString('en-IN')} tone="rose" icon={<AlertCircle className="h-5 w-5" />} />
+        <KpiCard title="Total Customers" value={summary.totalCustomers.toLocaleString('en-IN')} tone="pink" icon={<Users className="h-5 w-5" />} description="All registered customers" />
+        <KpiCard title="Customers with Orders" value={summary.customersWithOrders.toLocaleString('en-IN')} tone="violet" icon={<CheckCircle2 className="h-5 w-5" />} description="Placed at least one order" />
+        <KpiCard title="Customers in Checkout" value={summary.customersInCheckout.toLocaleString('en-IN')} tone="sky" icon={<ShoppingCart className="h-5 w-5" />} description="Currently in checkout" />
+        <KpiCard title="Abandoned Carts" value={summary.abandonedCarts.toLocaleString('en-IN')} tone="rose" icon={<AlertCircle className="h-5 w-5" />} description="Cart left without order" />
       </div>
 
       {error && (
