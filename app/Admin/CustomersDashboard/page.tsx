@@ -566,15 +566,15 @@ export default function Customers() {
   };
 
   return (
-    <div className="space-y-6 pb-6">
-      <div className="flex justify-between items-center flex-wrap gap-4">
-        <div>
+    <div className="space-y-6 pb-6 px-4 sm:px-6 lg:px-8">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-black text-[#840d5c] dark:text-white">Customers</h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Manage customers, checkout activity, and abandoned carts.</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage customers, checkout activity, and abandoned carts.</p>
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto flex-wrap sm:flex-nowrap">
-          <div className="flex items-center gap-2 bg-white px-3 py-2.5 rounded-2xl border border-neutral-200 shadow-sm w-full md:w-72 dark:bg-neutral-900 dark:border-neutral-700">
+        <div className="flex flex-col sm:flex-row gap-3 w-full">
+          <div className="flex items-center gap-2 bg-white px-3 py-2.5 rounded-2xl border border-neutral-200 shadow-sm w-full dark:bg-neutral-900 dark:border-neutral-700">
             <Search className="w-4 h-4 text-neutral-400" />
             <input
               type="text"
@@ -585,29 +585,31 @@ export default function Customers() {
             />
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowFilters((prev) => !prev)}
-            className="inline-flex items-center gap-2 px-3 py-2.5 rounded-2xl border border-neutral-200 bg-white text-xs font-bold text-neutral-700 shadow-sm hover:bg-neutral-50 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-200"
-          >
-            <Filter className="h-4 w-4" />
-            Filter
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => setShowFilters((prev) => !prev)}
+              className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl border border-neutral-200 bg-white text-xs font-bold text-neutral-700 shadow-sm hover:bg-neutral-50 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-200 flex-1 sm:flex-initial"
+            >
+              <Filter className="h-4 w-4" />
+              Filter
+            </button>
 
-          <button
-            type="button"
-            onClick={exportCsv}
-            className="inline-flex items-center gap-2 px-3 py-2.5 rounded-2xl border border-neutral-200 bg-white text-xs font-bold text-neutral-700 shadow-sm hover:bg-neutral-50 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-200"
-          >
-            <Download className="h-4 w-4" />
-            Export
-          </button>
+            <button
+              type="button"
+              onClick={exportCsv}
+              className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-2xl border border-neutral-200 bg-white text-xs font-bold text-neutral-700 shadow-sm hover:bg-neutral-50 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-200 flex-1 sm:flex-initial"
+            >
+              <Download className="h-4 w-4" />
+              Export
+            </button>
+          </div>
         </div>
       </div>
 
       {showFilters && (
-        <div className="rounded-3xl border border-[#e8bfd5] bg-white p-4 md:p-5 shadow-sm dark:bg-neutral-900 dark:border-neutral-700">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="rounded-3xl border border-[#e8bfd5] bg-white p-4 md:p-5 shadow-sm dark:bg-neutral-900 dark:border-neutral-700 w-full min-w-0 overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 w-full min-w-0">
             <input
               value={filters.name}
               onChange={(e) => {
@@ -757,7 +759,7 @@ export default function Customers() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full min-w-0">
         <KpiCard title="Total Customers" value={summary.totalCustomers.toLocaleString('en-IN')} tone="pink" icon={<Users className="h-5 w-5" />} />
         <KpiCard title="Customers with Orders" value={summary.customersWithOrders.toLocaleString('en-IN')} tone="violet" icon={<CheckCircle2 className="h-5 w-5" />} />
         <KpiCard title="Customers in Checkout" value={summary.customersInCheckout.toLocaleString('en-IN')} tone="sky" icon={<ShoppingCart className="h-5 w-5" />} />
@@ -765,32 +767,32 @@ export default function Customers() {
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700">
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700 w-full min-w-0 break-words">
           {error}
         </div>
       )}
 
-      <div className="rounded-3xl border border-neutral-200 bg-white shadow-sm overflow-hidden dark:bg-neutral-900 dark:border-neutral-700">
-        <div className="overflow-auto max-h-[70vh]">
-          <table className="min-w-245 w-full text-left">
-            <thead className="sticky top-0 z-20 bg-[#fff8fc] border-b border-neutral-200 dark:bg-neutral-800 dark:border-neutral-700">
-              <tr className="text-[11px] uppercase tracking-[0.14em] text-neutral-500">
-                <th className="px-4 py-3 font-extrabold">Customer</th>
-                <th className="px-4 py-3 font-extrabold">Contact</th>
-                <th className="px-4 py-3 font-extrabold">Orders</th>
-                <th className="px-4 py-3 font-extrabold">Lifetime Spend</th>
-                <th className="px-4 py-3 font-extrabold">Current Cart</th>
-                <th className="px-4 py-3 font-extrabold">Checkout Step</th>
-                <th className="px-4 py-3 font-extrabold">Status</th>
-                <th className="px-4 py-3 font-extrabold sticky right-0 bg-[#fff8fc] dark:bg-neutral-800 hidden">Actions</th>
+      <div className="rounded-3xl border border-neutral-200 bg-white shadow-sm overflow-hidden dark:bg-neutral-900 dark:border-neutral-700 w-full min-w-0">
+        <div className="overflow-x-auto max-h-[70vh]">
+          <table className="w-full text-left min-w-full">
+            <thead className="sticky top-0 z-20 bg-[#fff8fc] border-b border-neutral-200 dark:bg-neutral-800 dark:border-neutral-700 w-full min-w-0">
+              <tr className="text-[11px] uppercase tracking-[0.14em] text-neutral-500 w-full min-w-0">
+                <th className="px-2 sm:px-4 py-3 font-extrabold text-left whitespace-nowrap">Customer</th>
+                <th className="px-2 sm:px-4 py-3 font-extrabold text-left whitespace-nowrap">Contact</th>
+                <th className="px-2 sm:px-4 py-3 font-extrabold text-left whitespace-nowrap">Orders</th>
+                <th className="px-2 sm:px-4 py-3 font-extrabold text-left whitespace-nowrap">Lifetime Spend</th>
+                <th className="px-2 sm:px-4 py-3 font-extrabold text-left whitespace-nowrap">Current Cart</th>
+                <th className="px-2 sm:px-4 py-3 font-extrabold text-left whitespace-nowrap">Checkout Step</th>
+                <th className="px-2 sm:px-4 py-3 font-extrabold text-left whitespace-nowrap">Status</th>
+                <th className="px-2 sm:px-4 py-3 font-extrabold sticky right-0 bg-[#fff8fc] dark:bg-neutral-800 hidden whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody>
               {isLoading &&
                 Array.from({ length: 8 }).map((_, idx) => (
-                  <tr key={`skeleton-${idx}`} className="border-b border-neutral-100 dark:border-neutral-800">
-                    <td className="px-4 py-4" colSpan={8}>
-                      <div className="h-10 rounded-xl bg-neutral-100 animate-pulse dark:bg-neutral-800" />
+                  <tr key={`skeleton-${idx}`} className="border-b border-neutral-100 dark:border-neutral-800 w-full min-w-0">
+                    <td className="px-2 sm:px-4 py-4 min-w-0" colSpan={8}>
+                      <div className="h-10 rounded-xl bg-neutral-100 animate-pulse dark:bg-neutral-800 w-full min-w-0" />
                     </td>
                   </tr>
                 ))}
@@ -805,53 +807,53 @@ export default function Customers() {
                     <tr
                       key={row.id}
                       onClick={() => setSelectedCustomerId(row.id)}
-                      className={`border-b border-neutral-100 transition-colors hover:bg-[#fcf4f8] cursor-pointer dark:border-neutral-800 dark:hover:bg-neutral-800 ${
+                      className={`border-b border-neutral-100 transition-colors hover:bg-[#fcf4f8] cursor-pointer dark:border-neutral-800 dark:hover:bg-neutral-800 w-full min-w-0 ${
                         row.isAbandoned ? 'bg-rose-50/70 dark:bg-rose-950/20' : ''
                       }`}
                     >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div>
-                            <p className="text-sm font-extrabold text-neutral-800 dark:text-neutral-100">{row.name}</p>
+                      <td className="px-2 sm:px-4 py-3 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="min-w-0">
+                            <p className="text-sm font-extrabold text-neutral-800 dark:text-neutral-100 truncate">{row.name}</p>
                           </div>
                         </div>
                       </td>
 
-                      <td className="px-4 py-3 text-xs text-neutral-600 dark:text-neutral-300">
-                        <p className="font-semibold">{row.email}</p>
-                        <p className="mt-1">{row.phone}</p>
+                      <td className="px-2 sm:px-4 py-3 text-xs text-neutral-600 dark:text-neutral-300 min-w-0">
+                        <p className="font-semibold truncate">{row.email}</p>
+                        <p className="mt-1 truncate text-[11px]">{row.phone}</p>
                       </td>
 
-                      <td className="px-4 py-3 text-xs font-extrabold text-neutral-800 dark:text-neutral-100">{row.ordersCount} Orders</td>
+                      <td className="px-2 sm:px-4 py-3 text-xs font-extrabold text-neutral-800 dark:text-neutral-100 whitespace-nowrap">{row.ordersCount} Orders</td>
 
-                      <td className="px-4 py-3 text-xs font-extrabold text-[#840d5c] dark:text-fuchsia-300">{formatCurrency(row.lifetimeSpend)}</td>
+                      <td className="px-2 sm:px-4 py-3 text-xs font-extrabold text-[#840d5c] dark:text-fuchsia-300 whitespace-nowrap">{formatCurrency(row.lifetimeSpend)}</td>
 
-                      <td className="px-4 py-3 text-xs font-bold text-neutral-700 dark:text-neutral-200">
+                      <td className="px-2 sm:px-4 py-3 text-xs font-bold text-neutral-700 dark:text-neutral-200 whitespace-nowrap">
                         {row.currentCartValue > 0 ? formatCurrency(row.currentCartValue) : '—'}
                       </td>
 
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${stepClass}`}>
+                      <td className="px-2 sm:px-4 py-3 min-w-0">
+                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-extrabold whitespace-nowrap ${stepClass}`}>
                           {labelize(row.checkoutStep)}
                         </span>
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td className="px-2 sm:px-4 py-3 min-w-0">
                         {opportunity.tooltip ? (
                           <div className="group relative inline-block cursor-help">
-                            <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${opportunity.badgeClass}`}>
+                            <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-extrabold whitespace-nowrap ${opportunity.badgeClass}`}>
                               {opportunity.icon}
-                              {opportunity.type}
+                              <span className="hidden sm:inline">{opportunity.type}</span>
                             </span>
-                            <div className="invisible group-hover:visible absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs bg-neutral-900 text-white text-[10px] rounded-lg px-3 py-2 pointer-events-none whitespace-normal break-words dark:bg-neutral-800">
+                            <div className="invisible group-hover:visible absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs bg-neutral-900 text-white text-[10px] rounded-lg px-3 py-2 pointer-events-none whitespace-normal break-words dark:bg-neutral-800 shadow-lg">
                               {opportunity.tooltip}
                               <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-800" />
                             </div>
                           </div>
                         ) : (
-                          <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${opportunity.badgeClass}`}>
+                          <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-extrabold whitespace-nowrap ${opportunity.badgeClass}`}>
                             {opportunity.icon}
-                            {opportunity.type}
+                            <span className="hidden sm:inline">{opportunity.type}</span>
                           </span>
                         )}
                       </td>
@@ -861,7 +863,7 @@ export default function Customers() {
                           <button
                             type="button"
                             disabled
-                            className="p-2 rounded-lg opacity-40 cursor-not-allowed"
+                            className="p-2 rounded-lg opacity-40 cursor-not-allowed shrink-0"
                             title="WhatsApp is currently disabled"
                           >
                             <MessageCircle className="h-4 w-4 text-neutral-600" />
@@ -873,7 +875,7 @@ export default function Customers() {
                               email: row.email,
                               currentCartValue: row.currentCartValue,
                             })}
-                            className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                            className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 shrink-0"
                             title="Send cart checkout reminder"
                           >
                             <Mail className="h-4 w-4 text-neutral-600" />
@@ -886,7 +888,7 @@ export default function Customers() {
 
               {!isLoading && rows.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-6 py-16 text-center">
+                  <td colSpan={8} className="px-4 py-16 text-center w-full min-w-0">
                     <div className="mx-auto max-w-sm">
                       <Users className="mx-auto h-10 w-10 text-neutral-300" />
                       <p className="mt-3 text-sm font-bold text-neutral-700 dark:text-neutral-200">
@@ -901,19 +903,19 @@ export default function Customers() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-neutral-200 bg-[#fff8fc] dark:bg-neutral-800 dark:border-neutral-700">
-          <div className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-neutral-200 bg-[#fff8fc] dark:bg-neutral-800 dark:border-neutral-700 w-full min-w-0">
+          <div className="text-xs font-semibold text-neutral-600 dark:text-neutral-300 order-2 sm:order-1">
             Showing {rows.length} of {totalItems.toLocaleString('en-IN')} customers
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-center gap-2 order-1 sm:order-2 w-full sm:w-auto min-w-0">
             <select
               value={String(pageSize)}
               onChange={(e) => {
                 setPage(1);
                 setPageSize(Number(e.target.value));
               }}
-              className="rounded-xl border border-neutral-200 bg-white px-2 py-1.5 text-xs font-semibold dark:bg-neutral-900 dark:border-neutral-700"
+              className="rounded-xl border border-neutral-200 bg-white px-2 py-1.5 text-xs font-semibold dark:bg-neutral-900 dark:border-neutral-700 flex-1 sm:flex-initial min-w-0"
             >
               {PAGE_SIZE_OPTIONS.map((size) => (
                 <option key={size} value={String(size)}>
@@ -926,22 +928,22 @@ export default function Customers() {
               type="button"
               onClick={() => setPage((prev) => Math.max(1, prev - 1))}
               disabled={page <= 1 || isLoading}
-              className="inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-bold disabled:opacity-50 dark:bg-neutral-900 dark:border-neutral-700"
+              className="inline-flex items-center justify-center gap-1 rounded-xl border border-neutral-200 bg-white px-2 sm:px-3 py-1.5 text-xs font-bold disabled:opacity-50 dark:bg-neutral-900 dark:border-neutral-700 flex-1 sm:flex-initial"
             >
-              <ChevronLeft className="h-4 w-4" />
-              Prev
+              <ChevronLeft className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">Prev</span>
             </button>
 
-            <span className="text-xs font-bold text-neutral-700 dark:text-neutral-200">Page {page} / {Math.max(totalPages, 1)}</span>
+            <span className="text-xs font-bold text-neutral-700 dark:text-neutral-200 whitespace-nowrap">Page {page}/{Math.max(totalPages, 1)}</span>
 
             <button
               type="button"
               onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
               disabled={page >= totalPages || isLoading}
-              className="inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-bold disabled:opacity-50 dark:bg-neutral-900 dark:border-neutral-700"
+              className="inline-flex items-center justify-center gap-1 rounded-xl border border-neutral-200 bg-white px-2 sm:px-3 py-1.5 text-xs font-bold disabled:opacity-50 dark:bg-neutral-900 dark:border-neutral-700 flex-1 sm:flex-initial"
             >
-              Next
-              <ChevronRight className="h-4 w-4" />
+              <span className="hidden sm:inline">Next</span>
+              <ChevronRight className="h-4 w-4 shrink-0" />
             </button>
           </div>
         </div>
@@ -956,18 +958,18 @@ export default function Customers() {
             onClick={() => setSelectedCustomerId(null)}
           />
 
-          <aside className="fixed right-0 top-0 z-50 h-full w-full max-w-2xl bg-white shadow-2xl border-l border-neutral-200 dark:bg-neutral-900 dark:border-neutral-700 overflow-y-auto text-[13px] leading-relaxed">
-            <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white/95 backdrop-blur px-4 sm:px-5 py-3 sm:py-4 flex items-center justify-between dark:bg-neutral-900/95 dark:border-neutral-700">
-              <div>
-                <h2 className="text-base font-black text-[#840d5c] dark:text-white">Customer Details</h2>
-                <p className="text-[11px] text-neutral-500 dark:text-neutral-400">{customerForDrawer?.name || 'Loading customer...'}</p>
+          <aside className="fixed right-0 top-0 z-50 h-full w-full max-w-full sm:max-w-2xl bg-white shadow-2xl border-l border-neutral-200 dark:bg-neutral-900 dark:border-neutral-700 overflow-y-auto text-[13px] leading-relaxed">
+            <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white/95 backdrop-blur px-4 sm:px-5 py-3 sm:py-4 flex items-center justify-between gap-2 dark:bg-neutral-900/95 dark:border-neutral-700 w-full min-w-0">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base font-black text-[#840d5c] dark:text-white truncate">Customer Details</h2>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate">{customerForDrawer?.name || 'Loading customer...'}</p>
               </div>
-              <button type="button" onClick={() => setSelectedCustomerId(null)} className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800">
+              <button type="button" onClick={() => setSelectedCustomerId(null)} className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 shrink-0">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="p-4 sm:p-5 space-y-4 sm:space-y-6">
+            <div className="p-4 sm:p-5 space-y-4 sm:space-y-6 w-full min-w-0">
               {drawerLoading && (
                 <div className="rounded-2xl border border-neutral-200 p-6 flex items-center gap-3 text-sm font-semibold text-neutral-600 dark:border-neutral-700 dark:text-neutral-300">
                   <Loader2 className="h-5 w-5 animate-spin" /> Loading customer details...
@@ -975,14 +977,14 @@ export default function Customers() {
               )}
 
               {drawerError && !drawerLoading && (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700">
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700 w-full min-w-0 break-words">
                   {drawerError}
                 </div>
               )}
 
               {!drawerLoading && !drawerError && drawerData?.customer && (
                 <>
-                  <section className="rounded-3xl border border-neutral-200 p-4 dark:border-neutral-700">
+                  <section className="rounded-3xl border border-neutral-200 p-4 dark:border-neutral-700 w-full min-w-0">
                     <h3 className="text-xs font-black text-neutral-800 dark:text-neutral-100 uppercase tracking-[0.12em]">Customer Information</h3>
                     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
                       <div>
@@ -1024,16 +1026,16 @@ export default function Customers() {
                     </div>
                   </section>
 
-                  <section className="rounded-3xl border border-neutral-200 p-4 dark:border-neutral-700">
+                  <section className="rounded-3xl border border-neutral-200 p-4 dark:border-neutral-700 w-full min-w-0">
                     <h3 className="text-xs font-black text-neutral-800 dark:text-neutral-100 uppercase tracking-[0.12em]">Current Cart</h3>
-                    <div className="mt-3 space-y-3">
+                    <div className="mt-3 space-y-3 w-full min-w-0">
                       {(drawerData.currentCart?.items || []).map((item) => (
-                        <div key={item.id} className="rounded-2xl border border-neutral-100 p-3 text-[11px] dark:border-neutral-800">
-                          <p className="font-bold text-neutral-800 dark:text-neutral-100">{item.name}</p>
-                          <p className="text-neutral-500 mt-1">Size {item.size} • {item.color} • Qty {item.quantity}</p>
-                          <div className="mt-2 flex items-center justify-between font-semibold">
-                            <span>{formatCurrency(item.price)} each</span>
-                            <span>{formatCurrency(item.subtotal)}</span>
+                        <div key={item.id} className="rounded-2xl border border-neutral-100 p-3 text-[11px] dark:border-neutral-800 w-full min-w-0">
+                          <p className="font-bold text-neutral-800 dark:text-neutral-100 truncate">{item.name}</p>
+                          <p className="text-neutral-500 mt-1 text-wrap">Size {item.size} • {item.color} • Qty {item.quantity}</p>
+                          <div className="mt-2 flex items-center justify-between gap-2 font-semibold">
+                            <span className="whitespace-nowrap">{formatCurrency(item.price)} each</span>
+                            <span className="whitespace-nowrap">{formatCurrency(item.subtotal)}</span>
                           </div>
                         </div>
                       ))}
@@ -1042,17 +1044,17 @@ export default function Customers() {
                         <p className="text-[11px] text-neutral-500">No active cart items.</p>
                       )}
 
-                      <div className="rounded-2xl bg-neutral-50 p-3 text-[11px] space-y-1 dark:bg-neutral-800">
-                        <div className="flex justify-between"><span>Coupon</span><span>{drawerData.currentCart?.coupon || '-'}</span></div>
-                        <div className="flex justify-between"><span>Shipping</span><span>{formatCurrency(drawerData.currentCart?.shipping || 0)}</span></div>
-                        <div className="flex justify-between font-black text-neutral-800 dark:text-neutral-100"><span>Total</span><span>{formatCurrency(drawerData.currentCart?.total || 0)}</span></div>
+                      <div className="rounded-2xl bg-neutral-50 p-3 text-[11px] space-y-1 dark:bg-neutral-800 w-full min-w-0">
+                        <div className="flex items-center justify-between gap-2"><span>Coupon</span><span className="whitespace-nowrap">{drawerData.currentCart?.coupon || '-'}</span></div>
+                        <div className="flex items-center justify-between gap-2"><span>Shipping</span><span className="whitespace-nowrap">{formatCurrency(drawerData.currentCart?.shipping || 0)}</span></div>
+                        <div className="flex items-center justify-between gap-2 font-black text-neutral-800 dark:text-neutral-100"><span>Total</span><span className="whitespace-nowrap">{formatCurrency(drawerData.currentCart?.total || 0)}</span></div>
                       </div>
                     </div>
                   </section>
 
-                  <section className="rounded-3xl border border-neutral-200 p-4 dark:border-neutral-700">
+                  <section className="rounded-3xl border border-neutral-200 p-4 dark:border-neutral-700 w-full min-w-0">
                     <h3 className="text-xs font-black text-neutral-800 dark:text-neutral-100 uppercase tracking-[0.12em]">Checkout Timeline</h3>
-                    <div className="mt-3 space-y-2">
+                    <div className="mt-3 space-y-2 w-full min-w-0">
                       {(drawerData.checkoutSession?.timeline || []).slice(0, 8).map((entry, index) => (
                         <div key={`${entry.at || 'time'}-${index}`} className="flex items-start gap-3 text-[11px]">
                           <div className="mt-0.5 h-2.5 w-2.5 rounded-full bg-[#840d5c]" />
@@ -1069,16 +1071,16 @@ export default function Customers() {
                     </div>
                   </section>
 
-                  <section className="rounded-3xl border border-neutral-200 p-4 dark:border-neutral-700">
+                  <section className="rounded-3xl border border-neutral-200 p-4 dark:border-neutral-700 w-full min-w-0">
                     <h3 className="text-xs font-black text-neutral-800 dark:text-neutral-100 uppercase tracking-[0.12em]">Previous Orders</h3>
-                    <div className="mt-3 space-y-2">
+                    <div className="mt-3 space-y-2 w-full min-w-0">
                       {(drawerData.previousOrders || []).map((order) => (
-                        <div key={order.id} className="rounded-2xl border border-neutral-100 p-3 text-[11px] dark:border-neutral-800">
-                          <div className="flex justify-between items-center">
-                            <p className="font-bold">#{order.id}</p>
-                            <span className="font-semibold">{formatCurrency(order.amount)}</span>
+                        <div key={order.id} className="rounded-2xl border border-neutral-100 p-3 text-[11px] dark:border-neutral-800 w-full min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-bold truncate">#{order.id}</p>
+                            <span className="font-semibold whitespace-nowrap">{formatCurrency(order.amount)}</span>
                           </div>
-                          <p className="text-neutral-500 mt-1">
+                          <p className="text-neutral-500 mt-1 text-wrap">
                             {new Date(order.date).toLocaleDateString('en-IN', {
                               day: 'numeric',
                               month: 'short',
@@ -1096,9 +1098,9 @@ export default function Customers() {
                     </div>
                   </section>
 
-                  <section className="rounded-3xl border border-neutral-200 p-4 dark:border-neutral-700">
+                  <section className="rounded-3xl border border-neutral-200 p-4 dark:border-neutral-700 w-full min-w-0">
                     <h3 className="text-xs font-black text-neutral-800 dark:text-neutral-100 uppercase tracking-[0.12em]">Recovery Actions</h3>
-                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 w-full min-w-0">
                       <button
                         type="button"
                         disabled
