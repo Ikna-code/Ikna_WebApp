@@ -358,13 +358,21 @@ function KpiCard({
   };
 
   return (
-    <div className={`rounded-xl p-2.5 sm:p-3.5 shadow-sm border ${toneClasses[tone]} dark:bg-neutral-900 dark:border-neutral-700`}>
-      <div className="flex items-center gap-2 mb-2 sm:mb-2.5">
-        <div className={`h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-lg flex items-center justify-center ${iconTone[tone]}`}>{icon}</div>
-        <p className="text-[8px] sm:text-[9px] font-bold uppercase tracking-[0.12em] text-neutral-500 dark:text-neutral-400 flex-1">{title}</p>
+    <div className={`group relative rounded-lg p-2 shadow-sm border ${toneClasses[tone]} dark:bg-neutral-900 dark:border-neutral-700 cursor-help`}>
+      <div className="flex items-center gap-1.5">
+        <div className={`h-8 w-8 shrink-0 rounded flex items-center justify-center ${iconTone[tone]}`}>{icon}</div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[7px] font-bold uppercase tracking-[0.1em] text-neutral-500 dark:text-neutral-400 leading-tight">{title}</p>
+          <h3 className="text-xl font-black text-[#840d5c] dark:text-white leading-tight">{value}</h3>
+        </div>
       </div>
-      <h3 className="text-2xl sm:text-3xl font-black text-[#840d5c] dark:text-white mb-1">{value}</h3>
-      {description && <p className="text-[10px] sm:text-[11px] text-neutral-600 dark:text-neutral-400">{description}</p>}
+      
+      {description && (
+        <div className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-neutral-900 text-white text-[10px] rounded-lg whitespace-nowrap z-50 pointer-events-none dark:bg-neutral-800 shadow-lg">
+          {description}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-800" />
+        </div>
+      )}
     </div>
   );
 }
@@ -809,7 +817,7 @@ export default function Customers() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 w-full min-w-0">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 sm:gap-2 w-full">
         <KpiCard title="Total Customers" value={summary.totalCustomers.toLocaleString('en-IN')} tone="pink" icon={<Users className="h-5 w-5" />} description="All registered customers" />
         <KpiCard title="Customers with Orders" value={summary.customersWithOrders.toLocaleString('en-IN')} tone="violet" icon={<CheckCircle2 className="h-5 w-5" />} description="Placed at least one order" />
         <KpiCard title="Customers in Checkout" value={summary.customersInCheckout.toLocaleString('en-IN')} tone="sky" icon={<ShoppingCart className="h-5 w-5" />} description="Currently in checkout" />
