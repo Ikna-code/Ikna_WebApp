@@ -11,6 +11,18 @@ type Params = {
   }>;
 };
 
+function isCheckoutSessionStoreMissingError(error: unknown) {
+  const code = typeof error === 'object' && error ? String((error as { code?: string }).code || '') : '';
+  const message = error instanceof Error ? error.message : String(error || '');
+  return (
+    code === 'P2021' ||
+    code === 'P2022' ||
+    message.toLowerCase().includes('customer_checkout_sessions') ||
+    message.toLowerCase().includes('customercheckoutsession') ||
+    message.toLowerCase().includes('does not exist')
+  );
+}
+
 function toNumber(value: unknown): number {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
   if (typeof value === 'string') {
@@ -79,8 +91,9 @@ export async function GET(_request: Request, { params }: Params) {
   }
 
   const sessionStore = (db as any).customerCheckoutSession;
+  let session: any = null;
 
-  const [customer, addresses, orders, cartItems, session] = await Promise.all([
+  const [customer, addresses, orders, cartItems] = await Promise.all([
     db.user.findUnique({
       where: { id: userId },
       select: {
@@ -144,22 +157,30 @@ export async function GET(_request: Request, { params }: Params) {
       },
       take: 20,
     }),
-    sessionStore
-      ? sessionStore.findUnique({
-          where: { userId },
-          select: {
-            step: true,
-            status: true,
-            cartValue: true,
-            potentialRecovery: true,
-            timeline: true,
-            metadata: true,
-            updatedAt: true,
-            createdAt: true,
-          },
-        })
-      : Promise.resolve(null),
   ]);
+
+  if (sessionStore) {
+    try {
+      session = await sessionStore.findUnique({
+        where: { userId },
+        select: {
+          step: true,
+          status: true,
+          cartValue: true,
+          potentialRecovery: true,
+          timeline: true,
+          metadata: true,
+          updatedAt: true,
+          createdAt: true,
+        },
+      });
+    } catch (error) {
+      if (!isCheckoutSessionStoreMissingError(error)) {
+        throw error;
+      }
+      session = null;
+    }
+  }
 
   if (!customer) {
     return NextResponse.json({ error: 'Customer not found.' }, { status: 404 });

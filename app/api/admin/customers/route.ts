@@ -27,6 +27,18 @@ const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
 
+function isCheckoutSessionStoreMissingError(error: unknown) {
+  const code = typeof error === 'object' && error ? String((error as { code?: string }).code || '') : '';
+  const message = error instanceof Error ? error.message : String(error || '');
+  return (
+    code === 'P2021' ||
+    code === 'P2022' ||
+    message.toLowerCase().includes('customer_checkout_sessions') ||
+    message.toLowerCase().includes('customercheckoutsession') ||
+    message.toLowerCase().includes('does not exist')
+  );
+}
+
 function toNumber(value: unknown): number {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
   if (typeof value === 'string') {
@@ -146,48 +158,58 @@ export async function GET(request: NextRequest) {
   const hasAbandonedCart = params.get('hasAbandonedCart');
 
   const sessionStore = (db as any).customerCheckoutSession;
+  let sessionStoreUsable = Boolean(sessionStore);
 
   let sessionFilteredUserIds: string[] | null = null;
-  if (sessionStore && (checkoutStep || checkoutStatus || hasAbandonedCart === 'true')) {
-    const sessionWhere: Record<string, unknown> = {};
-    if (checkoutStep) sessionWhere.step = checkoutStep;
-    if (checkoutStatus) sessionWhere.status = checkoutStatus;
-    if (hasAbandonedCart === 'true') sessionWhere.status = 'ABANDONED_CART';
+  if (sessionStoreUsable && (checkoutStep || checkoutStatus || hasAbandonedCart === 'true')) {
+    try {
+      const sessionWhere: Record<string, unknown> = {};
+      if (checkoutStep) sessionWhere.step = checkoutStep;
+      if (checkoutStatus) sessionWhere.status = checkoutStatus;
+      if (hasAbandonedCart === 'true') sessionWhere.status = 'ABANDONED_CART';
 
-    const matchingSessions = await sessionStore.findMany({
-      where: sessionWhere,
-      select: { userId: true },
-      take: 50000,
-    });
+      const matchingSessions = await sessionStore.findMany({
+        where: sessionWhere,
+        select: { userId: true },
+        take: 50000,
+      });
 
-    sessionFilteredUserIds = Array.from(new Set(matchingSessions.map((row: any) => String(row.userId))));
-    if (!sessionFilteredUserIds.length) {
-      return NextResponse.json(
-        serializeDecimal({
-          source: 'supabase-db',
-          customers: [],
-          pagination: {
-            page,
-            pageSize,
-            total: 0,
-            totalPages: 0,
-          },
-          summary: {
-            totalCustomers: 0,
-            customersWithOrders: 0,
-            customersInCheckout: 0,
-            abandonedCarts: 0,
-            potentialRevenueLost: 0,
-          },
-        }),
-        {
-          headers: {
-            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-            Pragma: 'no-cache',
-            Expires: '0',
-          },
-        }
-      );
+      sessionFilteredUserIds = Array.from(new Set(matchingSessions.map((row: any) => String(row.userId))));
+      if (!sessionFilteredUserIds.length) {
+        return NextResponse.json(
+          serializeDecimal({
+            source: 'supabase-db',
+            customers: [],
+            pagination: {
+              page,
+              pageSize,
+              total: 0,
+              totalPages: 0,
+            },
+            summary: {
+              totalCustomers: 0,
+              customersWithOrders: 0,
+              customersInCheckout: 0,
+              abandonedCarts: 0,
+              potentialRevenueLost: 0,
+            },
+          }),
+          {
+            headers: {
+              'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+              Pragma: 'no-cache',
+              Expires: '0',
+            },
+          }
+        );
+      }
+    } catch (error) {
+      if (isCheckoutSessionStoreMissingError(error)) {
+        sessionStoreUsable = false;
+        sessionFilteredUserIds = null;
+      } else {
+        throw error;
+      }
     }
   }
 
@@ -321,22 +343,32 @@ export async function GET(request: NextRequest) {
         },
       },
     }),
-    sessionStore
-      ? sessionStore.findMany({
-          where: {
-            userId: { in: userIds.length ? userIds : [''] },
-          },
-          select: {
-            userId: true,
-            step: true,
-            status: true,
-            cartValue: true,
-            potentialRecovery: true,
-            lastActivityAt: true,
-            updatedAt: true,
-            timeline: true,
-          },
-        })
+    sessionStoreUsable
+      ? (async () => {
+          try {
+            return await sessionStore.findMany({
+              where: {
+                userId: { in: userIds.length ? userIds : [''] },
+              },
+              select: {
+                userId: true,
+                step: true,
+                status: true,
+                cartValue: true,
+                potentialRecovery: true,
+                lastActivityAt: true,
+                updatedAt: true,
+                timeline: true,
+              },
+            });
+          } catch (error) {
+            if (isCheckoutSessionStoreMissingError(error)) {
+              sessionStoreUsable = false;
+              return [];
+            }
+            throw error;
+          }
+        })()
       : Promise.resolve([]),
   ]);
 
@@ -426,33 +458,40 @@ export async function GET(request: NextRequest) {
   let summaryAbandonedCarts = 0;
   let summaryPotentialRevenueLost = 0;
 
-  if (sessionStore) {
-    const [checkoutCount, abandonedCount, abandonedSum] = await Promise.all([
-      sessionStore.count({
-        where: {
-          status: {
-            in: ['ACTIVE', 'PAYMENT_PENDING', 'PAYMENT_FAILED'],
+  if (sessionStoreUsable) {
+    try {
+      const [checkoutCount, abandonedCount, abandonedSum] = await Promise.all([
+        sessionStore.count({
+          where: {
+            status: {
+              in: ['ACTIVE', 'PAYMENT_PENDING', 'PAYMENT_FAILED'],
+            },
           },
-        },
-      }),
-      sessionStore.count({
-        where: {
-          status: 'ABANDONED_CART',
-        },
-      }),
-      sessionStore.aggregate({
-        _sum: {
-          potentialRecovery: true,
-        },
-        where: {
-          status: 'ABANDONED_CART',
-        },
-      }),
-    ]);
+        }),
+        sessionStore.count({
+          where: {
+            status: 'ABANDONED_CART',
+          },
+        }),
+        sessionStore.aggregate({
+          _sum: {
+            potentialRecovery: true,
+          },
+          where: {
+            status: 'ABANDONED_CART',
+          },
+        }),
+      ]);
 
-    summaryCustomersInCheckout = Number(checkoutCount || 0);
-    summaryAbandonedCarts = Number(abandonedCount || 0);
-    summaryPotentialRevenueLost = Math.round(toNumber(abandonedSum?._sum?.potentialRecovery || 0));
+      summaryCustomersInCheckout = Number(checkoutCount || 0);
+      summaryAbandonedCarts = Number(abandonedCount || 0);
+      summaryPotentialRevenueLost = Math.round(toNumber(abandonedSum?._sum?.potentialRecovery || 0));
+    } catch (error) {
+      if (!isCheckoutSessionStoreMissingError(error)) {
+        throw error;
+      }
+      sessionStoreUsable = false;
+    }
   }
 
   const totalPages = Math.ceil(totalUsers / pageSize);
