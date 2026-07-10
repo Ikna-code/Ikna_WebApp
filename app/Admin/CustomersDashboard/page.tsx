@@ -836,7 +836,7 @@ export default function Customers() {
             </thead>
             <tbody>
               {isLoading &&
-                Array.from({ length: 8 }).map((_, idx) => (
+                Array.from({ length: 7 }).map((_, idx) => (
                   <tr key={`skeleton-${idx}`} className="border-b border-neutral-100 dark:border-neutral-800 w-full min-w-0">
                     <td className="px-2 sm:px-4 py-4 min-w-0" colSpan={7}>
                       <div className="h-10 rounded-xl bg-neutral-100 animate-pulse dark:bg-neutral-800 w-full min-w-0" />
