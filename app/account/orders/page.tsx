@@ -218,7 +218,7 @@ const OrdersPage = () => {
 
   return (
     <div className="bg-[#FAF3F5] min-h-screen">
-      <main className="max-w-6xl mx-auto px-0 py-6 md:py-10">
+      <main className="mx-auto max-w-6xl px-2 py-4 sm:px-0 sm:py-6 md:py-10">
         {!orders || orders.length === 0 ? (
           <div className="bg-white rounded-2xl sm:rounded-[2rem] p-8 sm:p-12 text-center border border-[#840d5c]/5 shadow-sm">
             <Package size={40} className="mx-auto text-[#840d5c]/20 mb-4" />
@@ -349,7 +349,33 @@ const OrdersPage = () => {
                           isOpen ? 'py-6 sm:py-7' : 'py-0'
                         }`}
                       >
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                        <div className="rounded-xl border border-[#840d5c]/10 bg-[#fff9fc] p-4 sm:p-5 lg:hidden">
+                          <h4 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#840d5c]">Order Summary</h4>
+                          <div className="mt-3 divide-y divide-[#f2e6ec] rounded-lg border border-[#840d5c]/8 bg-white/55">
+                            <div className="flex items-start justify-between gap-3 px-3 py-2.5 text-sm">
+                              <span className="font-medium text-[#321327]/65">Order Total</span>
+                              <span className="text-right font-semibold text-[#321327]">₹{formatCurrency(order.totalAmount)}</span>
+                            </div>
+                            <div className="flex items-start justify-between gap-3 px-3 py-2.5 text-sm">
+                              <span className="font-medium text-[#321327]/65">Payment Method</span>
+                              <span className="text-right font-semibold text-[#321327]">{getPaymentMethodLabel(order)}</span>
+                            </div>
+                            <div className="flex items-start justify-between gap-3 px-3 py-2.5 text-sm">
+                              <span className="font-medium text-[#321327]/65">Payment Status</span>
+                              <span className="text-right font-semibold text-[#321327]">{getPaymentStatusLabel(order)}</span>
+                            </div>
+                            <div className="flex items-start justify-between gap-3 px-3 py-2.5 text-sm">
+                              <span className="font-medium text-[#321327]/65">Order Status</span>
+                              <span className="text-right font-semibold text-[#321327]">{toTitleCase(order.status)}</span>
+                            </div>
+                            <div className="flex items-start justify-between gap-3 px-3 py-2.5 text-sm">
+                              <span className="font-medium text-[#321327]/65">Estimated Delivery</span>
+                              <span className="text-right font-semibold text-[#321327]">{estimatedDeliveryDate}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="hidden grid-cols-5 gap-3 lg:grid">
                           <div className="rounded-xl border border-[#840d5c]/10 bg-[#fff9fc] p-4">
                             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#321327]/50">Order Total</p>
                             <p className="mt-2 text-lg font-semibold text-[#321327]">₹{formatCurrency(order.totalAmount)}</p>
