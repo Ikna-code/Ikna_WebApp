@@ -379,25 +379,25 @@ const OrdersPage = () => {
                         <div className="w-full min-w-0 max-w-full box-border rounded-xl border border-[#840d5c]/10 bg-[#fff9fc] p-4 sm:p-5 lg:hidden">
                           <h4 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#840d5c]">Order Summary</h4>
                           <div className="mt-3 w-full min-w-0 max-w-full space-y-2 box-border rounded-lg border border-[#840d5c]/8 bg-white/55 p-3">
-                            <div className="w-full min-w-0 max-w-full box-border rounded-md border border-[#840d5c]/8 bg-white/70 px-3 py-2.5">
+                            <div className="w-full min-w-0 max-w-full box-border rounded-md bg-white/70 px-3 py-2.5">
                               <p className="text-[12px] font-medium text-[#321327]/65">Order Total</p>
-                              <p className="mt-1 overflow-hidden text-ellipsis wrap-break-word text-sm font-semibold leading-relaxed text-[#321327]">₹{formatCurrency(order.totalAmount)}</p>
+                              <p className="overflow-hidden text-ellipsis wrap-break-word text-sm font-semibold leading-relaxed text-[#321327]">₹{formatCurrency(order.totalAmount)}</p>
                             </div>
-                            <div className="w-full min-w-0 max-w-full box-border rounded-md border border-[#840d5c]/8 bg-white/70 px-3 py-2.5">
+                            <div className="w-full min-w-0 max-w-full box-border rounded-md bg-white/70 px-3 py-2.5">
                               <p className="text-[12px] font-medium text-[#321327]/65">Payment Method</p>
-                              <p className="mt-1 overflow-hidden text-ellipsis wrap-break-word text-sm font-semibold leading-relaxed text-[#321327]">{getPaymentMethodLabel(order)}</p>
+                              <p className="overflow-hidden text-ellipsis wrap-break-word text-sm font-semibold leading-relaxed text-[#321327]">{getPaymentMethodLabel(order)}</p>
                             </div>
-                            <div className="w-full min-w-0 max-w-full box-border rounded-md border border-[#840d5c]/8 bg-white/70 px-3 py-2.5">
+                            <div className="w-full min-w-0 max-w-full box-border rounded-md bg-white/70 px-3 py-2.5">
                               <p className="text-[12px] font-medium text-[#321327]/65">Payment Status</p>
-                              <p className="mt-1 overflow-hidden text-ellipsis wrap-break-word text-sm font-semibold leading-relaxed text-[#321327]">{getPaymentStatusLabel(order)}</p>
+                              <p className="overflow-hidden text-ellipsis wrap-break-word text-sm font-semibold leading-relaxed text-[#321327]">{getPaymentStatusLabel(order)}</p>
                             </div>
-                            <div className="w-full min-w-0 max-w-full box-border rounded-md border border-[#840d5c]/8 bg-white/70 px-3 py-2.5">
+                            <div className="w-full min-w-0 max-w-full box-border rounded-md bg-white/70 px-3 py-2.5">
                               <p className="text-[12px] font-medium text-[#321327]/65">Order Status</p>
-                              <p className="mt-1 overflow-hidden text-ellipsis wrap-break-word text-sm font-semibold leading-relaxed text-[#321327]">{toTitleCase(order.status)}</p>
+                              <p className="overflow-hidden text-ellipsis wrap-break-word text-sm font-semibold leading-relaxed text-[#321327]">{toTitleCase(order.status)}</p>
                             </div>
-                            <div className="w-full min-w-0 max-w-full box-border rounded-md border border-[#840d5c]/8 bg-white/70 px-3 py-2.5">
+                            <div className="w-full min-w-0 max-w-full box-border rounded-md bg-white/70 px-3 py-2.5">
                               <p className="text-[12px] font-medium text-[#321327]/65">Estimated Delivery</p>
-                              <p className="mt-1 overflow-hidden text-ellipsis wrap-break-word text-sm font-semibold leading-relaxed text-[#321327]">{estimatedDeliveryDate}</p>
+                              <p className="overflow-hidden text-ellipsis wrap-break-word text-sm font-semibold leading-relaxed text-[#321327]">{estimatedDeliveryDate}</p>
                             </div>
                           </div>
                         </div>
