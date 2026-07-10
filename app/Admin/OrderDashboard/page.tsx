@@ -56,6 +56,7 @@ type BackendOrder = {
 // FIX: Changed pagination limit to 10 items per page
 const ITEMS_PER_PAGE = 10;
 const ORDER_STATUSES: Order['status'][] = ['Processing', 'Packed', 'In Transit', 'Delivered', 'Cancelled'];
+const ORDER_FILTER_STATUSES: Exclude<Order['status'], 'Cancelled'>[] = ['Processing', 'Packed', 'In Transit', 'Delivered'];
 
 const statusBadgeClassMap: Record<Order['status'], string> = {
   Processing: 'bg-amber-100 text-amber-800 border-amber-200',
@@ -299,7 +300,7 @@ export default function Orders() {
           </div>
         </button>
 
-        {ORDER_STATUSES.map((status) => {
+        {ORDER_FILTER_STATUSES.map((status) => {
           const StatusIcon = statusIconMap[status];
           return (
             <button
@@ -343,7 +344,7 @@ export default function Orders() {
         >
           All Orders ({orders.length})
         </button>
-        {ORDER_STATUSES.map((status) => (
+        {ORDER_FILTER_STATUSES.map((status) => (
           <button
             key={status}
             onClick={() => setStatusFilter(status)}

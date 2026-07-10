@@ -2,6 +2,7 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const fromEmail = process.env.RESEND_FROM_EMAIL?.trim() || 'IKNA <onboarding@resend.dev>';
+const abandonedCartReminderFromEmail = 'IKNA <no-reply@iknaonline.com>';
 
 function getCustomerPaymentMethodLabel(rawMethod: unknown): string {
   const method = String(rawMethod || '').trim().toUpperCase();
@@ -108,6 +109,49 @@ export const emailService = {
       return { success: true };
     } catch (error) {
       console.error('Fit quiz email failed:', error);
+      return { success: false };
+    }
+  },
+
+  sendAbandonedCartReminder: async (
+    to: string,
+    details: {
+      customerName?: string;
+      cartValue?: number;
+      cartUrl?: string;
+    }
+  ) => {
+    try {
+      const customerName = String(details?.customerName || 'there').trim() || 'there';
+      const cartValue = Number(details?.cartValue || 0).toLocaleString('en-IN', {
+        maximumFractionDigits: 0,
+      });
+      const cartUrl = String(details?.cartUrl || '').trim() || 'https://iknaonline.com/cart';
+
+      await resend.emails.send({
+        from: abandonedCartReminderFromEmail,
+        to: [to],
+        subject: 'You left something behind at IKNA',
+        html: `
+          <div style="font-family:Arial,sans-serif;line-height:1.6;color:#321327;max-width:560px;margin:0 auto;">
+            <h2 style="margin:0 0 12px 0;color:#840d5c;">Complete your checkout</h2>
+            <p style="margin:0 0 12px 0;">Hi ${customerName},</p>
+            <p style="margin:0 0 12px 0;">You added items to your IKNA cart but didn&apos;t complete checkout.</p>
+            <div style="background:#faf3f7;border:1px solid #f0d6e2;border-radius:12px;padding:14px 16px;margin:12px 0;">
+              <p style="margin:0 0 6px 0;font-weight:700;">Saved cart value: ₹${cartValue}</p>
+              <p style="margin:0;color:#4b2a3f;">Your selected items are still waiting for you.</p>
+            </div>
+            <p style="margin:14px 0;">
+              <a href="${cartUrl}" style="display:inline-block;background:#840d5c;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:999px;font-weight:700;">Resume Checkout</a>
+            </p>
+            <p style="margin:14px 0 0 0;color:#4b2a3f;">If you need any help, simply reply to this email and our team will assist you.</p>
+          </div>
+        `,
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Abandoned cart reminder email failed:', error);
       return { success: false };
     }
   }

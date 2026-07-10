@@ -414,7 +414,6 @@ export default function Customers() {
       'Current Cart',
       'Checkout Step',
       'Status',
-      'Last Activity',
       'Potential Recovery',
     ];
 
@@ -427,7 +426,6 @@ export default function Customers() {
       String(row.currentCartValue),
       row.checkoutStep,
       row.status,
-      row.lastActivityLabel,
       String(row.potentialRecovery || 0),
     ]);
 
@@ -448,32 +446,31 @@ export default function Customers() {
 
   const customerForDrawer = useMemo(() => rows.find((row) => row.id === selectedCustomerId) || null, [rows, selectedCustomerId]);
 
-  const sendCartReminderEmail = (customer: { name?: string; email?: string; currentCartValue?: number }) => {
+  const sendCartReminderEmail = async (customer: { name?: string; email?: string; currentCartValue?: number }) => {
     const recipientEmail = String(customer?.email || '').trim();
     if (!recipientEmail) return;
 
-    const customerName = String(customer?.name || 'there').trim() || 'there';
-    const cartValue = Number(customer?.currentCartValue || 0);
-    const subject = 'Reminder: Complete your IKNA checkout';
-    const body = [
-      `Hi ${customerName},`,
-      '',
-      'You left items in your IKNA cart before completing checkout.',
-      cartValue > 0 ? `Current cart value: ${formatCurrency(cartValue)}` : '',
-      '',
-      'Complete your order here:',
-      `${window.location.origin}/cart`,
-      '',
-      'Need help? Reply to this email and our team will assist you.',
-      '',
-      'Regards,',
-      'Team IKNA',
-    ]
-      .filter(Boolean)
-      .join('\n');
+    try {
+      const response = await fetch('/api/admin/customers/reminder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: recipientEmail,
+          customerName: String(customer?.name || '').trim(),
+          cartValue: Number(customer?.currentCartValue || 0),
+          cartUrl: `${window.location.origin}/cart`,
+        }),
+      });
 
-    const mailtoUrl = `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailtoUrl;
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({ error: 'Failed to send reminder email.' }));
+        throw new Error(payload.error || 'Failed to send reminder email.');
+      }
+    } catch (error) {
+      console.error('[customers-dashboard] reminder email failed', error);
+    }
   };
 
   return (
@@ -694,7 +691,6 @@ export default function Customers() {
                 <th className="px-4 py-3 font-extrabold">Current Cart</th>
                 <th className="px-4 py-3 font-extrabold">Checkout Step</th>
                 <th className="px-4 py-3 font-extrabold">Status</th>
-                <th className="px-4 py-3 font-extrabold">Last Activity</th>
                 <th className="px-4 py-3 font-extrabold sticky right-0 bg-[#fff8fc] dark:bg-neutral-800">Actions</th>
               </tr>
             </thead>
@@ -702,7 +698,7 @@ export default function Customers() {
               {isLoading &&
                 Array.from({ length: 8 }).map((_, idx) => (
                   <tr key={`skeleton-${idx}`} className="border-b border-neutral-100 dark:border-neutral-800">
-                    <td className="px-4 py-4" colSpan={9}>
+                    <td className="px-4 py-4" colSpan={8}>
                       <div className="h-10 rounded-xl bg-neutral-100 animate-pulse dark:bg-neutral-800" />
                     </td>
                   </tr>
@@ -766,8 +762,6 @@ export default function Customers() {
                         </div>
                       </td>
 
-                      <td className="px-4 py-3 text-xs font-semibold text-neutral-600 dark:text-neutral-300">{row.lastActivityLabel || getTimeAgo(row.lastActivityAt)}</td>
-
                       <td className={`px-2 sm:px-4 py-3 sticky right-0 ${row.isAbandoned ? 'bg-rose-50/95 dark:bg-rose-950/30' : 'bg-white dark:bg-neutral-900'}`}>
                         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                           <button
@@ -798,7 +792,7 @@ export default function Customers() {
 
               {!isLoading && rows.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-6 py-16 text-center">
+                  <td colSpan={8} className="px-6 py-16 text-center">
                     <div className="mx-auto max-w-sm">
                       <Users className="mx-auto h-10 w-10 text-neutral-300" />
                       <p className="mt-3 text-sm font-bold text-neutral-700 dark:text-neutral-200">
