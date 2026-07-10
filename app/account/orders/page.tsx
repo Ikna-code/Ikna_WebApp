@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -165,6 +165,7 @@ const OrdersPage = () => {
   const fetchOrders = useStore((s) => s.fetchOrders);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [actionLoadingKey, setActionLoadingKey] = useState<string | null>(null);
+  const orderCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const handleOrderAction = async (orderId: string, action: 'return') => {
     const loadingKey = `${orderId}:${action}`;
@@ -205,7 +206,30 @@ const OrdersPage = () => {
   const loading = !isAuthInitialized || (Boolean(user?.id) && !isOrdersInitialized);
 
   const toggleAccordion = (id: string) => {
-    setActiveOrderId(activeOrderId === id ? null : id);
+    setActiveOrderId((previousId) => {
+      const nextId = previousId === id ? null : id;
+
+      if (nextId) {
+        // Wait for the accordion transition to start before bringing the card into view.
+        window.requestAnimationFrame(() => {
+          window.setTimeout(() => {
+            const cardElement = orderCardRefs.current[id];
+            if (!cardElement) return;
+
+            const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+            const topOffset = 120;
+            const cardRect = cardElement.getBoundingClientRect();
+
+            if (cardRect.top < topOffset || cardRect.bottom > viewportHeight) {
+              const targetTop = window.scrollY + cardRect.top - topOffset;
+              window.scrollTo({ top: Math.max(targetTop, 0), behavior: 'smooth' });
+            }
+          }, 180);
+        });
+      }
+
+      return nextId;
+    });
   };
 
   if (loading) {
@@ -294,6 +318,9 @@ const OrdersPage = () => {
               return (
                 <div
                   key={order.id}
+                  ref={(element) => {
+                    orderCardRefs.current[order.id] = element;
+                  }}
                   className={`overflow-hidden rounded-2xl sm:rounded-[2rem] border bg-white shadow-[0_12px_30px_-18px_rgba(132,13,92,0.25)] transition-all duration-300 ${
                     isOpen
                       ? 'border-[#840d5c]/25 ring-1 ring-[#840d5c]/10'
