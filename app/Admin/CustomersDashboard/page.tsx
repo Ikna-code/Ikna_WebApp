@@ -307,13 +307,13 @@ function KpiCard({
   };
 
   return (
-    <div className={`rounded-3xl p-5 shadow-sm border ${toneClasses[tone]} dark:bg-neutral-900 dark:border-neutral-700`}>
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-500 dark:text-neutral-400">{title}</p>
-          <h3 className="mt-2 text-2xl font-black text-[#840d5c] dark:text-white">{value}</h3>
+    <div className={`rounded-2xl p-3 sm:p-5 shadow-sm border ${toneClasses[tone]} dark:bg-neutral-900 dark:border-neutral-700`}>
+      <div className="flex items-center justify-between gap-2 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-[9px] sm:text-[11px] font-bold uppercase tracking-[0.12em] text-neutral-500 dark:text-neutral-400">{title}</p>
+          <h3 className="mt-1 sm:mt-2 text-lg sm:text-2xl font-black text-[#840d5c] dark:text-white">{value}</h3>
         </div>
-        <div className={`h-11 w-11 rounded-2xl flex items-center justify-center ${iconTone[tone]}`}>{icon}</div>
+        <div className={`h-8 w-8 sm:h-11 sm:w-11 shrink-0 rounded-lg sm:rounded-2xl flex items-center justify-center ${iconTone[tone]}`}>{icon}</div>
       </div>
     </div>
   );
