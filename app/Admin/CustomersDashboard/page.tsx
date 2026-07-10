@@ -358,13 +358,13 @@ function KpiCard({
   };
 
   return (
-    <div className={`rounded-2xl p-3 sm:p-5 shadow-sm border ${toneClasses[tone]} dark:bg-neutral-900 dark:border-neutral-700`}>
-      <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-        <div className={`h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-lg sm:rounded-xl flex items-center justify-center ${iconTone[tone]}`}>{icon}</div>
-        <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.12em] text-neutral-500 dark:text-neutral-400 flex-1">{title}</p>
+    <div className={`rounded-xl p-2.5 sm:p-3.5 shadow-sm border ${toneClasses[tone]} dark:bg-neutral-900 dark:border-neutral-700`}>
+      <div className="flex items-center gap-2 mb-2 sm:mb-2.5">
+        <div className={`h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-lg flex items-center justify-center ${iconTone[tone]}`}>{icon}</div>
+        <p className="text-[8px] sm:text-[9px] font-bold uppercase tracking-[0.12em] text-neutral-500 dark:text-neutral-400 flex-1">{title}</p>
       </div>
-      <h3 className="text-3xl sm:text-4xl font-black text-[#840d5c] dark:text-white mb-2">{value}</h3>
-      {description && <p className="text-[11px] sm:text-xs text-neutral-600 dark:text-neutral-400">{description}</p>}
+      <h3 className="text-2xl sm:text-3xl font-black text-[#840d5c] dark:text-white mb-1">{value}</h3>
+      {description && <p className="text-[10px] sm:text-[11px] text-neutral-600 dark:text-neutral-400">{description}</p>}
     </div>
   );
 }
@@ -809,7 +809,7 @@ export default function Customers() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full min-w-0">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 w-full min-w-0">
         <KpiCard title="Total Customers" value={summary.totalCustomers.toLocaleString('en-IN')} tone="pink" icon={<Users className="h-5 w-5" />} description="All registered customers" />
         <KpiCard title="Customers with Orders" value={summary.customersWithOrders.toLocaleString('en-IN')} tone="violet" icon={<CheckCircle2 className="h-5 w-5" />} description="Placed at least one order" />
         <KpiCard title="Customers in Checkout" value={summary.customersInCheckout.toLocaleString('en-IN')} tone="sky" icon={<ShoppingCart className="h-5 w-5" />} description="Currently in checkout" />
