@@ -7,11 +7,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Eye,
   Filter,
   IndianRupee,
   Loader2,
   Mail,
   MessageCircle,
+  Repeat,
   Search,
   ShoppingCart,
   Users,
@@ -154,6 +156,70 @@ const statusStyles: Record<string, string> = {
   CONVERTED: 'bg-sky-100 text-sky-800 border-sky-200',
   INACTIVE: 'bg-neutral-100 text-neutral-700 border-neutral-200',
 };
+
+type OpportunityType = 'Visitor' | 'Cart Abandoned' | 'Checkout Abandoned' | 'Purchased' | 'Returning Customer';
+
+interface OpportunityInfo {
+  type: OpportunityType;
+  badgeClass: string;
+  icon: React.ReactNode;
+  tooltip?: string;
+}
+
+function getOpportunity(row: CustomerRow): OpportunityInfo {
+  // Purchased: Customer has completed at least one order
+  if (row.ordersCount > 0) {
+    // Returning Customer: Completed previous order AND currently browsing
+    if (row.checkoutStep === 'BROWSING' || row.checkoutStep === 'CART') {
+      return {
+        type: 'Returning Customer',
+        badgeClass: 'bg-violet-100 text-violet-800 border-violet-200',
+        icon: <Repeat size={12} />,
+      };
+    }
+    // Default to Purchased if they have orders but are in checkout
+    return {
+      type: 'Purchased',
+      badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      icon: <CheckCircle2 size={12} />,
+    };
+  }
+
+  // Checkout Abandoned: In checkout but cart value > 0 and stepped past cart
+  const checkoutSteps = ['ADDRESS_ADDED', 'SHIPPING_SELECTED', 'PAYMENT_STARTED'];
+  if (row.currentCartValue > 0 && checkoutSteps.includes(row.checkoutStep)) {
+    const lastCompletedStep = (() => {
+      if (row.checkoutStep === 'ADDRESS_ADDED') return 'Address';
+      if (row.checkoutStep === 'SHIPPING_SELECTED') return 'Shipping';
+      if (row.checkoutStep === 'PAYMENT_STARTED') return 'Payment';
+      return 'Checkout';
+    })();
+    return {
+      type: 'Checkout Abandoned',
+      badgeClass: 'bg-rose-100 text-rose-800 border-rose-200',
+      icon: <AlertCircle size={12} />,
+      tooltip: `Last step: ${lastCompletedStep} | Cart: ${formatCurrency(row.currentCartValue)} | Abandoned: ${getTimeAgo(row.lastActivityAt)}`,
+    };
+  }
+
+  // Cart Abandoned: In cart step with cart value > 0
+  if (row.currentCartValue > 0 && row.checkoutStep === 'CART') {
+    const cartItems = Math.ceil(row.currentCartValue / 100); // Rough estimation
+    return {
+      type: 'Cart Abandoned',
+      badgeClass: 'bg-amber-100 text-amber-800 border-amber-200',
+      icon: <ShoppingCart size={12} />,
+      tooltip: `Cart: ${formatCurrency(row.currentCartValue)} | Items: ~${cartItems} | Abandoned: ${getTimeAgo(row.lastActivityAt)}`,
+    };
+  }
+
+  // Visitor: No orders, no cart, just browsing
+  return {
+    type: 'Visitor',
+    badgeClass: 'bg-neutral-100 text-neutral-700 border-neutral-200',
+    icon: <Eye size={12} />,
+  };
+}
 
 const customerTypeStyles: Record<string, string> = {
   VIP: 'bg-[#840d5c] text-white border-[#840d5c]',
@@ -413,21 +479,24 @@ export default function Customers() {
       'Lifetime Spend',
       'Current Cart',
       'Checkout Step',
-      'Status',
+      'Opportunity',
       'Potential Recovery',
     ];
 
-    const lines = rows.map((row) => [
-      row.name,
-      row.email,
-      row.phone,
-      String(row.ordersCount),
-      String(row.lifetimeSpend),
-      String(row.currentCartValue),
-      row.checkoutStep,
-      row.status,
-      String(row.potentialRecovery || 0),
-    ]);
+    const lines = rows.map((row) => {
+      const opportunity = getOpportunity(row);
+      return [
+        row.name,
+        row.email,
+        row.phone,
+        String(row.ordersCount),
+        String(row.lifetimeSpend),
+        String(row.currentCartValue),
+        row.checkoutStep,
+        opportunity.type,
+        String(row.potentialRecovery || 0),
+      ];
+    });
 
     const csv = [headers, ...lines]
       .map((line) => line.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(','))
@@ -707,7 +776,8 @@ export default function Customers() {
               {!isLoading &&
                 rows.map((row) => {
                   const stepClass = checkoutStepStyles[row.checkoutStep] || checkoutStepStyles.BROWSING;
-                  const statusClass = statusStyles[row.status] || statusStyles.INACTIVE;
+
+                  const opportunity = getOpportunity(row);
 
                   return (
                     <tr
@@ -745,14 +815,23 @@ export default function Customers() {
                       </td>
 
                       <td className="px-4 py-3">
-                        <div className="space-y-1">
-                          <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${statusClass}`}>
-                            {labelize(row.status)}
+                        {opportunity.tooltip ? (
+                          <div className="group relative inline-block cursor-help">
+                            <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${opportunity.badgeClass}`}>
+                              {opportunity.icon}
+                              {opportunity.type}
+                            </span>
+                            <div className="invisible group-hover:visible absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs bg-neutral-900 text-white text-[10px] rounded-lg px-3 py-2 pointer-events-none whitespace-normal break-words dark:bg-neutral-800">
+                              {opportunity.tooltip}
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-800" />
+                            </div>
+                          </div>
+                        ) : (
+                          <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${opportunity.badgeClass}`}>
+                            {opportunity.icon}
+                            {opportunity.type}
                           </span>
-                          {row.isAbandoned && row.potentialRecovery > 0 && (
-                            <p className="text-[10px] font-bold text-rose-700">Potential Recovery {formatCurrency(row.potentialRecovery)}</p>
-                          )}
-                        </div>
+                        )}
                       </td>
 
                       <td className={`px-2 sm:px-4 py-3 sticky right-0 hidden ${row.isAbandoned ? 'bg-rose-50/95 dark:bg-rose-950/30' : 'bg-white dark:bg-neutral-900'}`}>
