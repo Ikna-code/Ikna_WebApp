@@ -138,6 +138,16 @@ type CustomerDrawerResponse = {
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
+// Abandonment timeout in milliseconds (24 hours)
+const ABANDONMENT_TIMEOUT_MS = 24 * 60 * 60 * 1000;
+
+function isInactiveForTimeout(lastActivityAt: string | null): boolean {
+  if (!lastActivityAt) return true;
+  const date = new Date(lastActivityAt);
+  if (Number.isNaN(date.getTime())) return true;
+  return Date.now() - date.getTime() > ABANDONMENT_TIMEOUT_MS;
+}
+
 const checkoutStepStyles: Record<string, string> = {
   BROWSING: 'bg-neutral-100 text-neutral-700 border-neutral-200',
   CART: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
@@ -167,27 +177,19 @@ interface OpportunityInfo {
 }
 
 function getOpportunity(row: CustomerRow): OpportunityInfo {
-  // Purchased: Customer has completed at least one order
-  if (row.ordersCount > 0) {
-    // Returning Customer: Completed previous order AND currently browsing
-    if (row.checkoutStep === 'BROWSING' || row.checkoutStep === 'CART') {
-      return {
-        type: 'Returning Customer',
-        badgeClass: 'bg-violet-100 text-violet-800 border-violet-200',
-        icon: <Repeat size={12} />,
-      };
-    }
-    // Default to Purchased if they have orders but are in checkout
-    return {
-      type: 'Purchased',
-      badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-      icon: <CheckCircle2 size={12} />,
-    };
-  }
+  const checkoutAbandonedSteps = ['ADDRESS_ADDED', 'SHIPPING_SELECTED', 'PAYMENT_STARTED'];
+  const hasActiveCheckoutAbandonment =
+    row.currentCartValue > 0 &&
+    checkoutAbandonedSteps.includes(row.checkoutStep) &&
+    isInactiveForTimeout(row.lastActivityAt);
 
-  // Checkout Abandoned: In checkout but cart value > 0 and stepped past cart
-  const checkoutSteps = ['ADDRESS_ADDED', 'SHIPPING_SELECTED', 'PAYMENT_STARTED'];
-  if (row.currentCartValue > 0 && checkoutSteps.includes(row.checkoutStep)) {
+  const hasActiveCartAbandonment =
+    row.currentCartValue > 0 &&
+    (row.checkoutStep === 'BROWSING' || row.checkoutStep === 'CART') &&
+    isInactiveForTimeout(row.lastActivityAt);
+
+  // Priority 1: Checkout Abandoned
+  if (hasActiveCheckoutAbandonment) {
     const lastCompletedStep = (() => {
       if (row.checkoutStep === 'ADDRESS_ADDED') return 'Address';
       if (row.checkoutStep === 'SHIPPING_SELECTED') return 'Shipping';
@@ -202,8 +204,8 @@ function getOpportunity(row: CustomerRow): OpportunityInfo {
     };
   }
 
-  // Cart Abandoned: In cart step with cart value > 0
-  if (row.currentCartValue > 0 && row.checkoutStep === 'CART') {
+  // Priority 2: Cart Abandoned
+  if (hasActiveCartAbandonment) {
     const cartItems = Math.ceil(row.currentCartValue / 100); // Rough estimation
     return {
       type: 'Cart Abandoned',
@@ -213,7 +215,28 @@ function getOpportunity(row: CustomerRow): OpportunityInfo {
     };
   }
 
-  // Visitor: No orders, no cart, just browsing
+  // Priority 3: Returning Customer
+  // Has completed orders + no active abandoned cart + no active abandoned checkout
+  if (row.ordersCount > 0 && !hasActiveCartAbandonment && !hasActiveCheckoutAbandonment) {
+    return {
+      type: 'Returning Customer',
+      badgeClass: 'bg-violet-100 text-violet-800 border-violet-200',
+      icon: <Repeat size={12} />,
+    };
+  }
+
+  // Priority 4: Purchased
+  // Latest activity was a completed order + no active cart/checkout
+  if (row.checkoutStep === 'ORDER_COMPLETED' && row.currentCartValue === 0) {
+    return {
+      type: 'Purchased',
+      badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      icon: <CheckCircle2 size={12} />,
+    };
+  }
+
+  // Priority 5: Visitor
+  // Default fallback
   return {
     type: 'Visitor',
     badgeClass: 'bg-neutral-100 text-neutral-700 border-neutral-200',
@@ -734,12 +757,11 @@ export default function Customers() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard title="Total Customers" value={summary.totalCustomers.toLocaleString('en-IN')} tone="pink" icon={<Users className="h-5 w-5" />} />
         <KpiCard title="Customers with Orders" value={summary.customersWithOrders.toLocaleString('en-IN')} tone="violet" icon={<CheckCircle2 className="h-5 w-5" />} />
         <KpiCard title="Customers in Checkout" value={summary.customersInCheckout.toLocaleString('en-IN')} tone="sky" icon={<ShoppingCart className="h-5 w-5" />} />
         <KpiCard title="Abandoned Carts" value={summary.abandonedCarts.toLocaleString('en-IN')} tone="rose" icon={<AlertCircle className="h-5 w-5" />} />
-        <KpiCard title="Potential Revenue Lost" value={formatCurrency(summary.potentialRevenueLost)} tone="amber" icon={<IndianRupee className="h-5 w-5" />} />
       </div>
 
       {error && (
