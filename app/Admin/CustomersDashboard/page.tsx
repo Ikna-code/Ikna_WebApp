@@ -138,14 +138,31 @@ type CustomerDrawerResponse = {
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
-// Abandonment timeout in milliseconds (24 hours)
-const ABANDONMENT_TIMEOUT_MS = 24 * 60 * 60 * 1000;
+// ============================================================================
+// OPPORTUNITY DETERMINATION CONFIGURATION
+// ============================================================================
+// Configurable timeout values (in minutes) for different abandonment scenarios
+const CART_ABANDONMENT_TIMEOUT_MINUTES = 30; // Time before cart is considered abandoned
+const CHECKOUT_ABANDONMENT_TIMEOUT_MINUTES = 60; // Time before checkout is considered abandoned
 
-function isInactiveForTimeout(lastActivityAt: string | null): boolean {
+/**
+ * Converts minutes to milliseconds
+ */
+function minutesToMs(minutes: number): number {
+  return minutes * 60 * 1000;
+}
+
+/**
+ * Checks if customer has been inactive longer than the specified timeout
+ * @param lastActivityAt ISO timestamp string
+ * @param timeoutMs Timeout in milliseconds
+ * @returns true if inactive longer than timeout, false otherwise
+ */
+function isInactiveFor(lastActivityAt: string | null, timeoutMs: number): boolean {
   if (!lastActivityAt) return true;
   const date = new Date(lastActivityAt);
   if (Number.isNaN(date.getTime())) return true;
-  return Date.now() - date.getTime() > ABANDONMENT_TIMEOUT_MS;
+  return Date.now() - date.getTime() > timeoutMs;
 }
 
 const checkoutStepStyles: Record<string, string> = {
@@ -176,26 +193,43 @@ interface OpportunityInfo {
   tooltip?: string;
 }
 
+/**
+ * Determines the highest-priority business opportunity for a customer.
+ *
+ * Evaluation follows this priority order (stop at first match):
+ * 1. Checkout Abandoned - customer left checkout process
+ * 2. Cart Abandoned - customer abandoned unpurchased items
+ * 3. Purchased - customer just completed an order
+ * 4. Returning Customer - existing customer, currently active or browsing
+ * 5. Visitor - no order history, no abandonment
+ *
+ * @param row Customer data row
+ * @returns OpportunityInfo object with type, styling, icon, and optional tooltip
+ */
 function getOpportunity(row: CustomerRow): OpportunityInfo {
-  const checkoutAbandonedSteps = ['ADDRESS_ADDED', 'SHIPPING_SELECTED', 'PAYMENT_STARTED'];
-  const hasActiveCheckoutAbandonment =
-    row.currentCartValue > 0 &&
-    checkoutAbandonedSteps.includes(row.checkoutStep) &&
-    isInactiveForTimeout(row.lastActivityAt);
+  const cartTimeoutMs = minutesToMs(CART_ABANDONMENT_TIMEOUT_MINUTES);
+  const checkoutTimeoutMs = minutesToMs(CHECKOUT_ABANDONMENT_TIMEOUT_MINUTES);
 
-  const hasActiveCartAbandonment =
-    row.currentCartValue > 0 &&
-    (row.checkoutStep === 'BROWSING' || row.checkoutStep === 'CART') &&
-    isInactiveForTimeout(row.lastActivityAt);
+  // Define checkout stages (any stage beyond BROWSING/CART means checkout has started)
+  const checkoutStartedSteps = ['CHECKOUT_STARTED', 'ADDRESS_ADDED', 'SHIPPING_SELECTED', 'PAYMENT_STARTED'];
 
-  // Priority 1: Checkout Abandoned
-  if (hasActiveCheckoutAbandonment) {
+  // ========================================================================
+  // PRIORITY 1: CHECKOUT ABANDONED
+  // ========================================================================
+  // Customer started checkout but abandoned it (likely close to conversion)
+  if (
+    row.currentCartValue > 0 &&
+    checkoutStartedSteps.includes(row.checkoutStep) &&
+    isInactiveFor(row.lastActivityAt, checkoutTimeoutMs)
+  ) {
     const lastCompletedStep = (() => {
       if (row.checkoutStep === 'ADDRESS_ADDED') return 'Address';
       if (row.checkoutStep === 'SHIPPING_SELECTED') return 'Shipping';
       if (row.checkoutStep === 'PAYMENT_STARTED') return 'Payment';
+      if (row.checkoutStep === 'CHECKOUT_STARTED') return 'Checkout';
       return 'Checkout';
     })();
+
     return {
       type: 'Checkout Abandoned',
       badgeClass: 'bg-rose-100 text-rose-800 border-rose-200',
@@ -204,39 +238,54 @@ function getOpportunity(row: CustomerRow): OpportunityInfo {
     };
   }
 
-  // Priority 2: Cart Abandoned
-  if (hasActiveCartAbandonment) {
-    const cartItems = Math.ceil(row.currentCartValue / 100); // Rough estimation
+  // ========================================================================
+  // PRIORITY 2: CART ABANDONED
+  // ========================================================================
+  // Customer added items but never started checkout
+  if (
+    row.currentCartValue > 0 &&
+    (row.checkoutStep === 'BROWSING' || row.checkoutStep === 'CART') &&
+    isInactiveFor(row.lastActivityAt, cartTimeoutMs)
+  ) {
     return {
       type: 'Cart Abandoned',
       badgeClass: 'bg-amber-100 text-amber-800 border-amber-200',
       icon: <ShoppingCart size={12} />,
-      tooltip: `Cart: ${formatCurrency(row.currentCartValue)} | Items: ~${cartItems} | Abandoned: ${getTimeAgo(row.lastActivityAt)}`,
+      tooltip: `Cart: ${formatCurrency(row.currentCartValue)} | Abandoned: ${getTimeAgo(row.lastActivityAt)}`,
     };
   }
 
-  // Priority 3: Returning Customer
-  // Has completed orders + no active abandoned cart + no active abandoned checkout
-  if (row.ordersCount > 0 && !hasActiveCartAbandonment && !hasActiveCheckoutAbandonment) {
-    return {
-      type: 'Returning Customer',
-      badgeClass: 'bg-violet-100 text-violet-800 border-violet-200',
-      icon: <Repeat size={12} />,
-    };
-  }
-
-  // Priority 4: Purchased
-  // Latest activity was a completed order + no active cart/checkout
+  // ========================================================================
+  // PRIORITY 3: PURCHASED
+  // ========================================================================
+  // Latest activity was a successfully completed order with no new cart items
   if (row.checkoutStep === 'ORDER_COMPLETED' && row.currentCartValue === 0) {
     return {
       type: 'Purchased',
       badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
       icon: <CheckCircle2 size={12} />,
+      tooltip: `Recent purchase | Orders: ${row.ordersCount} | Total spent: ${formatCurrency(row.lifetimeSpend)}`,
     };
   }
 
-  // Priority 5: Visitor
-  // Default fallback
+  // ========================================================================
+  // PRIORITY 4: RETURNING CUSTOMER
+  // ========================================================================
+  // Existing customer with purchase history, currently active or browsing
+  // (No active abandonment and not in immediate post-purchase state)
+  if (row.ordersCount > 0) {
+    return {
+      type: 'Returning Customer',
+      badgeClass: 'bg-violet-100 text-violet-800 border-violet-200',
+      icon: <Repeat size={12} />,
+      tooltip: `Orders: ${row.ordersCount} | Lifetime value: ${formatCurrency(row.lifetimeSpend)} | Last active: ${getTimeAgo(row.lastActivityAt)}`,
+    };
+  }
+
+  // ========================================================================
+  // PRIORITY 5: VISITOR (Default)
+  // ========================================================================
+  // No order history, no abandonment - brand new or occasional visitor
   return {
     type: 'Visitor',
     badgeClass: 'bg-neutral-100 text-neutral-700 border-neutral-200',
@@ -567,7 +616,7 @@ export default function Customers() {
   };
 
   return (
-    <div className="space-y-6 pb-6 px-4 sm:px-6 lg:px-8">
+    <div className="space-y-6 pb-6">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-black text-[#840d5c] dark:text-white">Customers</h1>
