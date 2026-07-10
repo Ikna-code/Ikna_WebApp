@@ -114,6 +114,21 @@ type RazorpayConstructor = new (options: RazorpayCheckoutOptions) => RazorpayIns
 
 const roundCurrency = (value: number) => Math.round(value * 100) / 100;
 
+async function trackCheckoutSessionStep(step: 'CHECKOUT_STARTED' | 'ADDRESS_ADDED' | 'SHIPPING_SELECTED' | 'PAYMENT_STARTED', note?: string) {
+  try {
+    await fetch('/api/checkout/session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ step, note }),
+      cache: 'no-store',
+    });
+  } catch (error) {
+    console.error('[checkout-session] client tracking failed', error);
+  }
+}
+
 export const calculateCheckoutSummary = ({
   cartItems,
   comboEligibleSubtotal,
@@ -226,6 +241,9 @@ const CartPageContent = () => {
     if (paymentMethod === 'COD') {
       setIsProcessing(true);
       try {
+        await trackCheckoutSessionStep('SHIPPING_SELECTED', 'Shipping address confirmed');
+        await trackCheckoutSessionStep('PAYMENT_STARTED', 'COD flow started');
+
         const codOrderRes = await createOrder(userId, appliedCouponCode || null, {
           clearCart: true,
           orderStatus: "PENDING",
@@ -249,6 +267,9 @@ const CartPageContent = () => {
     
     setIsProcessing(true);
     try {
+      await trackCheckoutSessionStep('SHIPPING_SELECTED', 'Shipping address confirmed');
+      await trackCheckoutSessionStep('PAYMENT_STARTED', 'Online payment flow started');
+
       const orderData = await createRazorpayOrder(userId, appliedCouponCode || null);
       const razorpayBrandImage = `${window.location.origin}/images/AI_images/logo1_ikna.png`;
       const razorpayAmount = Number(orderData.amount);
@@ -561,8 +582,21 @@ const CartPageContent = () => {
   useEffect(() => {
     if (selectedShippingAddress) {
       setIsAddressNoticeDismissed(false);
+      void trackCheckoutSessionStep('ADDRESS_ADDED', 'Address available for checkout');
     }
   }, [selectedShippingAddress]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    if (cartItems.length <= 0) {
+      return;
+    }
+
+    void trackCheckoutSessionStep('CHECKOUT_STARTED', 'Customer opened cart / checkout');
+  }, [user?.id, cartItems.length]);
 
   useEffect(() => {
     const shouldResumeCheckout = searchParams.get('resumeCheckout') === '1';

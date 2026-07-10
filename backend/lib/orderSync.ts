@@ -1,6 +1,11 @@
 import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client';
 
 import { db } from '@/backend/lib/db';
+import {
+  markCheckoutConverted,
+  markPaymentFailed,
+  markPaymentPending,
+} from '@/backend/services/customerCheckoutSession';
 import { restoreOrderInventory } from '@/backend/services/inventory';
 
 type SyncOrderInput = {
@@ -192,6 +197,21 @@ export async function syncOrderState(input: SyncOrderInput) {
       _paymentJustCompleted: paymentWasJustCompleted,
     };
   });
+
+  const nextPaymentStatus = input.payment?.status;
+  if (nextPaymentStatus === PaymentStatus.COMPLETED) {
+    await markCheckoutConverted(String(order.userId), order.id).catch((error) => {
+      console.error('[checkout-session] conversion sync failed', error);
+    });
+  } else if (nextPaymentStatus === PaymentStatus.FAILED) {
+    await markPaymentFailed(String(order.userId), order.id).catch((error) => {
+      console.error('[checkout-session] payment-failed sync failed', error);
+    });
+  } else if (nextPaymentStatus === PaymentStatus.PENDING) {
+    await markPaymentPending(String(order.userId), order.id).catch((error) => {
+      console.error('[checkout-session] payment-pending sync failed', error);
+    });
+  }
 
   return updatedOrder;
 }

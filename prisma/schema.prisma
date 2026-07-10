@@ -25,6 +25,7 @@ model User {
   orders                 Order[]
   reviews                Review[]
   wishlistItems          WishlistItem[]
+  checkoutSession        CustomerCheckoutSession?
 
   @@map("User")
 }
@@ -226,6 +227,28 @@ model CartItem {
 
   @@unique([userId, productId, selectedSize, comboBundleId])
   @@map("cart_items")
+}
+
+model CustomerCheckoutSession {
+  id                String                @id @default(cuid())
+  userId            String                @unique @map("user_id")
+  step              CheckoutStep          @default(BROWSING)
+  status            CheckoutSessionStatus @default(INACTIVE)
+  cartValue         Decimal               @default(0.00) @db.Decimal(10, 2) @map("cart_value")
+  potentialRecovery Decimal               @default(0.00) @db.Decimal(10, 2) @map("potential_recovery")
+  cartSnapshot      Json?                 @map("cart_snapshot")
+  timeline          Json?                 @map("timeline")
+  metadata          Json?                 @map("metadata")
+  lastActivityAt    DateTime              @default(now()) @map("last_activity_at")
+  abandonedAt       DateTime?             @map("abandoned_at")
+  convertedAt       DateTime?             @map("converted_at")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, lastActivityAt])
+  @@index([step, status])
+  @@map("customer_checkout_sessions")
 }
 
 model WishlistItem {
@@ -449,4 +472,23 @@ enum FilterType {
   SINGLE_SELECT
   RANGE
   COLOR
+}
+
+enum CheckoutStep {
+  BROWSING
+  CART
+  CHECKOUT_STARTED
+  ADDRESS_ADDED
+  SHIPPING_SELECTED
+  PAYMENT_STARTED
+  ORDER_COMPLETED
+}
+
+enum CheckoutSessionStatus {
+  ACTIVE
+  PAYMENT_PENDING
+  PAYMENT_FAILED
+  ABANDONED_CART
+  CONVERTED
+  INACTIVE
 }

@@ -8,6 +8,11 @@ import { Prisma } from "@prisma/client";
 import { calculateComboDiscounts, validateCouponCode } from "./promotions";
 import { createOrderItemSnapshot } from '@/backend/services/productDeletion';
 import { decreaseInventory, ensureProductInventory, getInventoryForSize, increaseInventory } from '@/backend/services/inventory';
+import {
+  markCheckoutConverted,
+  markPaymentPending,
+  trackCartActivity,
+} from '@/backend/services/customerCheckoutSession';
 
 const toPlainData = (value) => JSON.parse(JSON.stringify(value));
 const TX_OPTIONS = { maxWait: 10000, timeout: 30000 };
@@ -113,6 +118,9 @@ export async function addToCart(
     }, TX_OPTIONS);
 
     revalidatePath("/cart");
+    await trackCartActivity(String(userId), 'Added product to cart').catch((error) => {
+      console.error('[checkout-session] addToCart tracking failed', error);
+    });
     return { success: true, cartItem };
   } catch (error) {
     console.error("Add to cart error:", error);
@@ -283,6 +291,9 @@ console.log("Parsed quantity:", qty);
     }, TX_OPTIONS);
 
     revalidatePath("/cart");
+    await trackCartActivity(String(existingItem.userId), 'Updated cart quantity').catch((error) => {
+      console.error('[checkout-session] updateCartQuantity tracking failed', error);
+    });
     return { success: true, item: updatedItem };
   } catch (error) {
     console.error("Update quantity error:", error);
@@ -318,7 +329,7 @@ export async function removeFromCart(cartItemId) {
       });
 
       if (!existingItem) {
-        return { count: 0 };
+        return { count: 0, userId: null };
       }
 
       const normalizedSize = String(existingItem.selectedSize || '').trim();
@@ -332,9 +343,14 @@ export async function removeFromCart(cartItemId) {
         );
       }
 
-      return tx.cartItem.deleteMany({
+      const deletedRows = await tx.cartItem.deleteMany({
         where: { id },
       });
+
+      return {
+        ...deletedRows,
+        userId: existingItem.userId,
+      };
     }, TX_OPTIONS);
 
     if (!deleted.count) {
@@ -342,6 +358,11 @@ export async function removeFromCart(cartItemId) {
     }
 
     revalidatePath("/cart");
+    if (deleted?.userId) {
+      await trackCartActivity(String(deleted.userId), 'Removed product from cart').catch((error) => {
+        console.error('[checkout-session] removeFromCart tracking failed', error);
+      });
+    }
     return { success: true };
   } catch (error) {
     console.error("Remove from cart error:", error);
@@ -375,6 +396,9 @@ export async function clearCart(userId) {
     }, TX_OPTIONS);
 
     revalidatePath("/cart");
+    await trackCartActivity(String(userId), 'Cleared cart').catch((error) => {
+      console.error('[checkout-session] clearCart tracking failed', error);
+    });
     return { success: true };
   } catch (error) {
     console.error('Failed to clear cart:', error);
@@ -606,6 +630,16 @@ console.log("Total Saved Saved in Audit Log:", totalDiscountAccumulator.toString
 
     revalidatePath("/orders");
     revalidatePath("/cart");
+    const normalizedPaymentMethod = String(paymentMethod || 'ONLINE').trim().toUpperCase();
+    if (normalizedPaymentMethod === 'COD') {
+      await markCheckoutConverted(String(userId), result?.id || null).catch((error) => {
+        console.error('[checkout-session] COD conversion tracking failed', error);
+      });
+    } else {
+      await markPaymentPending(String(userId), result?.id || null).catch((error) => {
+        console.error('[checkout-session] payment pending tracking failed', error);
+      });
+    }
     return { success: true, order: result };
   } catch (error) {
     console.error("Secure Checkout Failure Mode:", error);
