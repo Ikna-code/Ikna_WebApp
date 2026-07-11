@@ -624,7 +624,7 @@ export default function Customers() {
   };
 
   return (
-    <div className="space-y-4 pb-6">
+    <div className="space-y-4">
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-black text-[#840d5c] dark:text-white">Customers</h1>
@@ -820,17 +820,17 @@ export default function Customers() {
       )}
 
       <div className="rounded-3xl border border-neutral-200 bg-white shadow-sm overflow-hidden dark:bg-neutral-900 dark:border-neutral-700 w-full min-w-0">
-        <div className="overflow-x-auto max-h-[70vh]">
-          <table className="w-full text-left min-w-full">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-245 table-fixed text-left">
             <thead className="sticky top-0 z-20 bg-[#fff8fc] border-b border-neutral-200 dark:bg-neutral-800 dark:border-neutral-700 w-full min-w-0">
               <tr className="text-[11px] uppercase tracking-[0.14em] text-neutral-500 w-full min-w-0">
-                <th className="px-2 sm:px-4 py-3 font-extrabold text-left whitespace-nowrap">Customer</th>
-                <th className="px-2 sm:px-4 py-3 font-extrabold text-left whitespace-nowrap">Contact</th>
-                <th className="px-2 sm:px-4 py-3 font-extrabold text-left whitespace-nowrap">Orders</th>
-                <th className="px-2 sm:px-4 py-3 font-extrabold text-left whitespace-nowrap">Lifetime Spend</th>
-                <th className="px-2 sm:px-4 py-3 font-extrabold text-left whitespace-nowrap">Current Cart</th>
-                <th className="px-2 sm:px-4 py-3 font-extrabold text-left whitespace-nowrap">Checkout Step</th>
-                <th className="px-2 sm:px-4 py-3 font-extrabold text-left whitespace-nowrap">Status</th>
+                <th className="w-[18%] px-2 sm:px-4 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Customer</th>
+                <th className="w-[22%] px-2 sm:px-4 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Contact</th>
+                <th className="w-[10%] px-2 sm:px-4 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Orders</th>
+                <th className="w-[14%] px-2 sm:px-4 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Lifetime Spend</th>
+                <th className="w-[12%] px-2 sm:px-4 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Current Cart</th>
+                <th className="w-[12%] px-2 sm:px-4 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Checkout Step</th>
+                <th className="w-[12%] px-2 sm:px-4 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Status</th>
                 {/* <th className="px-2 sm:px-4 py-3 font-extrabold sticky right-0 bg-[#fff8fc] dark:bg-neutral-800 hidden whitespace-nowrap">Actions</th> */}
               </tr>
             </thead>
@@ -838,8 +838,8 @@ export default function Customers() {
               {isLoading &&
                 Array.from({ length: 7 }).map((_, idx) => (
                   <tr key={`skeleton-${idx}`} className="border-b border-neutral-100 dark:border-neutral-800 w-full min-w-0">
-                    <td className="px-2 sm:px-4 py-4 min-w-0" colSpan={7}>
-                      <div className="h-10 rounded-xl bg-neutral-100 animate-pulse dark:bg-neutral-800 w-full min-w-0" />
+                    <td className="px-2 sm:px-4 py-2.5 align-middle min-w-0" colSpan={7}>
+                      <div className="h-8 rounded-lg bg-neutral-100 animate-pulse dark:bg-neutral-800 w-full min-w-0" />
                     </td>
                   </tr>
                 ))}
@@ -858,7 +858,7 @@ export default function Customers() {
                         row.isAbandoned ? 'bg-rose-50/70 dark:bg-rose-950/20' : ''
                       }`}
                     >
-                      <td className="px-2 sm:px-4 py-3 min-w-0">
+                      <td className="px-2 sm:px-4 py-2.5 align-middle min-w-0">
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="min-w-0">
                             <p className="text-sm font-extrabold text-neutral-800 dark:text-neutral-100 truncate">{row.name}</p>
@@ -866,29 +866,31 @@ export default function Customers() {
                         </div>
                       </td>
 
-                      <td className="px-2 sm:px-4 py-3 text-xs text-neutral-600 dark:text-neutral-300 min-w-0">
-                        <p className="font-semibold truncate">{row.email}</p>
-                        <p className="mt-1 truncate text-[11px]">{row.phone}</p>
+                      <td className="px-2 sm:px-4 py-2.5 align-middle text-xs text-neutral-600 dark:text-neutral-300 min-w-0">
+                        <div className="flex flex-col justify-center leading-tight">
+                          <p className="font-semibold truncate">{row.email}</p>
+                          <p className="truncate text-[11px] mt-0.5">{row.phone}</p>
+                        </div>
                       </td>
 
-                      <td className="px-2 sm:px-4 py-3 text-xs font-extrabold text-neutral-800 dark:text-neutral-100 whitespace-nowrap">{row.ordersCount} Orders</td>
+                      <td className="px-2 sm:px-4 py-2.5 align-middle text-xs font-extrabold text-neutral-800 dark:text-neutral-100 whitespace-nowrap">{row.ordersCount} Orders</td>
 
-                      <td className="px-2 sm:px-4 py-3 text-xs font-extrabold text-[#840d5c] dark:text-fuchsia-300 whitespace-nowrap">{formatCurrency(row.lifetimeSpend)}</td>
+                      <td className="px-2 sm:px-4 py-2.5 align-middle text-xs font-extrabold text-[#840d5c] dark:text-fuchsia-300 whitespace-nowrap">{formatCurrency(row.lifetimeSpend)}</td>
 
-                      <td className="px-2 sm:px-4 py-3 text-xs font-bold text-neutral-700 dark:text-neutral-200 whitespace-nowrap">
+                      <td className="px-2 sm:px-4 py-2.5 align-middle text-xs font-bold text-neutral-700 dark:text-neutral-200 whitespace-nowrap">
                         {row.currentCartValue > 0 ? formatCurrency(row.currentCartValue) : '—'}
                       </td>
 
-                      <td className="px-2 sm:px-4 py-3 min-w-0">
-                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-extrabold whitespace-nowrap ${stepClass}`}>
+                      <td className="px-2 sm:px-4 py-2.5 align-middle min-w-0">
+                        <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-extrabold whitespace-nowrap ${stepClass}`}>
                           {labelize(row.checkoutStep)}
                         </span>
                       </td>
 
-                      <td className="px-2 sm:px-4 py-3 min-w-0">
+                      <td className="px-2 sm:px-4 py-2.5 align-middle min-w-0">
                         {opportunity.tooltip ? (
                           <div className="group relative inline-block cursor-help">
-                            <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-extrabold whitespace-nowrap ${opportunity.badgeClass}`}>
+                            <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-extrabold whitespace-nowrap ${opportunity.badgeClass}`}>
                               {opportunity.icon}
                               <span className="hidden sm:inline">{opportunity.type}</span>
                             </span>
@@ -898,7 +900,7 @@ export default function Customers() {
                             </div>
                           </div>
                         ) : (
-                          <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-extrabold whitespace-nowrap ${opportunity.badgeClass}`}>
+                          <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-extrabold whitespace-nowrap ${opportunity.badgeClass}`}>
                             {opportunity.icon}
                             <span className="hidden sm:inline">{opportunity.type}</span>
                           </span>
