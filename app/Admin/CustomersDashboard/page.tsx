@@ -840,10 +840,9 @@ export default function Customers() {
                 <th className="px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Current Cart</th>
                 <th className="px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Checkout Step</th>
                 <th className="px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Status</th>
-                {/* <th className="px-2 sm:px-4 py-3 font-extrabold sticky right-0 bg-[#fff8fc] dark:bg-neutral-800 hidden whitespace-nowrap">Actions</th> */}
               </tr>
             </thead>
-            <tbody className="[&_p]:leading-tight">
+            <tbody>
               {isLoading &&
                 Array.from({ length: 7 }).map((_, idx) => (
                   <tr key={`skeleton-${idx}`} className="border-b border-neutral-100 dark:border-neutral-800 w-full min-w-0">
@@ -878,7 +877,7 @@ export default function Customers() {
                       <td className="px-2 sm:px-4 py-2.5 align-middle text-xs text-neutral-600 dark:text-neutral-300 min-w-0">
                         <div className="flex flex-col justify-center leading-tight">
                           <p className="font-semibold truncate">{row.email}</p>
-                          <p className="truncate text-[11px]">{row.phone}</p>
+                          <p className="truncate text-[11px] mt-0.5">{row.phone}</p>
                         </div>
                       </td>
 
@@ -916,30 +915,7 @@ export default function Customers() {
                         )}
                       </td>
 
-                      {/* <td className={`px-2 sm:px-4 py-3 sticky right-0 hidden ${row.isAbandoned ? 'bg-rose-50/95 dark:bg-rose-950/30' : 'bg-white dark:bg-neutral-900'}`}>
-                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            disabled
-                            className="p-2 rounded-lg opacity-40 cursor-not-allowed shrink-0"
-                            title="WhatsApp is currently disabled"
-                          >
-                            <MessageCircle className="h-4 w-4 text-neutral-600" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => sendCartReminderEmail({
-                              name: row.name,
-                              email: row.email,
-                              currentCartValue: row.currentCartValue,
-                            })}
-                            className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 shrink-0"
-                            title="Send cart checkout reminder"
-                          >
-                            <Mail className="h-4 w-4 text-neutral-600" />
-                          </button>
-                        </div>
-                      </td> */}
+  
                     </tr>
                   );
                 })}
@@ -1156,7 +1132,7 @@ export default function Customers() {
                     </div>
                   </section>
 
-                  <section className="rounded-3xl border border-neutral-200 p-4 dark:border-neutral-700 w-full min-w-0">
+                  {/* <section className="rounded-3xl border border-neutral-200 p-4 dark:border-neutral-700 w-full min-w-0">
                     <h3 className="text-xs font-black text-neutral-800 dark:text-neutral-100 uppercase tracking-[0.12em]">Recovery Actions</h3>
                     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 w-full min-w-0">
                       <button
@@ -1180,7 +1156,7 @@ export default function Customers() {
                         Send Reminder Email
                       </button>
                     </div>
-                  </section>
+                  </section> */}
                 </>
               )}
             </div>
