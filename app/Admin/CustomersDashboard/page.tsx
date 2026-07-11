@@ -821,16 +821,25 @@ export default function Customers() {
 
       <div className="rounded-3xl border border-neutral-200 bg-white shadow-sm overflow-hidden dark:bg-neutral-900 dark:border-neutral-700 w-full min-w-0">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-245 table-fixed text-left">
+          <table className="w-full min-w-full table-fixed text-left">
+            <colgroup>
+              <col className="w-[16%]" />
+              <col className="w-[22%]" />
+              <col className="w-[10%]" />
+              <col className="w-[14%]" />
+              <col className="w-[12%]" />
+              <col className="w-[12%]" />
+              <col className="w-[14%]" />
+            </colgroup>
             <thead className="sticky top-0 z-20 bg-[#fff8fc] border-b border-neutral-200 dark:bg-neutral-800 dark:border-neutral-700 w-full min-w-0">
-              <tr className="text-[11px] uppercase tracking-[0.14em] text-neutral-500 w-full min-w-0">
-                <th className="w-[18%] px-2 sm:px-4 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Customer</th>
-                <th className="w-[22%] px-2 sm:px-4 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Contact</th>
-                <th className="w-[10%] px-2 sm:px-4 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Orders</th>
-                <th className="w-[14%] px-2 sm:px-4 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Lifetime Spend</th>
-                <th className="w-[12%] px-2 sm:px-4 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Current Cart</th>
-                <th className="w-[12%] px-2 sm:px-4 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Checkout Step</th>
-                <th className="w-[12%] px-2 sm:px-4 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Status</th>
+              <tr className="text-[11px] uppercase tracking-wide text-neutral-500 w-full min-w-0">
+                <th className="px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Customer</th>
+                <th className="px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Contact</th>
+                <th className="px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Orders</th>
+                <th className="px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Lifetime Spend</th>
+                <th className="px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Current Cart</th>
+                <th className="px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Checkout Step</th>
+                <th className="px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Status</th>
                 {/* <th className="px-2 sm:px-4 py-3 font-extrabold sticky right-0 bg-[#fff8fc] dark:bg-neutral-800 hidden whitespace-nowrap">Actions</th> */}
               </tr>
             </thead>
