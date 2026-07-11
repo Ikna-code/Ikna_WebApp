@@ -821,7 +821,7 @@ export default function Customers() {
 
       <div className="rounded-3xl border border-neutral-200 bg-white shadow-sm overflow-hidden dark:bg-neutral-900 dark:border-neutral-700 w-full min-w-0">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-full table-fixed text-left">
+          <table className="w-full min-w-205 border-collapse table-fixed text-left">
             <colgroup>
               <col className="w-[16%]" />
               <col className="w-[22%]" />
