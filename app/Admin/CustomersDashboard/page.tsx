@@ -843,7 +843,7 @@ export default function Customers() {
                 {/* <th className="px-2 sm:px-4 py-3 font-extrabold sticky right-0 bg-[#fff8fc] dark:bg-neutral-800 hidden whitespace-nowrap">Actions</th> */}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="[&_p]:leading-tight">
               {isLoading &&
                 Array.from({ length: 7 }).map((_, idx) => (
                   <tr key={`skeleton-${idx}`} className="border-b border-neutral-100 dark:border-neutral-800 w-full min-w-0">
@@ -878,7 +878,7 @@ export default function Customers() {
                       <td className="px-2 sm:px-4 py-2.5 align-middle text-xs text-neutral-600 dark:text-neutral-300 min-w-0">
                         <div className="flex flex-col justify-center leading-tight">
                           <p className="font-semibold truncate">{row.email}</p>
-                          <p className="truncate text-[11px] mt-0.5">{row.phone}</p>
+                          <p className="truncate text-[11px]">{row.phone}</p>
                         </div>
                       </td>
 
