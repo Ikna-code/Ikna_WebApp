@@ -10,6 +10,8 @@ import {
   LogOut,
   Trash2,
   Bell,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -32,35 +34,8 @@ interface DbUser {
 interface AuthMeta {
   email: string;
   emailVerified: boolean;
-  isGoogleAccount: boolean;
-}
-
-const CANONICAL_PROD_ORIGIN = 'https://www.iknaonline.com';
-
-/* ─── helpers ────────────────────────────────────────────────────────────── */
-function getAppBaseUrl(): string {
-  // In browser flows, always prefer the live origin over build-time env.
-  if (typeof window !== 'undefined' && window.location?.origin) {
-    const hostname = window.location.hostname.toLowerCase();
-    if (hostname === 'iknaonline.com' || hostname === 'www.iknaonline.com') {
-      return CANONICAL_PROD_ORIGIN;
-    }
-    return window.location.origin.replace(/\/$/, '');
-  }
-  const configured =
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-    process.env.SITE_URL?.trim();
-  if (configured) return configured.replace(/\/$/, '');
-  
-  // Fail explicitly in production instead of defaulting to localhost
-  if (typeof window === 'undefined' && process.env.NODE_ENV === 'production') {
-    console.error(
-      'CRITICAL: Missing URL environment variables. ' +
-      'Set NEXT_PUBLIC_APP_URL or NEXT_PUBLIC_SITE_URL to your production domain.'
-    );
-  }
-  return 'http://localhost:3000';
+  hasGoogleProvider: boolean;
+  hasEmailProvider: boolean;
 }
 
 const DEFAULT_PREFS: CommPrefs = {
@@ -69,6 +44,32 @@ const DEFAULT_PREFS: CommPrefs = {
   commNewCollections: true,
   commPromotions: true,
 };
+
+function getPasswordChecks(password: string) {
+  return {
+    minLength: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /\d/.test(password),
+    special: /[^A-Za-z0-9]/.test(password),
+  };
+}
+
+function getPasswordStrength(password: string): number {
+  const checks = getPasswordChecks(password);
+  return Object.values(checks).filter(Boolean).length;
+}
+
+function getPasswordValidationError(password: string): string {
+  if (!password) return 'New password is required.';
+  const checks = getPasswordChecks(password);
+  if (!checks.minLength) return 'Password must be at least 8 characters long.';
+  if (!checks.uppercase) return 'Password must include at least one uppercase letter.';
+  if (!checks.lowercase) return 'Password must include at least one lowercase letter.';
+  if (!checks.number) return 'Password must include at least one number.';
+  if (!checks.special) return 'Password must include at least one special character.';
+  return '';
+}
 
 /* ─── sub-component: floating label input ────────────────────────────────── */
 function FloatingInput({
@@ -202,6 +203,12 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
   const [authMeta, setAuthMeta] = useState<AuthMeta | null>(null);
 
   /* password reset */
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<{ newPassword?: string; confirmPassword?: string; server?: string }>({});
   const [passwordLoading, setPasswordLoading] = useState(false);
 
   /* sign-out / delete */
@@ -227,14 +234,27 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
     let mounted = true;
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!mounted || !user) return;
-      const providers: string[] = (user.app_metadata?.providers as string[]) ?? [];
-      const isGoogle =
-        providers.includes('google') ||
-        user.app_metadata?.provider === 'google';
+      const providersFromIdentities = (user.identities ?? [])
+        .map((identity) => identity?.provider)
+        .filter((provider): provider is string => Boolean(provider));
+
+      const providersFromMetadata: string[] = (user.app_metadata?.providers as string[]) ?? [];
+      const providerSet = new Set<string>([
+        ...providersFromIdentities,
+        ...providersFromMetadata,
+        user.app_metadata?.provider,
+      ].filter((provider): provider is string => Boolean(provider)));
+
+      const hasEmailProvider = (user.identities ?? []).some(
+        (identity) => identity.provider === 'email'
+      );
+      const hasGoogleProvider = providerSet.has('google');
+
       setAuthMeta({
         email: user.email ?? '',
         emailVerified: Boolean(user.email_confirmed_at),
-        isGoogleAccount: isGoogle,
+        hasGoogleProvider,
+        hasEmailProvider,
       });
     });
     return () => { mounted = false; };
@@ -268,22 +288,57 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
     }
   }, [profileForm, onUpdate]);
 
+  const handlePasswordModalClose = useCallback(() => {
+    if (passwordLoading) return;
+    setPasswordModalOpen(false);
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordErrors({});
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+  }, [passwordLoading]);
+
   const handlePasswordReset = useCallback(async () => {
-    const email = authMeta?.email ?? dbUser?.email;
-    if (!email) return toast.error('Email not found');
+    const nextErrors: { newPassword?: string; confirmPassword?: string; server?: string } = {};
+    const passwordError = getPasswordValidationError(newPassword);
+    if (passwordError) nextErrors.newPassword = passwordError;
+    if (!confirmPassword) {
+      nextErrors.confirmPassword = 'Please confirm your new password.';
+    } else if (newPassword !== confirmPassword) {
+      nextErrors.confirmPassword = 'Passwords must match.';
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setPasswordErrors(nextErrors);
+      return;
+    }
+
     setPasswordLoading(true);
+    setPasswordErrors({});
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${getAppBaseUrl()}/account/settings?reset=true`,
+      const response = await fetch('/api/account/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ newPassword, confirmPassword }),
       });
-      if (error) throw error;
-      toast.success('Password reset link sent to your email!');
+
+      const result = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(result?.error || 'Failed to update password.');
+      }
+
+      handlePasswordModalClose();
+      toast.success('Password updated successfully.');
     } catch (error: any) {
-      toast.error(error.message);
+      const message = error?.message || 'Failed to update password.';
+      setPasswordErrors({ server: message });
+      toast.error(message);
     } finally {
       setPasswordLoading(false);
     }
-  }, [authMeta, dbUser, supabase]);
+  }, [newPassword, confirmPassword, handlePasswordModalClose]);
 
   const handleSignOut = useCallback(async () => {
     setActionLoading(true);
@@ -359,6 +414,17 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
       setPrefsSaving(false);
     }
   }, [prefs]);
+
+  const passwordChecks = getPasswordChecks(newPassword);
+  const passwordStrength = getPasswordStrength(newPassword);
+  const hasEmailProvider = Boolean(authMeta?.hasEmailProvider);
+  const hasGoogleProvider = Boolean(authMeta?.hasGoogleProvider);
+  const passwordStrengthLabel =
+    passwordStrength <= 1
+      ? 'Weak'
+      : passwordStrength <= 3
+        ? 'Medium'
+        : 'Strong';
 
   /* ─── render ───────────────────────────────────────────────────────────── */
   return (
@@ -442,11 +508,11 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
               <div>
                 <p className="text-[12px] font-semibold text-[#321327]">Google Account</p>
                 <p className="text-[10px] text-[#321327]/50">
-                  {authMeta?.isGoogleAccount ? 'Sign-in with Google' : 'Not connected'}
+                  {hasGoogleProvider ? 'Sign-in with Google' : 'Not connected'}
                 </p>
               </div>
             </div>
-            {authMeta?.isGoogleAccount ? (
+            {hasGoogleProvider ? (
               <span className="flex items-center gap-1 px-2.5 py-1 bg-green-50 text-green-600 rounded-lg text-[9px] font-bold uppercase tracking-tighter shrink-0">
                 <CheckCircle2 size={11} /> Connected
               </span>
@@ -457,18 +523,38 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
             )}
           </div>
 
-          {/* Change password — only for email/password accounts */}
-          {authMeta && !authMeta.isGoogleAccount && (
-            <button
-              onClick={handlePasswordReset}
-              disabled={passwordLoading}
-              suppressHydrationWarning
-              className="w-full border border-[#321327]/10 py-3 rounded-2xl text-[10px] font-bold text-[#321327] hover:bg-[#FAF9FA] transition-all uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {passwordLoading && <Loader2 size={12} className="animate-spin" />}
-              Change Password
-            </button>
-          )}
+          {/* Password section */}
+          <div className="p-3 bg-[#FAF9FA] border border-[#321327]/5 rounded-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold text-[#321327]">Password</p>
+                {hasEmailProvider ? (
+                  <>
+                    <p className="text-[12px] font-medium text-[#321327] mt-0.5">••••••••••••••</p>
+                    <p className="text-[10px] text-[#321327]/50 mt-1">Manage your account password</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[10px] text-[#321327]/70 mt-0.5">This account uses Google Sign-In only.</p>
+                    <p className="text-[10px] text-[#321327]/50 mt-1">No password has been set for this account.</p>
+                  </>
+                )}
+              </div>
+
+              {hasEmailProvider && (
+                <button
+                  onClick={() => {
+                    setPasswordErrors({});
+                    setPasswordModalOpen(true);
+                  }}
+                  suppressHydrationWarning
+                  className="shrink-0 border border-[#321327]/10 px-4 py-2 rounded-xl text-[10px] font-bold text-[#321327] hover:bg-white transition-all uppercase tracking-widest"
+                >
+                  Reset Password
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </SectionCard>
 
@@ -537,6 +623,137 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
           Delete Account Permanently
         </button>
       </div>
+
+      {passwordModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
+          <button
+            type="button"
+            onClick={handlePasswordModalClose}
+            className="absolute inset-0 bg-[#321327]/50 backdrop-blur-[1px]"
+            aria-label="Close password reset modal"
+            disabled={passwordLoading}
+          />
+
+          <div className="relative w-full max-w-md bg-white border border-[#840d5c]/10 rounded-3xl shadow-xl p-5 sm:p-6">
+            <div className="mb-4">
+              <h4 className="text-[16px] font-bold text-[#321327]">Reset Password</h4>
+              <p className="text-[12px] text-[#321327]/60 mt-1">Enter a new password for your account.</p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="newPassword" className="block text-[11px] font-semibold text-[#321327] mb-1.5">
+                  New Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="newPassword"
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      setPasswordErrors((prev) => ({ ...prev, newPassword: undefined, server: undefined }));
+                    }}
+                    className="w-full bg-white border border-[#321327]/20 rounded-xl px-3.5 py-3 text-[13px] text-[#321327] focus:border-[#840d5c] transition-colors outline-none pr-10"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#321327]/60 hover:text-[#321327]"
+                    aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showNewPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+                {passwordErrors.newPassword && (
+                  <p className="text-[11px] text-red-600 mt-1.5">{passwordErrors.newPassword}</p>
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-[11px] font-semibold text-[#321327]">Password Strength</p>
+                  <p className="text-[10px] font-semibold text-[#321327]/60">{passwordStrengthLabel}</p>
+                </div>
+                <div className="h-2 rounded-full bg-[#321327]/10 overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      passwordStrength <= 1
+                        ? 'bg-red-400'
+                        : passwordStrength <= 3
+                          ? 'bg-amber-400'
+                          : 'bg-green-500'
+                    }`}
+                    style={{ width: `${Math.max((passwordStrength / 5) * 100, newPassword ? 12 : 0)}%` }}
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 mt-2.5">
+                  <p className={`text-[10px] ${passwordChecks.minLength ? 'text-green-600' : 'text-[#321327]/55'}`}>At least 8 characters</p>
+                  <p className={`text-[10px] ${passwordChecks.uppercase ? 'text-green-600' : 'text-[#321327]/55'}`}>One uppercase letter</p>
+                  <p className={`text-[10px] ${passwordChecks.lowercase ? 'text-green-600' : 'text-[#321327]/55'}`}>One lowercase letter</p>
+                  <p className={`text-[10px] ${passwordChecks.number ? 'text-green-600' : 'text-[#321327]/55'}`}>One number</p>
+                  <p className={`text-[10px] ${passwordChecks.special ? 'text-green-600' : 'text-[#321327]/55'}`}>One special character</p>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="confirmPassword" className="block text-[11px] font-semibold text-[#321327] mb-1.5">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      setPasswordErrors((prev) => ({ ...prev, confirmPassword: undefined, server: undefined }));
+                    }}
+                    className="w-full bg-white border border-[#321327]/20 rounded-xl px-3.5 py-3 text-[13px] text-[#321327] focus:border-[#840d5c] transition-colors outline-none pr-10"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#321327]/60 hover:text-[#321327]"
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+                {passwordErrors.confirmPassword && (
+                  <p className="text-[11px] text-red-600 mt-1.5">{passwordErrors.confirmPassword}</p>
+                )}
+              </div>
+
+              {passwordErrors.server && (
+                <p className="text-[11px] text-red-600">{passwordErrors.server}</p>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handlePasswordModalClose}
+                  disabled={passwordLoading}
+                  className="px-4 py-2 rounded-xl border border-[#321327]/15 text-[10px] font-bold text-[#321327] uppercase tracking-widest hover:bg-[#FAF9FA] transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePasswordReset}
+                  disabled={passwordLoading}
+                  className="px-4 py-2 rounded-xl bg-[#321327] text-white text-[10px] font-bold uppercase tracking-widest hover:bg-[#840d5c] transition-colors disabled:opacity-60 flex items-center gap-2"
+                >
+                  {passwordLoading && <Loader2 size={12} className="animate-spin" />}
+                  Reset Password
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
