@@ -886,10 +886,10 @@ export default function Customers() {
                         </span>
                       </td>
 
-                      <td className="px-2 sm:px-4 py-2.5 align-middle">
-                        <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-extrabold whitespace-nowrap ${opportunity.badgeClass}`}>
+                      <td className="px-2 sm:px-4 py-2.5 align-middle overflow-hidden">
+                        <span className={`inline-flex max-w-full items-center gap-1 rounded-full border px-3 py-1 text-xs font-extrabold whitespace-nowrap ${opportunity.badgeClass}`}>
                           {opportunity.icon}
-                          <span className="hidden sm:inline">{opportunity.type}</span>
+                          <span className="hidden min-w-0 truncate sm:inline">{opportunity.type}</span>
                         </span>
                       </td>
 
