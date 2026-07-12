@@ -74,14 +74,14 @@ function SidebarContent({ adminUser, isSigningOut, onLogout, onNavigate, pathnam
           <span>{isSigningOut ? 'Signing Out...' : 'Log Out'}</span>
         </button>
 
-        <div className="relative overflow-hidden rounded-2xl border border-[#a33c82] bg-[#6d0b4b] p-4">
+        {/* <div className="relative overflow-hidden rounded-2xl border border-[#a33c82] bg-[#6d0b4b] p-4">
           <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-xl">
             👙
           </div>
           <p className="text-xs font-semibold leading-relaxed text-[#F3EBEF]">
             Empowering confidence,<br />every day.
           </p>
-        </div>
+        </div> */}
 
         <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-[#5a073f] p-3">
           <div className="flex items-center gap-3">
