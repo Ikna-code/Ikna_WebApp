@@ -638,7 +638,7 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
       </div>
 
       {passwordModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-3 sm:px-4 py-4 sm:py-6">
           <button
             type="button"
             onClick={handlePasswordModalClose}
@@ -647,36 +647,36 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
             disabled={passwordLoading}
           />
 
-          <div className="relative w-full max-w-[520px] max-h-[92vh] overflow-y-auto bg-white border border-[#321327]/10 rounded-[28px] shadow-[0_30px_80px_rgba(38,13,35,0.25)]">
-            <div className="px-6 sm:px-8 pt-6 pb-5 border-b border-[#321327]/10">
+          <div className="relative w-full max-w-[520px] max-h-[92vh] overflow-y-auto bg-white border border-[#321327]/10 rounded-3xl sm:rounded-[28px] shadow-[0_24px_60px_rgba(38,13,35,0.22)]">
+            <div className="px-4 sm:px-8 pt-4 sm:pt-6 pb-4 sm:pb-5 border-b border-[#321327]/10">
               <button
                 type="button"
                 onClick={handlePasswordModalClose}
                 disabled={passwordLoading}
-                className="absolute right-5 top-5 text-[#321327]/65 hover:text-[#321327] transition-colors disabled:opacity-50"
+                className="absolute right-4 sm:right-5 top-4 sm:top-5 text-[#321327]/65 hover:text-[#321327] transition-colors disabled:opacity-50"
                 aria-label="Close reset password modal"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
 
-              <div className="flex items-start gap-3 pr-8">
-                <div className="w-12 h-12 rounded-full bg-[#f7edf4] text-[#b01373] flex items-center justify-center shrink-0">
-                  <LockKeyhole size={19} />
+              <div className="flex items-start gap-2.5 sm:gap-3 pr-8">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#f7edf4] text-[#b01373] flex items-center justify-center shrink-0">
+                  <LockKeyhole size={16} className="sm:w-[19px] sm:h-[19px]" />
                 </div>
                 <div>
-                  <h4 className="text-[34px] sm:text-[42px] leading-none font-bold text-[#321327]" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
+                  <h4 className="text-[28px] sm:text-[34px] leading-[0.95] font-bold text-[#321327]" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
                     Reset Password
                   </h4>
-                  <p className="text-[17px] sm:text-[24px] leading-none text-[#321327]/80 mt-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
+                  <p className="text-[14px] sm:text-[16px] leading-tight text-[#321327]/75 mt-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
                     Enter a new password for your account.
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="px-6 sm:px-8 py-6 space-y-5">
+            <div className="px-4 sm:px-8 py-4 sm:py-6 space-y-4 sm:space-y-5">
               <div>
-                <label htmlFor="newPassword" className="block text-[28px] sm:text-[34px] leading-none font-semibold text-[#321327] mb-2" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
+                <label htmlFor="newPassword" className="block text-[19px] sm:text-[24px] leading-none font-semibold text-[#321327] mb-1.5 sm:mb-2" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
                   New Password
                 </label>
                 <div className="relative">
@@ -688,13 +688,13 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
                       setNewPassword(e.target.value);
                       setPasswordErrors((prev) => ({ ...prev, newPassword: undefined, server: undefined }));
                     }}
-                    className="w-full bg-white border border-[#c72f87]/60 rounded-2xl px-5 py-4 text-[14px] text-[#321327] focus:border-[#b01373] transition-colors outline-none pr-12"
+                    className="w-full bg-white border border-[#c72f87]/60 rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3.5 sm:py-4 text-[13px] sm:text-[14px] text-[#321327] focus:border-[#b01373] transition-colors outline-none pr-11 sm:pr-12"
                     autoComplete="new-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowNewPassword((prev) => !prev)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#321327]/55 hover:text-[#321327]"
+                    className="absolute right-3.5 sm:right-4 top-1/2 -translate-y-1/2 text-[#321327]/55 hover:text-[#321327]"
                     aria-label={showNewPassword ? 'Hide password' : 'Show password'}
                   >
                     {showNewPassword ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -706,7 +706,7 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center justify-between mb-1.5 sm:mb-2">
                   <div className="flex items-center gap-1.5 flex-1 mr-2">
                     {[0, 1, 2, 3].map((segment) => (
                       <span
@@ -717,26 +717,26 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
                       />
                     ))}
                   </div>
-                  <p className="text-[11px] font-semibold text-[#b01373] min-w-[44px] text-right">{passwordStrengthLabel}</p>
+                  <p className="text-[10px] sm:text-[11px] font-semibold text-[#b01373] min-w-[44px] text-right">{passwordStrengthLabel}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-3">
-                  <p className={`text-[11px] flex items-center gap-1.5 ${passwordChecks.minLength ? 'text-[#321327]' : 'text-[#321327]/45'}`}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 sm:gap-y-2 mt-2.5 sm:mt-3">
+                  <p className={`text-[10px] sm:text-[11px] flex items-center gap-1.5 ${passwordChecks.minLength ? 'text-[#321327]' : 'text-[#321327]/45'}`}>
                     <CheckCircle2 size={12} className={passwordChecks.minLength ? 'text-[#b01373]' : 'text-[#321327]/30'} />
                     At least 8 characters
                   </p>
-                  <p className={`text-[11px] flex items-center gap-1.5 ${passwordChecks.uppercase ? 'text-[#321327]' : 'text-[#321327]/45'}`}>
+                  <p className={`text-[10px] sm:text-[11px] flex items-center gap-1.5 ${passwordChecks.uppercase ? 'text-[#321327]' : 'text-[#321327]/45'}`}>
                     <CheckCircle2 size={12} className={passwordChecks.uppercase ? 'text-[#b01373]' : 'text-[#321327]/30'} />
                     One uppercase letter
                   </p>
-                  <p className={`text-[11px] flex items-center gap-1.5 ${passwordChecks.lowercase ? 'text-[#321327]' : 'text-[#321327]/45'}`}>
+                  <p className={`text-[10px] sm:text-[11px] flex items-center gap-1.5 ${passwordChecks.lowercase ? 'text-[#321327]' : 'text-[#321327]/45'}`}>
                     <CheckCircle2 size={12} className={passwordChecks.lowercase ? 'text-[#b01373]' : 'text-[#321327]/30'} />
                     One lowercase letter
                   </p>
-                  <p className={`text-[11px] flex items-center gap-1.5 ${passwordChecks.special ? 'text-[#321327]' : 'text-[#321327]/45'}`}>
+                  <p className={`text-[10px] sm:text-[11px] flex items-center gap-1.5 ${passwordChecks.special ? 'text-[#321327]' : 'text-[#321327]/45'}`}>
                     <CheckCircle2 size={12} className={passwordChecks.special ? 'text-[#b01373]' : 'text-[#321327]/30'} />
                     One special character
                   </p>
-                  <p className={`text-[11px] flex items-center gap-1.5 ${passwordChecks.number ? 'text-[#321327]' : 'text-[#321327]/45'}`}>
+                  <p className={`text-[10px] sm:text-[11px] flex items-center gap-1.5 ${passwordChecks.number ? 'text-[#321327]' : 'text-[#321327]/45'}`}>
                     <CheckCircle2 size={12} className={passwordChecks.number ? 'text-[#b01373]' : 'text-[#321327]/30'} />
                     One number
                   </p>
@@ -744,7 +744,7 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-[28px] sm:text-[34px] leading-none font-semibold text-[#321327] mb-2" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
+                <label htmlFor="confirmPassword" className="block text-[19px] sm:text-[24px] leading-none font-semibold text-[#321327] mb-1.5 sm:mb-2" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
                   Confirm Password
                 </label>
                 <div className="relative">
@@ -756,13 +756,13 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
                       setConfirmPassword(e.target.value);
                       setPasswordErrors((prev) => ({ ...prev, confirmPassword: undefined, server: undefined }));
                     }}
-                    className="w-full bg-white border border-[#321327]/18 rounded-2xl px-5 py-4 text-[14px] text-[#321327] focus:border-[#840d5c] transition-colors outline-none pr-12"
+                    className="w-full bg-white border border-[#321327]/18 rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3.5 sm:py-4 text-[13px] sm:text-[14px] text-[#321327] focus:border-[#840d5c] transition-colors outline-none pr-11 sm:pr-12"
                     autoComplete="new-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword((prev) => !prev)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#321327]/55 hover:text-[#321327]"
+                    className="absolute right-3.5 sm:right-4 top-1/2 -translate-y-1/2 text-[#321327]/55 hover:text-[#321327]"
                     aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                   >
                     {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -777,17 +777,17 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
                 <p className="text-[11px] text-red-600">{passwordErrors.server}</p>
               )}
 
-              <div className="rounded-2xl bg-[#fbeef6] text-[#b01373] px-4 py-3 flex items-center gap-2">
+              <div className="rounded-xl sm:rounded-2xl bg-[#fbeef6] text-[#b01373] px-3.5 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2">
                 <Shield size={14} />
-                <p className="text-[11px] font-semibold">For your security, you'll be signed out from all devices</p>
+                <p className="text-[10px] sm:text-[11px] font-semibold">For your security, you'll be signed out from all devices</p>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-1">
+              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 pt-1">
                 <button
                   type="button"
                   onClick={handlePasswordModalClose}
                   disabled={passwordLoading}
-                  className="h-11 min-w-[120px] px-5 rounded-full border border-[#321327]/20 text-[11px] font-bold text-[#321327] uppercase tracking-[0.14em] hover:bg-[#FAF9FA] transition-colors disabled:opacity-50"
+                  className="h-10 sm:h-11 min-w-0 sm:min-w-[120px] w-full sm:w-auto px-5 rounded-full border border-[#321327]/20 text-[10px] sm:text-[11px] font-bold text-[#321327] uppercase tracking-[0.12em] sm:tracking-[0.14em] hover:bg-[#FAF9FA] transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -795,7 +795,7 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
                   type="button"
                   onClick={handlePasswordReset}
                   disabled={passwordLoading}
-                  className="h-11 min-w-[190px] px-6 rounded-full bg-gradient-to-r from-[#8f0f5d] to-[#bf1d7c] text-white text-[11px] font-bold uppercase tracking-[0.14em] hover:brightness-105 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                  className="h-10 sm:h-11 min-w-0 sm:min-w-[190px] w-full sm:w-auto px-6 rounded-full bg-gradient-to-r from-[#8f0f5d] to-[#bf1d7c] text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.12em] sm:tracking-[0.14em] hover:brightness-105 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
                 >
                   {passwordLoading ? (
                     <Loader2 size={13} className="animate-spin" />
