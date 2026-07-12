@@ -887,23 +887,10 @@ export default function Customers() {
                       </td>
 
                       <td className="px-2 sm:px-4 py-2.5 align-middle">
-                        {opportunity.tooltip ? (
-                          <div className="group relative inline-block cursor-help">
-                            <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-extrabold whitespace-nowrap ${opportunity.badgeClass}`}>
-                              {opportunity.icon}
-                              <span className="hidden sm:inline">{opportunity.type}</span>
-                            </span>
-                            <div className="invisible group-hover:visible absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs bg-neutral-900 text-white text-[10px] rounded-lg px-3 py-2 pointer-events-none whitespace-normal break-words dark:bg-neutral-800 shadow-lg">
-                              {opportunity.tooltip}
-                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-800" />
-                            </div>
-                          </div>
-                        ) : (
-                          <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-extrabold whitespace-nowrap ${opportunity.badgeClass}`}>
-                            {opportunity.icon}
-                            <span className="hidden sm:inline">{opportunity.type}</span>
-                          </span>
-                        )}
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-extrabold whitespace-nowrap ${opportunity.badgeClass}`}>
+                          {opportunity.icon}
+                          <span className="hidden sm:inline">{opportunity.type}</span>
+                        </span>
                       </td>
 
   
