@@ -824,13 +824,13 @@ export default function Customers() {
           <table className="w-full min-w-180 border-collapse table-fixed text-left">
             <thead className="sticky top-0 z-20 bg-[#fff8fc] border-b border-neutral-200 dark:bg-neutral-800 dark:border-neutral-700">
               <tr className="text-[11px] uppercase tracking-wide text-neutral-500">
-                <th className="w-[16%] px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Customer</th>
-                <th className="w-[22%] px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Contact</th>
-                <th className="w-[10%] px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Orders</th>
-                <th className="w-[14%] px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Lifetime Spend</th>
-                <th className="w-[12%] px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Current Cart</th>
-                <th className="w-[12%] px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Checkout Step</th>
-                <th className="w-[14%] px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Status</th>
+                <th className="w-[16%] px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-normal sm:whitespace-nowrap leading-tight">Customer</th>
+                <th className="w-[22%] px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-normal sm:whitespace-nowrap leading-tight">Contact</th>
+                <th className="w-[10%] px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-normal sm:whitespace-nowrap leading-tight">Orders</th>
+                <th className="w-[14%] px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-normal sm:whitespace-nowrap leading-tight">Lifetime Spend</th>
+                <th className="w-[12%] px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-normal sm:whitespace-nowrap leading-tight">Current Cart</th>
+                <th className="w-[12%] px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-normal sm:whitespace-nowrap leading-tight">Checkout Step</th>
+                <th className="w-[14%] px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-normal sm:whitespace-nowrap leading-tight">Status</th>
               </tr>
             </thead>
             <tbody>
