@@ -55,6 +55,11 @@
    STANDARDIZED TYPOGRAPHY SYSTEM
    ────────────────────────────────────────────────────────────────────– */
 @layer base {
+  .admin-font-scope {
+    --font-sans: var(--font-admin);
+    font-family: var(--font-admin), sans-serif;
+  }
+
   /* Headings - All Bold */
   h1 {
     @apply text-4xl md:text-5xl lg:text-6xl font-serif font-black tracking-tight leading-tight;

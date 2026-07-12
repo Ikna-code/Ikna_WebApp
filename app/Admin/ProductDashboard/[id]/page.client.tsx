@@ -715,7 +715,7 @@ export default function EditProductPageClient({
       <div className="flex items-center justify-between gap-3 sm:gap-4">
         <div>
           <p className="text-xs font-semibold text-neutral-400">Products &gt; Edit Product</p>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-[#2a1031] sm:text-4xl">Edit Product</h1>
+          <h1 className="mt-1 text-2xl font-black text-[#840d5c]">Edit Product</h1>
         </div>
         <button
           type="button"

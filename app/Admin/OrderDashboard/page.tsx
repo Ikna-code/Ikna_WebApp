@@ -379,7 +379,7 @@ export default function Orders() {
             <tbody className={`divide-y divide-neutral-100 text-neutral-600 font-medium transition-all duration-200 ${selectedStatusOrder ? 'pb-32' : ''}`}>
               {paginatedOrders.map((o) => (
                 <tr key={o.id} className="h-12.25 hover:bg-neutral-50 transition">
-                  <td className="py-3 px-6 font-mono font-bold text-neutral-800 truncate">{o.id}</td>
+                  <td className="py-3 px-6 font-bold tabular-nums tracking-[0.08em] text-neutral-800 truncate">{o.id}</td>
                   <td className="py-3 px-4 truncate">{o.date}</td>
                   <td className="py-3 px-4 text-neutral-800 font-semibold truncate">{o.customer}</td>
                   <td className="py-3 px-4 truncate">{o.items}</td>

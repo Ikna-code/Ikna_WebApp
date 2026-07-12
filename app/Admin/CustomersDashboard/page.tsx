@@ -807,9 +807,9 @@ export default function Customers() {
       )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 sm:gap-2 w-full">
-        <KpiCard title="Total Customers" value={summary.totalCustomers.toLocaleString('en-IN')} tone="pink" icon={<Users className="h-5 w-5" />} description="All registered customers" />
-        <KpiCard title="Customers with Orders" value={summary.customersWithOrders.toLocaleString('en-IN')} tone="violet" icon={<CheckCircle2 className="h-5 w-5" />} description="Placed at least one order" />
-        <KpiCard title="Customers in Checkout" value={summary.customersInCheckout.toLocaleString('en-IN')} tone="sky" icon={<ShoppingCart className="h-5 w-5" />} description="Currently in checkout" />
+        <KpiCard title="Customers" value={summary.totalCustomers.toLocaleString('en-IN')} tone="pink" icon={<Users className="h-5 w-5" />} description="All registered customers" />
+        <KpiCard title="Buyers" value={summary.customersWithOrders.toLocaleString('en-IN')} tone="violet" icon={<CheckCircle2 className="h-5 w-5" />} description="Placed at least one order" />
+        <KpiCard title="In Checkout" value={summary.customersInCheckout.toLocaleString('en-IN')} tone="sky" icon={<ShoppingCart className="h-5 w-5" />} description="Currently in checkout" />
         <KpiCard title="Abandoned Carts" value={summary.abandonedCarts.toLocaleString('en-IN')} tone="rose" icon={<AlertCircle className="h-5 w-5" />} description="Cart left without order" />
       </div>
 

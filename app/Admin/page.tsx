@@ -279,7 +279,7 @@ export default function Dashboard() {
       <head>
         <meta http-equiv="content-type" content="text/plain; charset=UTF-8"/>
         <style>
-          table { border-collapse: collapse; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+          table { border-collapse: collapse; }
           td { border: 1px solid #e2e8f0; padding: 6px 12px; font-size: 11pt; color: #334155; }
           
           /* Title styling */

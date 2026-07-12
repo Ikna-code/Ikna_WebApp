@@ -1,11 +1,19 @@
 import type { ReactNode } from 'react';
+import { Inter } from 'next/font/google';
 import { redirect } from 'next/navigation';
 import { Role } from '@prisma/client';
 import Sidebar from './Analytics/Sidebar';
 import { ensureCurrentDbUser } from '@/backend/lib/ensureDbUser';
 import AdminSessionGuard from './AdminSessionGuard';
+import AdminFontScope from './AdminFontScope';
 
 export const dynamic = 'force-dynamic';
+
+const adminFont = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-admin',
+});
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   let dbUser;
@@ -20,7 +28,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   }
 
   return (
-    <div className="flex min-h-dvh w-full bg-[#f8eef4] text-[#2f1126] antialiased overflow-x-hidden isolate">
+    <div className={`${adminFont.variable} [--font-sans:var(--font-admin)] flex min-h-dvh w-full overflow-x-hidden bg-[#f8eef4] font-sans text-[#2f1126] antialiased isolate`}>
+      <AdminFontScope fontVariableClass={adminFont.variable} />
       <AdminSessionGuard />
       
       <Sidebar adminUser={dbUser} />

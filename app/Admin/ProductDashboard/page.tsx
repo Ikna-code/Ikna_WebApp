@@ -2223,7 +2223,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
           <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
             Global Admin
           </span>
-          <h1 className="text-4xl font-black tracking-tight text-[#2a1031]">Product Management</h1>
+          <h1 className="text-2xl font-black text-[#840d5c]">Product Management</h1>
         </div>
         <div className="hidden w-full flex-nowrap items-center gap-3 overflow-x-auto pb-1 md:flex md:w-auto">
           {/* <div className="flex min-w-42.5 items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 shadow-sm">
@@ -2410,7 +2410,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                   <img src={getImageUrl(p.image)} className="h-12 w-12 rounded-xl border border-neutral-200 object-cover" alt={p.name} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-neutral-800">{p.name}</p>
-                    <p className="mt-0.5 text-[10px] font-mono text-neutral-500">SKU {p.sku}</p>
+                    <p className="mt-0.5 text-[10px] font-semibold tabular-nums tracking-[0.08em] text-neutral-500">SKU {p.sku}</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       <span className="rounded-md bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold text-neutral-700">{p.category}</span>
                       <span className="rounded-md bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold text-neutral-700">{p.color}</span>
@@ -2490,7 +2490,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-2 align-middle font-mono font-bold text-neutral-800 whitespace-nowrap">{p.sku}</td>
+                    <td className="py-4 px-2 align-middle font-bold tabular-nums tracking-[0.08em] text-neutral-800 whitespace-nowrap">{p.sku}</td>
                     <td className="py-4 px-2 align-middle">
                       {(() => {
                         const stockPresentation = getStockPresentation(p.stock);
@@ -3436,7 +3436,7 @@ onClick={() => {
                           onChange={(e) => setNewProductDetail({ ...newProductDetail, colorHex: e.target.value })}
                           placeholder="#000000"
                           maxLength={7}
-                          className="w-full bg-transparent text-xs font-mono outline-none text-neutral-700 uppercase"
+                          className="w-full bg-transparent text-xs font-semibold tabular-nums tracking-[0.08em] text-neutral-700 uppercase outline-none"
                         />
                       </div>
                     </div>
@@ -3462,7 +3462,7 @@ onClick={() => {
                         style={{ backgroundColor: newProductDetail.colorHex }}
                         className="w-full h-9 rounded-xl border border-neutral-300 shadow-inner flex items-center justify-center transition-all duration-200"
                       >
-                        <span className="text-[9px] font-mono mix-blend-difference text-white font-extrabold uppercase drop-shadow-sm">
+                        <span className="text-[9px] font-extrabold tabular-nums tracking-[0.12em] uppercase text-white mix-blend-difference drop-shadow-sm">
                           {newProductDetail.colorHex}
                         </span>
                       </div>
@@ -3844,7 +3844,7 @@ onClick={() => {
                           onChange={(e) => setEditProductDetail({ ...editProductDetail, colorHex: e.target.value })}
                           placeholder="#000000"
                           maxLength={7}
-                          className="w-full bg-transparent text-xs font-mono outline-none text-neutral-700 uppercase"
+                          className="w-full bg-transparent text-xs font-semibold tabular-nums tracking-[0.08em] text-neutral-700 uppercase outline-none"
                         />
                       </div>
                     </div>
@@ -3870,7 +3870,7 @@ onClick={() => {
                         style={{ backgroundColor: editProductDetail.colorHex }}
                         className="w-full h-9 rounded-xl border border-neutral-300 shadow-inner flex items-center justify-center transition-all duration-200"
                       >
-                        <span className="text-[9px] font-mono mix-blend-difference text-white font-extrabold uppercase drop-shadow-sm">
+                        <span className="text-[9px] font-extrabold tabular-nums tracking-[0.12em] uppercase text-white mix-blend-difference drop-shadow-sm">
                           {editProductDetail.colorHex}
                         </span>
                       </div>

@@ -107,7 +107,8 @@ export default function Header({ startDate, endDate, onDateChange, onExport, rep
   return (
     <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-[#2f1126]">Sales Analytics</h1>
+        <span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">Analytics</span>
+        <h1 className="text-2xl font-black text-[#840d5c]">Sales Analytics</h1>
         <p className="text-xs text-[#8a5f79] mt-0.5">Track your business performance and sales insights</p>
       </div>
       

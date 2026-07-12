@@ -267,10 +267,10 @@ export default async function AdminReviewsPage({
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-[#840d5c]">
               <MessageSquareWarning className="h-5 w-5" />
-              <p className="text-[10px] font-bold uppercase tracking-[0.3em]">Owner review board</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider">Owner review board</p>
             </div>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-[#2f1126] md:text-4xl">Reviews & Issues</h1>
+              <h1 className="text-2xl font-black text-[#840d5c]">Reviews & Issues</h1>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#8a5f79]">
                 Every review is collected here for the owner to inspect product feedback, spot serious issues, and
                 respond quickly when customers raise concerns.
