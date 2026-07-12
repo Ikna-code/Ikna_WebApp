@@ -820,9 +820,9 @@ export default function Customers() {
       )}
 
       <div className="rounded-3xl border border-neutral-200 bg-white shadow-sm overflow-hidden dark:bg-neutral-900 dark:border-neutral-700 w-full min-w-0">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-205 border-collapse table-fixed text-left">
-            {/* <colgroup>
+        <div className="overflow-x-auto w-full">
+          <table className="w-full min-w-300 border-collapse table-fixed text-left">
+            <colgroup>
               <col className="w-[16%]" />
               <col className="w-[22%]" />
               <col className="w-[10%]" />
@@ -830,9 +830,9 @@ export default function Customers() {
               <col className="w-[12%]" />
               <col className="w-[12%]" />
               <col className="w-[14%]" />
-            </colgroup> */}
-            <thead className="sticky top-0 z-20 bg-[#fff8fc] border-b border-neutral-200 dark:bg-neutral-800 dark:border-neutral-700 w-full min-w-0">
-              <tr className="text-[11px] uppercase tracking-wide text-neutral-500 w-full min-w-0">
+            </colgroup>
+            <thead className="sticky top-0 z-20 bg-[#fff8fc] border-b border-neutral-200 dark:bg-neutral-800 dark:border-neutral-700">
+              <tr className="text-[11px] uppercase tracking-wide text-neutral-500">
                 <th className="px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Customer</th>
                 <th className="px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Contact</th>
                 <th className="px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Orders</th>
@@ -845,8 +845,8 @@ export default function Customers() {
             <tbody>
               {isLoading &&
                 Array.from({ length: 7 }).map((_, idx) => (
-                  <tr key={`skeleton-${idx}`} className="border-b border-neutral-100 dark:border-neutral-800 w-full min-w-0">
-                    <td className="px-2 sm:px-4 py-2.5 align-middle min-w-0" colSpan={7}>
+                  <tr key={`skeleton-${idx}`} className="border-b border-neutral-100 dark:border-neutral-800">
+                    <td className="px-2 sm:px-4 py-2.5 align-middle" colSpan={7}>
                       <div className="h-8 rounded-lg bg-neutral-100 animate-pulse dark:bg-neutral-800 w-full min-w-0" />
                     </td>
                   </tr>
@@ -862,11 +862,11 @@ export default function Customers() {
                     <tr
                       key={row.id}
                       onClick={() => setSelectedCustomerId(row.id)}
-                      className={`border-b border-neutral-100 transition-colors hover:bg-[#fcf4f8] cursor-pointer dark:border-neutral-800 dark:hover:bg-neutral-800 w-full min-w-0 ${
+                      className={`border-b border-neutral-100 transition-colors hover:bg-[#fcf4f8] cursor-pointer dark:border-neutral-800 dark:hover:bg-neutral-800 ${
                         row.isAbandoned ? 'bg-rose-50/70 dark:bg-rose-950/20' : ''
                       }`}
                     >
-                      <td className="px-2 sm:px-4 py-2.5 align-middle min-w-0">
+                      <td className="px-2 sm:px-4 py-2.5 align-middle">
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="min-w-0">
                             <p className="text-sm font-extrabold text-neutral-800 dark:text-neutral-100 truncate">{row.name}</p>
@@ -874,7 +874,7 @@ export default function Customers() {
                         </div>
                       </td>
 
-                      <td className="px-2 sm:px-4 py-2.5 align-middle text-xs text-neutral-600 dark:text-neutral-300 min-w-0">
+                      <td className="px-2 sm:px-4 py-2.5 align-middle text-xs text-neutral-600 dark:text-neutral-300">
                         <div className="flex flex-col justify-center leading-tight">
                           <p className="font-semibold truncate">{row.email}</p>
                           <p className="truncate text-[11px] mt-0.5">{row.phone}</p>
@@ -889,13 +889,13 @@ export default function Customers() {
                         {row.currentCartValue > 0 ? formatCurrency(row.currentCartValue) : '—'}
                       </td>
 
-                      <td className="px-2 sm:px-4 py-2.5 align-middle min-w-0">
+                      <td className="px-2 sm:px-4 py-2.5 align-middle">
                         <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-extrabold whitespace-nowrap ${stepClass}`}>
                           {labelize(row.checkoutStep)}
                         </span>
                       </td>
 
-                      <td className="px-2 sm:px-4 py-2.5 align-middle min-w-0">
+                      <td className="px-2 sm:px-4 py-2.5 align-middle">
                         {opportunity.tooltip ? (
                           <div className="group relative inline-block cursor-help">
                             <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-extrabold whitespace-nowrap ${opportunity.badgeClass}`}>
@@ -922,7 +922,7 @@ export default function Customers() {
 
               {!isLoading && rows.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-16 text-center w-full min-w-0">
+                  <td colSpan={7} className="px-4 py-16 text-center">
                     <div className="mx-auto max-w-sm">
                       <Users className="mx-auto h-10 w-10 text-neutral-300" />
                       <p className="mt-3 text-sm font-bold text-neutral-700 dark:text-neutral-200">
