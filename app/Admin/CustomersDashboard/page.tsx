@@ -821,7 +821,7 @@ export default function Customers() {
 
       <div className="rounded-3xl border border-neutral-200 bg-white shadow-sm overflow-hidden dark:bg-neutral-900 dark:border-neutral-700 w-full min-w-0">
         <div className="w-full overflow-x-auto">
-          <table className="w-full border-collapse table-fixed text-left">
+          <table className="w-full min-w-180 border-collapse table-fixed text-left">
             <thead className="sticky top-0 z-20 bg-[#fff8fc] border-b border-neutral-200 dark:bg-neutral-800 dark:border-neutral-700">
               <tr className="text-[11px] uppercase tracking-wide text-neutral-500">
                 <th className="w-[16%] px-2.5 sm:px-3.5 py-2.5 align-middle font-extrabold text-left whitespace-nowrap">Customer</th>
