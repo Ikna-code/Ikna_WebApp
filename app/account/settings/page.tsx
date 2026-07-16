@@ -127,8 +127,8 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-white rounded-3xl border border-[#840d5c]/10 shadow-sm overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-[#FAF3F5] flex items-center gap-3">
+    <section className="bg-white rounded-2xl sm:rounded-3xl border border-[#840d5c]/10 shadow-sm overflow-hidden">
+      <div className="px-4 py-3 md:px-5 md:py-3.5 border-b border-[#FAF3F5] flex items-center gap-3">
         <div className="p-2 bg-[#F9F3F5] rounded-lg text-[#840d5c]">
           <Icon size={16} />
         </div>
@@ -136,7 +136,7 @@ function SectionCard({
           {title}
         </h3>
       </div>
-      <div className="px-4 py-4">{children}</div>
+      <div className="px-4 py-4 md:px-5 md:py-5">{children}</div>
     </section>
   );
 }
@@ -441,12 +441,12 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
 
   /* ─── render ───────────────────────────────────────────────────────────── */
   return (
-    <div className="max-w-3xl mx-auto space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="w-full mx-auto space-y-4 sm:space-y-5 md:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
       {/* PERSONAL INFORMATION */}
       <SectionCard icon={User} title="Personal Information">
         <form onSubmit={handleProfileUpdate} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <FloatingInput
               id="firstName"
               label="First Name"
@@ -488,7 +488,7 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
         <div className="space-y-3">
 
           {/* email + verification */}
-          <div className="flex items-center justify-between p-3 bg-[#FAF9FA] border border-[#321327]/5 rounded-2xl gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-[#FAF9FA] border border-[#321327]/5 rounded-2xl gap-3">
             <div className="min-w-0">
               <p className="text-[9px] font-bold text-[#321327]/40 uppercase tracking-widest">
                 Email Address
@@ -509,7 +509,7 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
           </div>
 
           {/* Google connection status */}
-          <div className="flex items-center justify-between p-3 bg-[#FAF9FA] border border-[#321327]/5 rounded-2xl">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-[#FAF9FA] border border-[#321327]/5 rounded-2xl gap-3">
             <div className="flex items-center gap-2.5">
               {/* Google G icon */}
               <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" aria-hidden="true">
@@ -538,7 +538,7 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
 
           {/* Password section */}
           <div className="p-3 bg-[#FAF9FA] border border-[#321327]/5 rounded-2xl">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-[12px] font-semibold text-[#321327]">Password</p>
                 {hasEmailProvider ? (
@@ -561,7 +561,7 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
                     setPasswordModalOpen(true);
                   }}
                   suppressHydrationWarning
-                  className="shrink-0 border border-[#321327]/10 px-4 py-2 rounded-xl text-[10px] font-bold text-[#321327] hover:bg-white transition-all uppercase tracking-widest"
+                  className="w-full sm:w-auto shrink-0 border border-[#321327]/10 px-4 py-2 rounded-xl text-[10px] font-bold text-[#321327] hover:bg-white transition-all uppercase tracking-widest"
                 >
                   Reset Password
                 </button>
@@ -647,7 +647,7 @@ const UserSettings = ({ dbUser, onUpdate }: { dbUser: DbUser; onUpdate: () => vo
             disabled={passwordLoading}
           />
 
-          <div className="relative w-full max-w-[520px] max-h-[92vh] overflow-y-auto bg-white border border-[#321327]/10 rounded-3xl sm:rounded-[28px] shadow-[0_24px_60px_rgba(38,13,35,0.22)]">
+          <div className="relative w-full max-w-[560px] max-h-[92vh] overflow-y-auto bg-white border border-[#321327]/10 rounded-3xl sm:rounded-[28px] shadow-[0_24px_60px_rgba(38,13,35,0.22)]">
             <div className="px-4 sm:px-8 pt-4 sm:pt-6 pb-4 sm:pb-5 border-b border-[#321327]/10">
               <button
                 type="button"
