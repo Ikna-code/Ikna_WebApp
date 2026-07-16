@@ -3,7 +3,10 @@ import { OrderStatus, PaymentStatus, Role } from '@prisma/client';
 import { db } from '@/backend/lib/db';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { restoreOrderInventory } from '@/backend/services/inventory';
-import { sendOrderConfirmationForOrder } from '@/backend/services/orderNotifications';
+import {
+  sendOrderConfirmationForOrder,
+  sendOrderStatusUpdateForOrder,
+} from '@/backend/services/orderNotifications';
 import { runPostPaymentFulfillment } from '@/backend/services/postPaymentFulfillment';
 
 const ALLOWED_STATUSES = new Set<OrderStatus>([
@@ -57,6 +60,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
   try {
     let paymentWasAlreadyCompleted = false;
 
+    let shouldSendStatusUpdate = false;
+
     const updatedOrder = await db.$transaction(async (tx) => {
       const existingOrder = await tx.order.findUnique({
         where: { id: orderId },
@@ -69,6 +74,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
 
       paymentWasAlreadyCompleted = Boolean(
         existingOrder.paidAt || existingOrder.payment?.status === PaymentStatus.COMPLETED
+      );
+
+      shouldSendStatusUpdate = Boolean(
+        nextStatus && nextStatus !== existingOrder.status &&
+        nextStatus !== OrderStatus.PAID &&
+        nextPaymentStatus !== PaymentStatus.COMPLETED
       );
 
       if (nextStatus === OrderStatus.CANCELLED && existingOrder.status !== OrderStatus.CANCELLED) {
@@ -152,6 +163,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
           error: fulfillmentError,
         });
       }
+    } else if (shouldSendStatusUpdate) {
+      await sendOrderStatusUpdateForOrder(updatedOrder.id).catch((error) => {
+        console.error('[admin-orders] Order status email failed.', {
+          orderId: updatedOrder.id,
+          error,
+        });
+      });
     }
 
     const refreshedOrder = await db.order.findUnique({

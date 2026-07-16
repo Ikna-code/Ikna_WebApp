@@ -3,6 +3,29 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY);
 const fromEmail = process.env.RESEND_FROM_EMAIL?.trim() || 'IKNA <onboarding@resend.dev>';
 const abandonedCartReminderFromEmail = 'IKNA <no-reply@iknaonline.com>';
+const adminNotificationEmail = process.env.ADMIN_NOTIFICATION_EMAIL?.trim() || 'admin@iknaonline.com';
+
+function formatCurrency(rawValue: unknown): string {
+  return Number(rawValue ?? 0).toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function getCustomerName(rawName: unknown, email: string): string {
+  const name = String(rawName || '').trim();
+  if (name) return name;
+  return email.split('@')[0] || 'Customer';
+}
+
+function toTitleCase(rawValue: unknown): string {
+  return String(rawValue || '')
+    .toLowerCase()
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((word) => word[0].toUpperCase() + word.slice(1))
+    .join(' ');
+}
 
 function getCustomerPaymentMethodLabel(rawMethod: unknown): string {
   const method = String(rawMethod || '').trim().toUpperCase();
@@ -20,10 +43,7 @@ export const emailService = {
    */
   sendOrderConfirmation: async (to: string, orderDetails: any) => {
     try {
-      const total = Number(orderDetails?.total || 0).toLocaleString('en-IN', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
+      const total = formatCurrency(orderDetails?.total);
       const paymentMethod = getCustomerPaymentMethodLabel(orderDetails?.paymentMethod);
       const paymentStatus = String(orderDetails?.paymentStatus || 'PENDING').trim().toUpperCase();
 
@@ -48,7 +68,98 @@ export const emailService = {
       });
       return { success: true };
     } catch (error) {
-      console.error("Email failed:", error);
+      console.error('Email failed:', error);
+      return { success: false };
+    }
+  },
+
+  sendOrderPlaced: async (to: string, orderDetails: any) => {
+    try {
+      const total = formatCurrency(orderDetails?.total);
+      const paymentMethod = getCustomerPaymentMethodLabel(orderDetails?.paymentMethod);
+
+      await resend.emails.send({
+        from: fromEmail,
+        to: [to],
+        subject: `Order Received #${orderDetails.id}`,
+        html: `
+          <div style="font-family:Arial,sans-serif;line-height:1.6;color:#321327;max-width:560px;margin:0 auto;">
+            <h2 style="margin:0 0 12px 0;color:#840d5c;">Your order is confirmed</h2>
+            <p style="margin:0 0 12px 0;">Hi ${orderDetails?.customerName || 'Customer'}, we have received your order successfully.</p>
+            <div style="background:#faf3f7;border:1px solid #f0d6e2;border-radius:12px;padding:14px 16px;margin:12px 0;">
+              <p style="margin:0 0 8px 0;font-weight:700;">Order #${orderDetails.id}</p>
+              <p style="margin:0 0 6px 0;">Items: ${Number(orderDetails?.itemCount || 0)}</p>
+              <p style="margin:0 0 6px 0;">Payment Type: ${paymentMethod}</p>
+              <p style="margin:0;font-weight:700;">Total: ₹${total}</p>
+            </div>
+            <p style="margin:14px 0 0 0;color:#4b2a3f;">We will update you on shipment and delivery status as your order moves forward.</p>
+          </div>
+        `,
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Order placed email failed:', error);
+      return { success: false };
+    }
+  },
+
+  sendOrderStatusUpdate: async (to: string, orderDetails: any) => {
+    try {
+      const statusLabel = toTitleCase(orderDetails?.status);
+
+      await resend.emails.send({
+        from: fromEmail,
+        to: [to],
+        subject: `Order #${orderDetails.id} Status Update: ${statusLabel}`,
+        html: `
+          <div style="font-family:Arial,sans-serif;line-height:1.6;color:#321327;max-width:560px;margin:0 auto;">
+            <h2 style="margin:0 0 12px 0;color:#840d5c;">Order Update</h2>
+            <p style="margin:0 0 12px 0;">Hi ${orderDetails?.customerName || 'Customer'}, the status of your order has changed.</p>
+            <div style="background:#faf3f7;border:1px solid #f0d6e2;border-radius:12px;padding:14px 16px;margin:12px 0;">
+              <p style="margin:0 0 8px 0;font-weight:700;">Order #${orderDetails.id}</p>
+              <p style="margin:0 0 6px 0;">Current Status: ${statusLabel}</p>
+              ${orderDetails?.trackingUrl ? `<p style="margin:0 0 6px 0;">Tracking: <a href="${orderDetails.trackingUrl}" style="color:#840d5c;text-decoration:none;">Track your shipment</a></p>` : ''}
+            </div>
+            <p style="margin:14px 0 0 0;color:#4b2a3f;">If you have any questions, reply to this email and our team will help you.</p>
+          </div>
+        `,
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Order status update email failed:', error);
+      return { success: false };
+    }
+  },
+
+  sendAdminOrderNotification: async (to: string, details: any) => {
+    try {
+      const total = formatCurrency(details?.total);
+      const paymentMethod = getCustomerPaymentMethodLabel(details?.paymentMethod);
+      const paymentStatus = String(details?.paymentStatus || 'PENDING').trim().toUpperCase();
+
+      await resend.emails.send({
+        from: fromEmail,
+        to: [to],
+        subject: `New order placed (#${details.id}) - ${paymentMethod}`,
+        html: `
+          <div style="font-family:Arial,sans-serif;line-height:1.6;color:#321327;max-width:560px;margin:0 auto;">
+            <h2 style="margin:0 0 12px 0;color:#840d5c;">New order notification</h2>
+            <p style="margin:0 0 12px 0;">A new order has been placed on IKNA.</p>
+            <div style="background:#faf3f7;border:1px solid #f0d6e2;border-radius:12px;padding:14px 16px;margin:12px 0;">
+              <p style="margin:0 0 8px 0;font-weight:700;">Order #${details.id}</p>
+              <p style="margin:0 0 6px 0;">Customer: ${details?.customerName || 'Unknown'}</p>
+              <p style="margin:0 0 6px 0;">Customer Email: ${details?.customerEmail || 'Unknown'}</p>
+              <p style="margin:0 0 6px 0;">Payment Type: ${paymentMethod}</p>
+              <p style="margin:0 0 6px 0;">Payment Status: ${paymentStatus}</p>
+              <p style="margin:0;font-weight:700;">Total: ₹${total}</p>
+            </div>
+          </div>
+        `,
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Admin order notification email failed:', error);
       return { success: false };
     }
   },

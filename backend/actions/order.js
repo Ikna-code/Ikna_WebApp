@@ -13,6 +13,7 @@ import {
   markPaymentPending,
   trackCartActivity,
 } from '@/backend/services/customerCheckoutSession';
+import { sendOrderPlacedNotification } from '@/backend/services/orderNotifications';
 
 const toPlainData = (value) => JSON.parse(JSON.stringify(value));
 const TX_OPTIONS = { maxWait: 10000, timeout: 30000 };
@@ -630,6 +631,7 @@ console.log("Total Saved Saved in Audit Log:", totalDiscountAccumulator.toString
 
     revalidatePath("/orders");
     revalidatePath("/cart");
+
     const normalizedPaymentMethod = String(paymentMethod || 'ONLINE').trim().toUpperCase();
     if (normalizedPaymentMethod === 'COD') {
       await markCheckoutConverted(String(userId), result?.id || null).catch((error) => {
@@ -640,6 +642,15 @@ console.log("Total Saved Saved in Audit Log:", totalDiscountAccumulator.toString
         console.error('[checkout-session] payment pending tracking failed', error);
       });
     }
+
+    try {
+      await sendOrderPlacedNotification(result.id).catch((error) => {
+        console.error('[order-notifications] Order placed notification failed', error);
+      });
+    } catch (error) {
+      console.error('[order-notifications] Order placed notification error', error);
+    }
+
     return { success: true, order: result };
   } catch (error) {
     console.error("Secure Checkout Failure Mode:", error);

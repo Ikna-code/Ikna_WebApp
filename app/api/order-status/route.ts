@@ -4,7 +4,10 @@ import { OrderStatus } from '@prisma/client';
 import { NextResponse } from 'next/server';
 
 import { syncOrderState } from '@/backend/lib/orderSync';
-import { sendOrderConfirmationForOrder } from '@/backend/services/orderNotifications';
+import {
+  sendOrderConfirmationForOrder,
+  sendOrderStatusUpdateForOrder,
+} from '@/backend/services/orderNotifications';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -135,6 +138,10 @@ export async function POST(request: Request) {
 
   if ((order as any)?._paymentJustCompleted && order?.id) {
     await sendOrderConfirmationForOrder(order.id);
+  } else if (order?.id && mappedStatus.orderStatus) {
+    await sendOrderStatusUpdateForOrder(order.id).catch((error) => {
+      console.error('[order-status webhook] status update email failed.', { orderId: order.id, error });
+    });
   }
 
   return NextResponse.json({
