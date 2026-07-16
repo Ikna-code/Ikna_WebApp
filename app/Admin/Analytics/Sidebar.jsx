@@ -166,7 +166,7 @@ export default function Sidebar({ adminUser }) {
         />
       )}
 
-      <aside className={`fixed inset-0 left-0 z-50 flex w-screen max-w-screen flex-col justify-between bg-[#4b0333] p-5 text-[#f7edf4] shadow-2xl transition-transform duration-300 sm:max-w-80 sm:p-6 lg:inset-y-0 lg:right-auto lg:w-64 lg:max-w-none lg:translate-x-0 lg:shadow-none overflow-y-auto lg:overflow-hidden ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} `}>
+      <aside className={`fixed inset-0 left-0 z-50 flex w-screen max-w-screen flex-col justify-start bg-[#4b0333] p-5 text-[#f7edf4] shadow-2xl transition-transform duration-300 sm:max-w-80 sm:p-6 lg:inset-y-0 lg:right-auto lg:w-64 lg:max-w-none lg:translate-x-0 lg:shadow-none overflow-y-auto lg:overflow-hidden ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} `}>
         <div className="flex items-center justify-between lg:hidden mb-6">
           <span className="text-[10px] uppercase tracking-[0.24em] text-[#e7cfe0]">Admin Menu</span>
           <button

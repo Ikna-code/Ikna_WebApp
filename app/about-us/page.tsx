@@ -183,7 +183,7 @@ export default function AboutUs() {
           </Link>
         </div>
 
-        <div className="relative h-[500px]  sm:w-[100%] md:w-[70%] lg:w-[70%] rounded-2xl overflow-hidden sm:left-[-68%]  md:left-[50%] lg:left-[28%] shadow-2xl">
+        <div className="relative h-[500px] sm:w-[100%] md:w-[70%] lg:w-[70%] rounded-2xl overflow-hidden sm:left-[-20%] md:left-0 lg:left-[28%] shadow-2xl">
           <Image 
             src="/images/About_2.png" 
             alt="Ikna Collection"

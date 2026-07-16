@@ -133,7 +133,7 @@ const ReviewSection = () => {
           {reviews.map((review) => (
             <div 
               key={review.id} 
-              className="min-w-full md:min-w-0 snap-center md:snap-start bg-white p-5 md:p-8 rounded-[2.5rem] shadow-[0_10px_40px_rgba(132,13,92,0.03)] border border-white space-y-4 md:space-y-6 h-full"
+              className="min-w-full md:min-w-0 snap-center md:snap-start bg-white p-5 md:p-6 rounded-[2.5rem] shadow-[0_10px_40px_rgba(132,13,92,0.03)] border border-white space-y-4 md:space-y-6 md:max-h-96 md:overflow-auto"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-col gap-2 md:gap-3">

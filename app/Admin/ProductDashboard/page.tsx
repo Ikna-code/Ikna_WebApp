@@ -2554,7 +2554,7 @@ const response = await fetch(`/api/admin/products/${editingProductId}`, {
                         </button>
 
                         {activeActionMenuProductId === p.id && (
-                          <div className="absolute right-2 top-12 z-20 w-36 rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl">
+                          <div className="absolute right-2 top-full z-20 mt-2 w-44 rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl">
                             <button
                               type="button"
                               onClick={() => openViewProductModal(p)}

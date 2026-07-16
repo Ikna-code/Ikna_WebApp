@@ -551,7 +551,7 @@ const ProductGrid = () => {
   const loading = !isProductsInitialized && products.length === 0;
 
   return (
-    <section className="bg-[#faf3f5] py-8 md:py-14 min-h-screen">
+    <section className="bg-[#faf3f5] py-8 md:py-14 min-h-0 md:min-h-screen">
       <div className="max-w-360 mx-auto px-3 md:px-8">
         {/* TITLE */}
         <div className="text-center mb-8 md:mb-12">
