@@ -26,6 +26,38 @@ const PerspectiveGallery = ({ products, children }) => {
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !containerRef.current) return;
+
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    if (prefersReducedMotion) return;
+
+    const container = containerRef.current;
+    const startY = window.scrollY;
+    const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    const targetY = Math.min(maxY, startY + container.offsetHeight - window.innerHeight);
+
+    if (targetY <= startY) return;
+
+    const duration = 10000;
+    const startTime = performance.now();
+    let frameId;
+
+    const step = (currentTime) => {
+      const progress = Math.min((currentTime - startTime) / duration, 1);
+      const eased = 0.5 - Math.cos(progress * Math.PI) / 2;
+      const nextY = startY + (targetY - startY) * eased;
+      window.scrollTo({ top: nextY });
+
+      if (progress < 1) {
+        frameId = window.requestAnimationFrame(step);
+      }
+    };
+
+    frameId = window.requestAnimationFrame(step);
+    return () => window.cancelAnimationFrame(frameId);
+  }, []);
   
   const HEADER_HEIGHT_PX = 80;
   const HEADER_HEIGHT = `${HEADER_HEIGHT_PX}px`;
