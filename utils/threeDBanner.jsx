@@ -40,7 +40,7 @@ const PerspectiveGallery = ({ products, children }) => {
 
     if (targetY <= startY) return;
 
-    const duration = 10000;
+    const duration = 5000;
     const startTime = performance.now();
     let frameId;
 
