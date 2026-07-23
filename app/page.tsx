@@ -3,16 +3,11 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ProductHero from '@/components/product/ProductHero';
 import DesktopSticky from '@/components/product/DesktopSticky';
-import ProductSelection from '@/components/product/ProductSelection';
-import VariantSwitcher from '@/components/product/VariantSwitcher';
 import QuizCard from '@/components/utility/QuizCard';
-import SizeChart from '@/components/utility/SizeChart';
 import ProblemSolver from '@/components/utility/ProblemSolver';
-import Review from '@/components/product/Review';
-import BannerSection from '@/components/product/BannerSection';
 import Banner from '@/components/product/Banner';
 import ProductGrid from '@/components/product/ProductGridClient';
-import IknaLoader from './iknaLoader/page';
+import ReviewSectionClient from '@/components/product/ReviewSectionClient';
 // import OpenBanner from '@/components/product/OpenBanner';
 
 
@@ -90,7 +85,7 @@ export default function Home() {
 
         {/* Customer Reviews Section */}
         <section className="pt-10 mt-10 md:pt-16 md:mt-16 border-t border-ikna-brown-light/30">
-          <Review />
+          <ReviewSectionClient />
         </section>
       </main>
 

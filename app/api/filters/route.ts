@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 const prisma = new PrismaClient();
 
@@ -126,7 +126,11 @@ export async function GET() {
       filterGroups: groupsByTypeId.get(type.id) || [],
     }));
 
-    return NextResponse.json(response);
+    return NextResponse.json(response, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+      },
+    });
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message || 'Failed to load filters' },

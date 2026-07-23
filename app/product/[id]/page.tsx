@@ -18,8 +18,9 @@ import {
   Gift,
 } from 'lucide-react';
 
-import ReviewSection from '@/app/reviews/page';
 import { getReviews } from '@/backend/actions/review';
+import ReviewSectionClient from '@/components/product/ReviewSectionClient';
+import LazySection from '@/components/utility/LazySection';
 import { useStore } from '@/store/useStore';
 import Footer from '@/components/layout/Footer';
 import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
@@ -1090,11 +1091,13 @@ const SingleProductPage = () => {
           </div>
 
           <div ref={reviewRef} className="scroll-mt-28 md:scroll-mt-32 lg:scroll-mt-36">
-            <ReviewSection
-              productId={productId}
-              openComposerSignal={reviewComposerSignal}
-              onSummaryChange={handleReviewSummaryChange}
-            />
+            <LazySection>
+              <ReviewSectionClient
+                productId={productId}
+                openComposerSignal={reviewComposerSignal}
+                onSummaryChange={handleReviewSummaryChange}
+              />
+            </LazySection>
           </div>
         </div>
       </main>

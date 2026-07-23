@@ -2,6 +2,8 @@ import { db } from '@/backend/lib/db';
 import { NextResponse } from 'next/server';
 import { serializeDecimal } from '@/backend/lib/serializeDecimal';
 
+export const revalidate = 300;
+
 // Use any-cast to work around stale Prisma TS types; actual isActive/isDeleted columns exist in DB.
 const dbProductAny = (db as any).product;
 
@@ -127,8 +129,7 @@ export async function GET() {
 
     return NextResponse.json(serializedProducts, {
       headers: {
-        // Product filters/badges can change frequently from Admin; always serve fresh payload.
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
       },
     });
   } catch (error) {

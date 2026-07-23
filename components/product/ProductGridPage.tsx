@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { LuFilter, LuSlidersHorizontal, LuX } from "react-icons/lu";
@@ -178,6 +178,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   const [selectedSubCategory, setSelectedSubCategory] = useState<string>("");
   const [selectedDynamicFilters, setSelectedDynamicFilters] = useState<Record<string, string>>({});
   const [filterMetadata, setFilterMetadata] = useState<any[]>([]);
+  const [hasLoadedFilterMetadata, setHasLoadedFilterMetadata] = useState(false);
   const [sortBy, setSortBy] = useState<string>("default");
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState<boolean>(false);
   const [isDesktopFilterDrawerOpen, setIsDesktopFilterDrawerOpen] = useState<boolean>(false);
@@ -278,25 +279,24 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
     return categoryMetadata.subCategories.map((sub: any) => sub.name).sort();
   }, [filterMetadata, selectedCategory]);
 
+  const loadFilterMetadata = useCallback(async () => {
+    if (hasLoadedFilterMetadata && filterMetadata.length) return;
+
+    try {
+      const response = await fetch('/api/filters', { next: { revalidate: 300 } });
+      if (!response.ok) return;
+      const payload = await response.json();
+      setFilterMetadata(Array.isArray(payload) ? payload : []);
+      setHasLoadedFilterMetadata(true);
+    } catch {
+      setFilterMetadata([]);
+      setHasLoadedFilterMetadata(true);
+    }
+  }, [filterMetadata.length, hasLoadedFilterMetadata]);
+
   useEffect(() => {
-    let isMounted = true;
-    const fetchFilterMetadata = async () => {
-      try {
-        const response = await fetch('/api/filters', { cache: 'no-store' });
-        if (!response.ok) return;
-        const payload = await response.json();
-        if (isMounted) {
-          setFilterMetadata(Array.isArray(payload) ? payload : []);
-        }
-      } catch {
-        if (isMounted) {
-          setFilterMetadata([]);
-        }
-      }
-    };
-    void fetchFilterMetadata();
-    return () => { isMounted = false; };
-  }, []);
+    void loadFilterMetadata();
+  }, [loadFilterMetadata]);
 
   useEffect(() => {
     setIsPortalReady(true);
@@ -581,6 +581,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   };
 
   const openMobileFilterDrawer = () => {
+    void loadFilterMetadata();
     setDraftSelectedCategory(selectedCategory);
     setDraftSelectedSubCategory(selectedSubCategory);
     setDraftSelectedDynamicFilters(selectedDynamicFilters);
@@ -589,6 +590,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   };
 
   const openDesktopFilterDrawer = () => {
+    void loadFilterMetadata();
     setDraftSelectedCategory(selectedCategory);
     setDraftSelectedSubCategory(selectedSubCategory);
     setDraftSelectedDynamicFilters(selectedDynamicFilters);

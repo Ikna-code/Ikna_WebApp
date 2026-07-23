@@ -39,8 +39,8 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
     const fetchCategories = async () => {
       try {
         const [filtersRes, productsRes] = await Promise.all([
-          fetch('/api/filters', { cache: 'no-store' }),
-          fetch('/api/products', { cache: 'no-store' }),
+          fetch('/api/filters', { next: { revalidate: 300 } }),
+          fetch('/api/products', { next: { revalidate: 300 } }),
         ]);
         if (!filtersRes.ok) return;
         const filtersData = await filtersRes.json();

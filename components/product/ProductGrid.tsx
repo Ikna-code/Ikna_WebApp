@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback, memo } from "react";
 import Image from "next/image";
 import { MdVerified } from "react-icons/md";
 import { FaHeart, FaRegHeart } from "react-icons/fa";
@@ -16,20 +16,12 @@ import {
 } from "@/lib/productVariants";
 import { generateProductSlug } from "@/lib/seo";
 
+const BADGE_GROUP_SLUGS = new Set(['badges', 'tags', 'status', 'product-filter']);
+const BADGE_GROUP_NAMES = new Set(['product filter', 'product filters', 'badges', 'tags', 'status']);
+
 // ================= PRODUCT CARD =================
 
-export const ProductCard = ({
-  product,
-  isWished,
-  onToggleWishlist,
-  userId,
-  swatches = [],
-  activeSwatchId,
-  onSwatchSelect,
-  isComboEligible = false,
-  titleOverride,
-  subtitleOverride,
-}: {
+export const ProductCard = memo(function ProductCard(props: {
   product: any;
   isWished: boolean;
   onToggleWishlist: (id: string) => void | Promise<void>;
@@ -40,14 +32,24 @@ export const ProductCard = ({
   isComboEligible?: boolean;
   titleOverride?: string;
   subtitleOverride?: string;
-}) => {
+}) {
+  const {
+    product,
+    isWished,
+    onToggleWishlist,
+    userId,
+    swatches = [],
+    activeSwatchId,
+    onSwatchSelect,
+    isComboEligible = false,
+    titleOverride,
+    subtitleOverride,
+  } = props;
   const [isPending, setIsPending] = useState(false);
   const [showHeartBurst, setShowHeartBurst] = useState(false);
   const router = useRouter();
 
-  const handleWishlistClick = async (
-    e: React.MouseEvent
-  ) => {
+  const handleWishlistClick = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
 
     if (!userId) {
@@ -69,10 +71,7 @@ export const ProductCard = ({
     } finally {
       setIsPending(false);
     }
-  };
-
-  const badgeGroupSlugs = new Set(['badges', 'tags', 'status', 'product-filter']);
-  const badgeGroupNames = new Set(['product filter', 'product filters', 'badges', 'tags', 'status']);
+  }, [onToggleWishlist, product.id, userId]);
 
   const productBadges = Array.isArray(product?.filters)
     ? product.filters
@@ -81,7 +80,7 @@ export const ProductCard = ({
           const groupSlug = String(group?.slug || '').trim().toLowerCase();
           const groupName = String(group?.displayName || group?.name || '').trim().toLowerCase();
 
-          if (!badgeGroupSlugs.has(groupSlug) && !badgeGroupNames.has(groupName)) {
+          if (!BADGE_GROUP_SLUGS.has(groupSlug) && !BADGE_GROUP_NAMES.has(groupName)) {
             return [];
           }
 
@@ -124,7 +123,7 @@ export const ProductCard = ({
     return deduped;
   }, [derivedBadgeLabels, productBadges]);
 
-  const getBadgeClassName = (badge: string) => {
+  const getBadgeClassName = useCallback((badge: string) => {
     const normalized = String(badge || '').trim().toLowerCase();
 
     if (normalized === 'new arrival') {
@@ -189,9 +188,9 @@ export const ProductCard = ({
       backdrop-blur-sm
       whitespace-nowrap
     `;
-  };
+  }, []);
 
-  const renderSwatch = (swatch: { id: string; label: string; color: string }) => {
+  const renderSwatch = useCallback((swatch: { id: string; label: string; color: string }) => {
     const isActive = swatch.id === activeSwatchId;
 
     return (
@@ -212,13 +211,17 @@ export const ProductCard = ({
         title={swatch.label}
       />
     );
-  };
+  }, [activeSwatchId, onSwatchSelect]);
 
   const currentPrice = Number(product?.price ?? 0);
   const originalPriceCandidate = Number(
     product?.originalPrice ?? product?.mrp ?? product?.compareAtPrice ?? product?.actualPrice ?? 0
   );
   const showOriginalPrice = Number.isFinite(originalPriceCandidate) && originalPriceCandidate > currentPrice;
+
+  const handleViewDetails = useCallback(() => {
+    router.push(`/product/${generateProductSlug(product)}`, { scroll: true });
+  }, [product, router]);
 
   return (
     <div
@@ -384,10 +387,7 @@ export const ProductCard = ({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            router.push(
-              `/product/${generateProductSlug(product)}`,
-              { scroll: true }
-            );
+            handleViewDetails();
           }}
           className="
             ikna-ripple
@@ -417,7 +417,7 @@ export const ProductCard = ({
       </div>
     </div>
   );
-};
+});
 
 // ================= MAIN GRID =================
 

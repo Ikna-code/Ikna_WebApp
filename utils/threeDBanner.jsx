@@ -1,5 +1,6 @@
 "use client";
 
+import Image from 'next/image';
 import { useRef, useState, useEffect } from 'react';
 import { motion, useScroll, useTransform, useSpring, useMotionValueEvent } from 'framer-motion';
 import { IMAGE_BASE_URL } from '@/public/constants/constants';
@@ -96,7 +97,7 @@ const PerspectiveGallery = ({ products, children }) => {
             }}
             className="absolute w-24 h-44 md:w-56 md:h-96 rounded-2xl overflow-hidden shadow-2xl border border-white/10 z-10"
           >
-            <img src={'/images/sample images/brown_modal.jpeg'} className="w-full h-full object-cover" alt="" />
+            <Image src={'/images/sample images/brown_modal.jpeg'} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" alt="" />
           </motion.div>
 
           {/* INNER LEFT (Middle layer) */}
@@ -107,7 +108,7 @@ const PerspectiveGallery = ({ products, children }) => {
             }}
             className="absolute w-24 h-44 md:w-56 md:h-96 rounded-2xl overflow-hidden shadow-2xl border border-white/20 z-20"
           >
-            <img src={'/images/sample images/Left_center.jpeg'} className="w-full h-full object-cover" alt="" />
+            <Image src={'/images/sample images/Left_center.jpeg'} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" alt="" />
           </motion.div>
 
           {/* CENTER CARD (Top priority layer) */}
@@ -117,7 +118,7 @@ const PerspectiveGallery = ({ products, children }) => {
             }}
             className="relative group w-24 h-44 md:w-56 md:h-96 rounded-2xl overflow-hidden border-2 border-[#ffbec6]/40 shadow-2xl z-30"
           >
-            <img src={'/images/sample images/Elevate_Center.png'} className="w-full h-full object-cover" alt="" />
+            <Image src={'/images/sample images/Elevate_Center.png'} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" alt="" priority />
             <div className="absolute inset-0 bg-gradient-to-t from-[#43012a] via-[#321327]/40 to-transparent" />
           </motion.div>
 
@@ -129,9 +130,11 @@ const PerspectiveGallery = ({ products, children }) => {
             }}
             className="absolute w-24 h-44 md:w-56 md:h-96 rounded-2xl overflow-hidden shadow-2xl border border-white/20 z-20"
           >
-            <img 
+            <Image 
               src={'/images/sample images/Right_center.jpeg'} 
-              className="w-full h-full object-cover" 
+              fill
+              sizes="(max-width: 768px) 100vw, 33vw"
+              className="object-cover" 
               alt={products[2]?.name} 
             />
           </motion.div>
@@ -144,7 +147,7 @@ const PerspectiveGallery = ({ products, children }) => {
             }}
             className="absolute w-24 h-44 md:w-56 md:h-96 rounded-2xl overflow-hidden shadow-2xl border border-white/10 z-10"
           >
-            <img src={'/images/sample images/IMG_1502.jpeg'} className="w-full h-full object-cover" alt="" />
+            <Image src={'/images/sample images/IMG_1502.jpeg'} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" alt="" />
           </motion.div>
         </div>
 
