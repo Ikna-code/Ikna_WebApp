@@ -7,7 +7,7 @@ import QuizCard from '@/components/utility/QuizCard';
 import ProblemSolver from '@/components/utility/ProblemSolver';
 import Banner from '@/components/product/Banner';
 import ProductGrid from '@/components/product/ProductGridClient';
-import ReviewSectionClient from '@/components/product/ReviewSectionClient';
+import Review from '@/components/product/Review';
 // import OpenBanner from '@/components/product/OpenBanner';
 
 
@@ -85,7 +85,7 @@ export default function Home() {
 
         {/* Customer Reviews Section */}
         <section className="pt-10 mt-10 md:pt-16 md:mt-16 border-t border-ikna-brown-light/30">
-          <ReviewSectionClient />
+          <Review />
         </section>
       </main>
 
