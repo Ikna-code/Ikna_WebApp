@@ -61,9 +61,16 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
                 const filterGroups = Array.isArray(item.filterGroups) ? item.filterGroups : [];
                 // Use first filter group (e.g. Comfort Type for Bras) as the submenu
                 const firstGroup = filterGroups[0] ?? null;
+                const categoryName = String(item.name || '');
                 return {
-                  name: String(item.name || ''),
-                  primaryFilterOptions: firstGroup?.filterOptions ?? [],
+                  name: categoryName,
+                  primaryFilterOptions: (firstGroup?.filterOptions ?? []).filter(
+                    (option: FilterOption) => {
+                      const label = option.displayLabel.trim().toLowerCase();
+                      return categoryName.trim().toLowerCase() !== 'bras'
+                        || (label !== 'wired' && label !== 'non-wired');
+                    }
+                  ),
                   primaryFilterGroupSlug: firstGroup?.slug ?? '',
                 };
               })
@@ -147,9 +154,7 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
                     {categoryMeta.map((cat) => (
                       <div key={cat.name} className="flex flex-col">
                         <span className="text-[10px] font-bold tracking-[0.18em] text-[#321327] uppercase px-2 py-2">
-                         {cat.name.toLowerCase() !== "non-wired"
-                          && cat.name.toLowerCase() !== "wired" 
-                          && cat.name}
+                          {cat.name}
                         </span>
 
                         {cat.primaryFilterOptions.length > 0 && (
@@ -199,9 +204,7 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
                   {categoryMeta.map((cat) => (
                      <div key={cat.name} className="flex flex-col">
                        <span className="text-[10px] font-bold tracking-[0.18em] text-[#321327] uppercase px-2 py-1.5">
-                         {cat.name.toLowerCase() !== "non-wired"
-                          && cat.name.toLowerCase() !== "wired" 
-                          && cat.name}
+                         {cat.name}
                        </span>
 
                        {cat.primaryFilterOptions.length > 0 && (
