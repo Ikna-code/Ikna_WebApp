@@ -147,7 +147,9 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
                     {categoryMeta.map((cat) => (
                       <div key={cat.name} className="flex flex-col">
                         <span className="text-[10px] font-bold tracking-[0.18em] text-[#321327] uppercase px-2 py-2">
-                          {cat.name}
+                         {cat.name.toLowerCase() !== "non-wired"
+                          && cat.name.toLowerCase() !== "wired" 
+                          && cat.name}
                         </span>
 
                         {cat.primaryFilterOptions.length > 0 && (
@@ -197,7 +199,9 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
                   {categoryMeta.map((cat) => (
                      <div key={cat.name} className="flex flex-col">
                        <span className="text-[10px] font-bold tracking-[0.18em] text-[#321327] uppercase px-2 py-1.5">
-                         {cat.name}
+                         {cat.name.toLowerCase() !== "non-wired"
+                          && cat.name.toLowerCase() !== "wired" 
+                          && cat.name}
                        </span>
 
                        {cat.primaryFilterOptions.length > 0 && (
