@@ -59,9 +59,10 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
               .filter((item: any) => activeCategories.has(String(item.name || '').trim()))
               .map((item: any) => {
                 const filterGroups = Array.isArray(item.filterGroups) ? item.filterGroups : [];
-                // Use first filter group (e.g. Comfort Type for Bras) as the submenu
-                const firstGroup = filterGroups[0] ?? null;
                 const categoryName = String(item.name || '');
+                const firstGroup = categoryName.trim().toLowerCase() === 'bras'
+                  ? filterGroups.find((group: any) => group?.slug === 'comfort-type') ?? filterGroups[0] ?? null
+                  : filterGroups[0] ?? null;
                 return {
                   name: categoryName,
                   primaryFilterOptions: (firstGroup?.filterOptions ?? []).filter(
@@ -90,16 +91,18 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
     onClose?.();
   };
 
-  const buildShopHref = (categoryName: string, filterOptionValue?: string) => {
+  const buildShopHref = (categoryName: string, groupSlug?: string, filterOptionId?: string) => {
     const basePath = `/shop/${encodeURIComponent(categoryName)}`;
-    const normalized = (filterOptionValue || '').trim();
+    const normalizedGroupSlug = (groupSlug || '').trim();
+    const normalizedOptionId = (filterOptionId || '').trim();
 
-    if (!normalized) {
+    if (!normalizedGroupSlug || !normalizedOptionId) {
       return basePath;
     }
 
     const params = new URLSearchParams();
-    params.set('search', normalized);
+    params.set('filterGroup', normalizedGroupSlug);
+    params.set('filterOption', normalizedOptionId);
     return `${basePath}?${params.toString()}`;
   };
 
@@ -157,12 +160,22 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
                           {cat.name}
                         </span>
 
+                        {cat.name.trim().toLowerCase() === 'bras' && (
+                          <Link
+                            href="/shop/Bras"
+                            onClick={handleCloseAll}
+                            className="ml-4 text-[9px] font-semibold tracking-[0.14em] text-[#321327]/70 hover:text-[#840d5c] uppercase px-2 py-1.5 rounded hover:bg-[#f2e4ea]"
+                          >
+                            Explore All
+                          </Link>
+                        )}
+
                         {cat.primaryFilterOptions.length > 0 && (
                           <div className="ml-4 mt-1 mb-1 flex flex-col gap-0.5 pl-3">
                             {cat.primaryFilterOptions.map((opt) => (
                               <Link
                                 key={opt.id}
-                                href={buildShopHref(cat.name, opt.displayLabel)}
+                                href={buildShopHref(cat.name, cat.primaryFilterGroupSlug, opt.id)}
                                 onClick={handleCloseAll}
                                 className="text-[9px] font-semibold tracking-[0.14em] text-[#321327]/70 hover:text-[#840d5c] uppercase px-2 py-1.5 rounded hover:bg-[#f2e4ea]"
                               >
@@ -207,12 +220,22 @@ export default function Navbar({ isMobile, onClose }: NavbarProps) {
                          {cat.name}
                        </span>
 
+                       {cat.name.trim().toLowerCase() === 'bras' && (
+                         <Link
+                           href="/shop/Bras"
+                           onClick={handleCloseAll}
+                           className="ml-3 text-[9px] font-semibold tracking-[0.14em] text-[#321327]/70 hover:text-[#840d5c] uppercase px-2 py-1.5 rounded hover:bg-[#f9f3f5]"
+                         >
+                           Explore All
+                         </Link>
+                       )}
+
                        {cat.primaryFilterOptions.length > 0 && (
                          <div className="ml-3 mb-1 flex flex-col gap-0.5 pl-3">
                            {cat.primaryFilterOptions.map((opt) => (
                              <Link
                                key={opt.id}
-                               href={buildShopHref(cat.name, opt.displayLabel)}
+                               href={buildShopHref(cat.name, cat.primaryFilterGroupSlug, opt.id)}
                                onClick={handleCloseAll}
                                className="text-[9px] font-semibold tracking-[0.14em] text-[#321327]/70 hover:text-[#840d5c] uppercase px-2 py-1.5 rounded hover:bg-[#f9f3f5]"
                              >

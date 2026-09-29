@@ -18,6 +18,7 @@ interface ProductGridPageProps {
   products: any[];
   initialCategory?: string;
   searchQuery?: string;
+  initialDynamicFilter?: { groupSlug: string; optionId: string };
 }
 
 const normalizeText = (value: unknown) =>
@@ -137,6 +138,7 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   products = [],
   initialCategory = "",
   searchQuery = "",
+  initialDynamicFilter,
 }) => {
   const user = useStore((state) => state.user);
   const cartItems = useStore((state) => state.cartItems);
@@ -188,6 +190,8 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   const [draftSelectedDynamicFilters, setDraftSelectedDynamicFilters] = useState<Record<string, string>>({});
   const [draftSortBy, setDraftSortBy] = useState<string>("default");
   const hasUserModifiedFiltersRef = useRef(false);
+  const appliedInitialDynamicFilterRef = useRef<string | null>(null);
+  const skipInitialFilterClearRef = useRef(false);
   const [activeMode, setActiveMode] = useState<'search' | 'filter'>('filter');
 
   const router = useRouter();
@@ -196,9 +200,15 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
   const clearSearchQueryFromUrl = () => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    if (!params.has("search")) return;
+    const hasInitialFilter = params.has("filterGroup") || params.has("filterOption");
+    if (hasInitialFilter) {
+      skipInitialFilterClearRef.current = true;
+    }
+    if (!params.has("search") && !hasInitialFilter) return;
 
     params.delete("search");
+    params.delete("filterGroup");
+    params.delete("filterOption");
     const nextQuery = params.toString();
     const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname;
     router.replace(nextUrl, { scroll: false });
@@ -442,6 +452,47 @@ const ProductGridPage: React.FC<ProductGridPageProps> = ({
 
     setSelectedDynamicFilters(nextDynamicFilters);
   }, [searchQuery, products, filterMetadata]);
+
+  useEffect(() => {
+    const groupSlug = String(initialDynamicFilter?.groupSlug || '').trim();
+    const optionId = String(initialDynamicFilter?.optionId || '').trim();
+    const filterKey = groupSlug && optionId ? `${groupSlug}:${optionId}` : '';
+
+    if (!filterKey) {
+      if (!appliedInitialDynamicFilterRef.current) return;
+
+      if (skipInitialFilterClearRef.current) {
+        skipInitialFilterClearRef.current = false;
+      } else {
+        React.startTransition(() => {
+          setSelectedDynamicFilters({});
+          setActiveMode('filter');
+        });
+      }
+      appliedInitialDynamicFilterRef.current = null;
+      return;
+    }
+
+    if (appliedInitialDynamicFilterRef.current === filterKey) return;
+
+    const categoryMetadata = filterMetadata.find(
+      (type: any) => normalizeText(type?.name) === normalizeText(selectedCategory)
+    );
+    const filterGroup = categoryMetadata?.filterGroups?.find(
+      (group: any) => String(group?.slug || '').trim() === groupSlug
+    );
+    const optionExists = Array.isArray(filterGroup?.filterOptions)
+      && filterGroup.filterOptions.some((option: any) => String(option?.id || '') === optionId);
+
+    if (!optionExists) return;
+
+    hasUserModifiedFiltersRef.current = true;
+    React.startTransition(() => {
+      setSelectedDynamicFilters({ [groupSlug]: optionId });
+      setActiveMode('filter');
+    });
+    appliedInitialDynamicFilterRef.current = filterKey;
+  }, [initialDynamicFilter, filterMetadata, selectedCategory]);
 
   // FILTERED + SORTED PRODUCTS
   const filteredAndSortedProducts = useMemo(() => {

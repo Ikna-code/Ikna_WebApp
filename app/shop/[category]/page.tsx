@@ -14,6 +14,8 @@ function CategoryPageContent() {
   const searchParams = useSearchParams();
   const category = decodeURIComponent(params.category as string);
   const search = searchParams.get('search') || '';
+  const filterGroup = searchParams.get('filterGroup') || '';
+  const filterOption = searchParams.get('filterOption') || '';
   
   const products = useStore((s) => s.products);
   const isProductsInitialized = useStore((s) => s.isProductsInitialized);
@@ -84,7 +86,12 @@ function CategoryPageContent() {
       <Header />
       <div id="shop-content" className="shop-content-layer">
         <PerspectiveGallery products={sourceProducts}>
-          <ProductGridPage products={sourceProducts} initialCategory={category} searchQuery={search} />
+          <ProductGridPage
+            products={sourceProducts}
+            initialCategory={category}
+            searchQuery={search}
+            initialDynamicFilter={filterGroup && filterOption ? { groupSlug: filterGroup, optionId: filterOption } : undefined}
+          />
         </PerspectiveGallery>
       </div>
     </>

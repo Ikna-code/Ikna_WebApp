@@ -17,6 +17,8 @@ function ShopContent() {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const category = searchParams.get("category") || "";
+  const filterGroup = searchParams.get("filterGroup") || "";
+  const filterOption = searchParams.get("filterOption") || "";
   const effectiveInitialCategory = search.trim() ? "" : category;
 
   useEffect(() => {
@@ -38,10 +40,20 @@ function ShopContent() {
       <Header />
       <div id="shop-content" className="shop-content-layer">
         {search ? (
-          <ProductGridPage products={sourceProducts} initialCategory={effectiveInitialCategory} searchQuery={search} />
+          <ProductGridPage
+            products={sourceProducts}
+            initialCategory={effectiveInitialCategory}
+            searchQuery={search}
+            initialDynamicFilter={filterGroup && filterOption ? { groupSlug: filterGroup, optionId: filterOption } : undefined}
+          />
         ) : (
           <PerspectiveGallery products={sourceProducts}>
-            <ProductGridPage products={sourceProducts} initialCategory={effectiveInitialCategory} searchQuery={search} />
+            <ProductGridPage
+              products={sourceProducts}
+              initialCategory={effectiveInitialCategory}
+              searchQuery={search}
+              initialDynamicFilter={filterGroup && filterOption ? { groupSlug: filterGroup, optionId: filterOption } : undefined}
+            />
           </PerspectiveGallery>
         )}
       </div>
