@@ -26,7 +26,7 @@ const Footer = () => {
             />
             <h6
               className="text-sm font-bold mb-1.5 not-italic"
-              // style={{ fontFamily: '"Amsterdam", cursive' }}
+              style={{ fontFamily: 'cursive' }}
             >
               Hey Beautiful! Embrace Yourself
             </h6>
