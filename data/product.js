@@ -28,7 +28,7 @@ export const productsData = [
     {
         id: "3",
         name: "THE EVERYDAY SEAMLESS",
-        price: "$58.00",
+        price: "$581.00",
         images: [
             "IMG_9518.jpg",
             "IMG_9521.jpg",
