@@ -3,12 +3,28 @@
 import { razorpay } from "@/backend/services/razorpay";
 import { createOrder } from "@/backend/actions/order";
 
-export async function createRazorpayOrder(userId: string, couponCode?: string | null) {
+export async function createRazorpayOrder(
+  userId: string | null,
+  couponCode?: string | null,
+  guestData?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    shippingAddress?: string;
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    country?: string;
+    items?: Array<any>;
+  }
+) {
   const normalizedCouponCode = couponCode?.trim() ? couponCode.trim() : null;
 
-  const orderRes = await createOrder(userId, normalizedCouponCode, {
+  const orderRes = await createOrder(userId as any, normalizedCouponCode, {
     clearCart: false,
     orderStatus: "PENDING",
+    ...( { guestCustomer: guestData || null, guestCartItems: guestData?.items || [] } as any),
   });
 
   if (!orderRes?.success || !orderRes.order) {
@@ -27,7 +43,8 @@ export async function createRazorpayOrder(userId: string, couponCode?: string | 
     receipt: `order_${orderRes.order.id}`,
     notes: {
       dbOrderId: orderRes.order.id,
-      userId,
+      userId: userId || 'guest',
+      guestEmail: guestData?.email || null,
     },
   });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Script from "next/script";
@@ -14,6 +14,16 @@ import { createRazorpayOrder } from "@/backend/actions/payment";
 import { verifyPayment } from "@/backend/actions/verify";
 import { useStore } from '@/store/useStore'; 
 import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
+import {
+  addGuestCartItem,
+  clearGuestCart,
+  clearGuestCheckout,
+  readGuestCart,
+  readGuestCheckout,
+  removeGuestCartItem,
+  saveGuestCheckout,
+  updateGuestCartItem,
+} from '@/lib/guestCart';
 
 type CheckoutCartItem = {
   id: string;
@@ -196,6 +206,7 @@ const CartPageContent = () => {
   const [isAddressNoticeDismissed, setIsAddressNoticeDismissed] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [guestCheckout, setGuestCheckout] = useState(() => readGuestCheckout());
   const [addressForm, setAddressForm] = useState({
     name: '',
     street: '',
@@ -204,6 +215,8 @@ const CartPageContent = () => {
     zip: '',
     country: 'India',
     isDefault: true,
+    email: '',
+    phone: '',
   });
   const hasOfferToastHydratedRef = useRef(false);
   const hadComboOfferRef = useRef(false);
@@ -226,13 +239,174 @@ const CartPageContent = () => {
   const isAddressesInitialized = useStore((state) => state.isAddressesInitialized);
   const saveAddress = useStore((state) => state.saveAddress);
 
+  const guestCartItems = useMemo(() => readGuestCart() as CartDisplayItem[], [user?.id]);
+  const activeCartItems = (user ? cartItems : guestCartItems) as CartDisplayItem[];
   const selectedShippingAddress =
     addresses.find((address) => address.isDefault) || addresses[0] || null;
+  const guestShippingAddress = guestCheckout || null;
 
-  // 5. PAYMENT LOGIC
+  const openGuestCheckoutForm = () => {
+    const currentGuest = readGuestCheckout();
+    const nextForm = currentGuest || {
+      name: '',
+      email: '',
+      phone: '',
+      street: '',
+      city: '',
+      state: '',
+      zip: '',
+      country: 'India',
+      shippingAddress: '',
+    };
+
+    setAddressForm({
+      name: nextForm.name || '',
+      email: nextForm.email || '',
+      phone: nextForm.phone || '',
+      street: nextForm.street || '',
+      city: nextForm.city || '',
+      state: nextForm.state || '',
+      zip: nextForm.zip || '',
+      country: nextForm.country || 'India',
+      isDefault: true,
+    });
+    setIsAddressModalOpen(true);
+  };
+
   const handlePayment = useCallback(async () => {
     const userId = user?.id;
-    if (!userId || cartItems.length === 0) return;
+    const cartForCheckout = user ? cartItems : guestCartItems;
+    if (cartForCheckout.length === 0) return;
+
+    if (!user && !guestCheckout) {
+      openGuestCheckoutForm();
+      toast.error('Please enter your shipping address to continue.');
+      return;
+    }
+
+    if (!user) {
+      const guestData = guestCheckout || {
+        name: addressForm.name.trim(),
+        email: addressForm.email.trim(),
+        phone: addressForm.phone.trim(),
+        street: addressForm.street.trim(),
+        city: addressForm.city.trim(),
+        state: addressForm.state.trim(),
+        zip: addressForm.zip.trim(),
+        country: addressForm.country || 'India',
+        shippingAddress: '',
+      };
+
+      const guestAddressText = (guestData.shippingAddress || [guestData.name, guestData.street, guestData.city, guestData.state, guestData.zip, guestData.country || 'India'].filter(Boolean).join(', ')).trim();
+      if (!guestAddressText || !guestData.street || !guestData.city || !guestData.state || !guestData.zip) {
+        toast.error('Please enter your shipping address to continue.');
+        openGuestCheckoutForm();
+        return;
+      }
+
+      const normalizedGuestData = saveGuestCheckout({
+        name: guestData.name,
+        email: guestData.email,
+        phone: guestData.phone,
+        street: guestData.street,
+        city: guestData.city,
+        state: guestData.state,
+        zip: guestData.zip,
+        country: guestData.country || 'India',
+        shippingAddress: guestAddressText,
+      });
+
+      if (!normalizedGuestData) {
+        toast.error('Please enter your shipping address to continue.');
+        return;
+      }
+
+      setGuestCheckout(normalizedGuestData);
+
+      if (paymentMethod === 'COD') {
+        setIsProcessing(true);
+        try {
+          const codOrderRes = await createOrder(null as any, appliedCouponCode || null, {
+            clearCart: true,
+            orderStatus: 'PENDING',
+            paymentMethod: 'COD',
+            ...( { guestCustomer: normalizedGuestData, guestCartItems: guestCartItems } as any),
+          });
+
+          if (!codOrderRes?.success || !codOrderRes.order?.id) {
+            throw new Error(codOrderRes?.error || 'Could not place COD order.');
+          }
+
+          clearGuestCart();
+          clearGuestCheckout();
+          window.location.href = `/success?orderId=${codOrderRes.order.id}`;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Could not place COD order.';
+          alert(message);
+        } finally {
+          setIsProcessing(false);
+        }
+        return;
+      }
+
+      setIsProcessing(true);
+      try {
+        const orderData = await createRazorpayOrder(null, appliedCouponCode || null, {
+          ...normalizedGuestData,
+          shippingAddress: normalizedGuestData.shippingAddress,
+          items: guestCartItems,
+        });
+
+        const razorpayBrandImage = `${window.location.origin}/images/AI_images/logo1_ikna.png`;
+        const razorpayAmount = Number(orderData.amount);
+
+        const options: RazorpayCheckoutOptions = {
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+          amount: razorpayAmount,
+          currency: 'INR',
+          name: 'IKNA',
+          image: razorpayBrandImage,
+          description: 'Order Checkout',
+          order_id: orderData.orderId,
+          handler: async function (response: RazorpaySuccessResponse) {
+            const result = await verifyPayment(
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature,
+              orderData.dbOrderId
+            );
+
+            if (result.success) {
+              if (result.shiprocketSuccess === false && result.shiprocketError) {
+                alert(`Payment successful, but shipment creation failed: ${result.shiprocketError}`);
+              }
+              clearGuestCart();
+              clearGuestCheckout();
+              window.location.href = `/success?orderId=${orderData.dbOrderId}`;
+            } else {
+              alert('Payment verification failed. Please contact support.');
+            }
+          },
+          prefill: {
+            name: normalizedGuestData.name || normalizedGuestData.email?.split('@')[0] || 'Guest',
+            email: normalizedGuestData.email || '',
+          },
+          theme: { color: '#840d5c' },
+        };
+
+        const RazorpayCheckout = (window as Window & typeof globalThis & { Razorpay: RazorpayConstructor }).Razorpay;
+        const rzp = new RazorpayCheckout(options);
+        rzp.open();
+      } catch (err) {
+        console.error('Checkout error:', err);
+        const message = err instanceof Error ? err.message : '';
+        alert(message || 'Could not initiate checkout.');
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
+
     if (!selectedShippingAddress) {
       toast.error('Add a delivery address before checkout.');
       return;
@@ -246,25 +420,25 @@ const CartPageContent = () => {
 
         const codOrderRes = await createOrder(userId, appliedCouponCode || null, {
           clearCart: true,
-          orderStatus: "PENDING",
-          paymentMethod: "COD",
+          orderStatus: 'PENDING',
+          paymentMethod: 'COD',
         });
 
         if (!codOrderRes?.success || !codOrderRes.order?.id) {
-          throw new Error(codOrderRes?.error || "Could not place COD order.");
+          throw new Error(codOrderRes?.error || 'Could not place COD order.');
         }
 
         if (fetchCart) await fetchCart(userId, true);
         window.location.href = `/success?orderId=${codOrderRes.order.id}`;
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Could not place COD order.";
+        const message = err instanceof Error ? err.message : 'Could not place COD order.';
         alert(message);
       } finally {
         setIsProcessing(false);
       }
       return;
     }
-    
+
     setIsProcessing(true);
     try {
       await trackCheckoutSessionStep('SHIPPING_SELECTED', 'Shipping address confirmed');
@@ -275,12 +449,12 @@ const CartPageContent = () => {
       const razorpayAmount = Number(orderData.amount);
 
       const options: RazorpayCheckoutOptions = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, 
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: razorpayAmount,
-        currency: "INR",
-        name: "IKNA",
+        currency: 'INR',
+        name: 'IKNA',
         image: razorpayBrandImage,
-        description: "Order Checkout",
+        description: 'Order Checkout',
         order_id: orderData.orderId,
         handler: async function (response: RazorpaySuccessResponse) {
           const result = await verifyPayment(
@@ -297,37 +471,43 @@ const CartPageContent = () => {
             if (fetchCart) await fetchCart(userId, true);
             window.location.href = `/success?orderId=${orderData.dbOrderId}`;
           } else {
-            alert("Payment verification failed. Please contact support.");
+            alert('Payment verification failed. Please contact support.');
           }
         },
         prefill: {
           name: (user?.email || '').split('@')[0],
           email: user?.email || '',
         },
-        theme: { color: "#840d5c" },
+        theme: { color: '#840d5c' },
       };
 
       const RazorpayCheckout = (window as Window & typeof globalThis & { Razorpay: RazorpayConstructor }).Razorpay;
       const rzp = new RazorpayCheckout(options);
       rzp.open();
     } catch (err) {
-      console.error("Checkout error:", err);
-      const message = err instanceof Error ? err.message : "";
-      if (message.toLowerCase().includes("shipping address")) {
-        alert("Shipping address not available. Please add an address before checkout.");
+      console.error('Checkout error:', err);
+      const message = err instanceof Error ? err.message : '';
+      if (message.toLowerCase().includes('shipping address')) {
+        alert('Shipping address not available. Please add an address before checkout.');
         const redirectTarget = encodeURIComponent('/cart');
         router.push(`/account/address?redirect=${redirectTarget}&resumeCheckout=1`);
       } else {
-        alert(message || "Could not initiate checkout.");
+        alert(message || 'Could not initiate checkout.');
       }
     } finally {
       setIsProcessing(false);
     }
-  }, [appliedCouponCode, cartItems.length, fetchCart, paymentMethod, router, selectedShippingAddress, user?.email, user?.id]);
+  }, [addressForm, appliedCouponCode, cartItems, fetchCart, guestCartItems, guestCheckout, paymentMethod, router, selectedShippingAddress, user, user?.email, user?.id]);
 
   // 6. UI ACTIONS: Linked directly to mutations + global state updates
   const updateQuantity = async (cartItemId: string, newQty: number) => {
     if (newQty < 1) return;
+
+    if (!user) {
+      updateGuestCartItem(cartItemId, newQty);
+      return;
+    }
+
     const result = await storeUpdateQuantity(cartItemId, newQty);
     if (result && !result.success) {
       const msg = result.error || '';
@@ -340,6 +520,10 @@ const CartPageContent = () => {
   };
 
   const removeItem = async (id: string) => {
+    if (!user) {
+      removeGuestCartItem(id);
+      return;
+    }
     await storeRemoveItem(id);
   };
 
@@ -404,8 +588,46 @@ const CartPageContent = () => {
 
   const handleSaveAddressFromModal = async () => {
     const userId = user?.id;
+
     if (!userId) {
-      toast.error('Please login to add an address.');
+      const trimmedName = addressForm.name.trim();
+      const trimmedEmail = addressForm.email.trim();
+      const trimmedPhone = addressForm.phone.trim();
+      const trimmedStreet = addressForm.street.trim();
+      const trimmedCity = addressForm.city.trim();
+      const trimmedState = addressForm.state.trim();
+      const trimmedZip = addressForm.zip.trim();
+
+      if (!trimmedName || !trimmedPhone || !trimmedStreet || !trimmedCity || !trimmedState || !trimmedZip) {
+        toast.error('Please enter your shipping address to continue.');
+        const missingField = !trimmedStreet ? 'street' : !trimmedCity ? 'city' : !trimmedState ? 'state' : !trimmedZip ? 'zip' : !trimmedName ? 'name' : !trimmedPhone ? 'phone' : null;
+        if (missingField) {
+          const element = document.getElementById(`guest-${missingField}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.focus();
+          }
+        }
+        return;
+      }
+
+      const normalized = saveGuestCheckout({
+        name: trimmedName,
+        email: trimmedEmail,
+        phone: trimmedPhone,
+        street: trimmedStreet,
+        city: trimmedCity,
+        state: trimmedState,
+        zip: trimmedZip,
+        country: addressForm.country || 'India',
+        shippingAddress: [trimmedName, trimmedStreet, trimmedCity, trimmedState, trimmedZip, addressForm.country || 'India'].filter(Boolean).join(', '),
+      });
+
+      if (normalized) {
+        setGuestCheckout(normalized);
+      }
+      setIsAddressModalOpen(false);
+      toast.success('Shipping details saved. You can continue to payment.');
       return;
     }
 
@@ -435,6 +657,8 @@ const CartPageContent = () => {
         zip: '',
         country: 'India',
         isDefault: true,
+        email: '',
+        phone: '',
       });
       toast.success('Address added successfully. You can now proceed to pay.');
     } catch (error) {
@@ -467,7 +691,7 @@ const CartPageContent = () => {
   const comboEligibleQuantityByCartItemId = new Map<string, number>();
   const comboBundleGroups = new Map<string, CartDisplayItem[]>();
 
-  cartItems.forEach((item) => {
+  activeCartItems.forEach((item) => {
     const comboBundleId = String(item?.comboBundleId || '').trim();
     if (!comboBundleId) {
       return;
@@ -513,7 +737,7 @@ const CartPageContent = () => {
   const validComboBundles = comboBundleSummaries.filter((bundle) => bundle.isValid);
   const validComboBundleIds = new Set(validComboBundles.map((bundle) => bundle.bundleId));
 
-  const regularCartItems = cartItems.filter(
+  const regularCartItems = activeCartItems.filter(
     (item) => !validComboBundleIds.has(String(item?.comboBundleId || '').trim())
   );
 
@@ -522,7 +746,7 @@ const CartPageContent = () => {
     ...regularCartItems.map((item) => ({ type: 'item' as const, item })),
   ];
 
-  const checkoutItems: CheckoutCartItem[] = cartItems.map((item) => ({
+  const checkoutItems: CheckoutCartItem[] = activeCartItems.map((item) => ({
     id: item.id,
     productId: item?.productId || item?.Product?.id || item?.product?.id || item?.id,
     price: Number(item?.Product?.price || item?.product?.price || item?.price || 0),
@@ -591,12 +815,12 @@ const CartPageContent = () => {
       return;
     }
 
-    if (cartItems.length <= 0) {
+    if (activeCartItems.length <= 0) {
       return;
     }
 
     void trackCheckoutSessionStep('CHECKOUT_STARTED', 'Customer opened cart / checkout');
-  }, [user?.id, cartItems.length]);
+  }, [user?.id, activeCartItems.length]);
 
   useEffect(() => {
     const shouldResumeCheckout = searchParams.get('resumeCheckout') === '1';
@@ -604,7 +828,7 @@ const CartPageContent = () => {
       return;
     }
 
-    if (!isAuthInitialized || !user?.id || cartItems.length === 0 || isProcessing) {
+    if (!isAuthInitialized || !user?.id || activeCartItems.length === 0 || isProcessing) {
       return;
     }
 
@@ -615,7 +839,7 @@ const CartPageContent = () => {
     searchParams,
     isAuthInitialized,
     user?.id,
-    cartItems.length,
+    activeCartItems.length,
     isProcessing,
     router,
     handlePayment,
@@ -697,7 +921,7 @@ const CartPageContent = () => {
     // This effect triggers whenever cartItems changes, ensuring combo eligibility is rechecked
     // The combo calculations (isComboApplied, etc.) already depend on cartItems and recalculate on render
     // This effect handles state management when combo eligibility changes
-  }, [cartItems.length]); // Depends on cartItems length to detect add/remove
+  }, [activeCartItems.length]); // Depends on cartItems length to detect add/remove
 
   // When combo becomes inactive (items removed), reset discount state to ensure correct calculation
   useEffect(() => {
@@ -710,7 +934,7 @@ const CartPageContent = () => {
   }, [isComboApplied]);
 
   const cartProductIds = new Set(
-    cartItems
+    activeCartItems
       .map((item) => item?.productId || item?.Product?.id || item?.product?.id || item?.id)
       .filter(Boolean)
   );
@@ -728,14 +952,14 @@ const CartPageContent = () => {
     );
   }
 
-  if (!user) {
+  if (!user && !activeCartItems.length) {
     return (
       <div className="bg-[#FAF3F5] min-h-screen flex flex-col items-center justify-center p-6 text-center">
         <ShoppingBag className="text-[#840d5c]/20 mb-4" size={64} />
         <h2 className="text-xl sm:text-2xl font-serif text-[#321327] mb-2">Your bag is waiting</h2>
-        <p className="text-xs sm:text-sm text-[#321327]/60 mb-6">Please log in to view your cart items.</p>
-        <Link href="/?openAccount=1" className="px-8 py-3.5 sm:px-10 sm:py-4 bg-[#840d5c] text-white text-[10px] font-bold uppercase tracking-widest rounded-full">
-          Login to Account
+        <p className="text-xs sm:text-sm text-[#321327]/60 mb-6">Add products to your cart and continue without creating an account.</p>
+        <Link href="/shop" className="px-8 py-3.5 sm:px-10 sm:py-4 bg-[#840d5c] text-white text-[10px] font-bold uppercase tracking-widest rounded-full">
+          Start Shopping
         </Link>
       </div>
     );
@@ -760,7 +984,7 @@ const CartPageContent = () => {
 
           </div>
 
-          {cartItems.length === 0 ? (
+          {activeCartItems.length === 0 ? (
             <div className="bg-white rounded-2xl sm:rounded-[2.25rem] p-8 sm:p-16 md:p-20 text-center space-y-6 border border-[#840d5c]/5 shadow-sm">
               <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[#FAF3F5] rounded-full flex items-center justify-center mx-auto text-[#840d5c]/30">
                 <ShoppingBag size={32} className="sm:size-10" />
@@ -1252,11 +1476,15 @@ const CartPageContent = () => {
                   </div>
 
                   <button 
-                    onClick={selectedShippingAddress ? handlePayment : openAddressModal}
-                    disabled={isProcessing || cartItems.length === 0}
+                    onClick={
+                      user
+                        ? selectedShippingAddress ? handlePayment : openAddressModal
+                        : guestShippingAddress ? handlePayment : openGuestCheckoutForm
+                    }
+                    disabled={isProcessing || activeCartItems.length === 0}
                     className="w-full bg-linear-to-r from-[#9f1466] to-[#7f0e52] hover:from-[#b81b78] hover:to-[#941260] disabled:from-[#d8a4c5] disabled:to-[#c083b1] text-white py-4 rounded-full font-extrabold tracking-[0.14em] text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.99] shadow-md disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {isProcessing ? 'PROCESSING...' : selectedShippingAddress ? 'PROCEED TO PAY' : 'CONTINUE'} <ArrowRight className="w-4 h-4 stroke-3" />
+                    {isProcessing ? 'PROCESSING...' : user ? (selectedShippingAddress ? 'PROCEED TO PAY' : 'CONTINUE') : (guestShippingAddress ? 'PROCEED TO PAY' : 'CONTINUE')} <ArrowRight className="w-4 h-4 stroke-3" />
                   </button>
 
                   <p className="text-center text-[12px] text-[#6b4f61]">

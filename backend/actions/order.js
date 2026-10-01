@@ -426,49 +426,112 @@ export async function createOrder(userId, couponCode = null, options = {}) {
       orderStatus = "PENDING",
       addressId = null,
       paymentMethod = "ONLINE",
+      guestCustomer = null,
+      guestCartItems = [],
     } = options;
 
+    const normalizedUserId = userId ? String(userId) : null;
+    const isGuestOrder = !normalizedUserId && Boolean(guestCustomer);
+
     const result = await db.$transaction(async (tx) => {
-      // 1. Get raw cart items along with explicit product prices
-      const cartItems = await tx.cartItem.findMany({
-        where: { userId },
-        include: { product: true },
-      });
+      let cartItems = [];
+      let shippingAddressRecord = null;
+      let shippingAddress = null;
 
-      if (cartItems.length === 0) throw new Error("Cart is empty");
+      if (normalizedUserId) {
+        cartItems = await tx.cartItem.findMany({
+          where: { userId: normalizedUserId },
+          include: { product: true },
+        });
 
-      // Resolve shipping address from selected address (if provided) or fallback to default/latest address.
-      const shippingAddressRecord = addressId
-        ? await tx.address.findFirst({
-            where: { id: addressId, userId },
-          })
-        : await tx.address.findFirst({
-            where: { userId },
-            orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
-          });
+        shippingAddressRecord = addressId
+          ? await tx.address.findFirst({
+              where: { id: addressId, userId: normalizedUserId },
+            })
+          : await tx.address.findFirst({
+              where: { userId: normalizedUserId },
+              orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+            });
 
-      if (!shippingAddressRecord) {
+        if (!shippingAddressRecord) {
+          throw new Error("Please add a shipping address before checkout");
+        }
+
+        shippingAddress = [
+          shippingAddressRecord.name,
+          shippingAddressRecord.street,
+          shippingAddressRecord.city,
+          shippingAddressRecord.state,
+          shippingAddressRecord.zip,
+          shippingAddressRecord.country,
+        ]
+          .filter(Boolean)
+          .join(', ');
+      } else {
+        const normalizedGuestItems = Array.isArray(guestCartItems) ? guestCartItems : [];
+        if (normalizedGuestItems.length === 0) {
+          throw new Error("Cart is empty");
+        }
+
+        const productIds = [...new Set(normalizedGuestItems.map((item) => item.productId).filter(Boolean))];
+        const products = await tx.product.findMany({
+          where: { id: { in: productIds } },
+          include: { inventory: true, subCategory: true, images: true },
+        });
+        const productMap = new Map(products.map((product) => [product.id, product]));
+
+        cartItems = normalizedGuestItems.map((item, index) => {
+          const product = productMap.get(item.productId);
+          if (!product) {
+            throw new Error(`Product not found: ${item.productId}`);
+          }
+
+          return {
+            id: String(item.id || `${item.productId}-${item.selectedSize || 'size'}-${index}`),
+            userId: null,
+            productId: item.productId,
+            quantity: Number(item.quantity || 1),
+            selectedSize: item.selectedSize || '',
+            comboBundleId: item.comboBundleId || '',
+            comboEligibleQuantity: Number(item.comboEligibleQuantity || 0),
+            product: {
+              ...product,
+              price: product.price,
+            },
+          };
+        });
+
+        const guestAddressText = String(
+          guestCustomer?.shippingAddress ||
+            [
+              guestCustomer?.name,
+              guestCustomer?.street,
+              guestCustomer?.city,
+              guestCustomer?.state,
+              guestCustomer?.zip,
+              guestCustomer?.country || 'India',
+            ]
+              .filter(Boolean)
+              .join(', ')
+        ).trim();
+
+        if (!guestAddressText) {
+          throw new Error("Please enter your shipping address to continue.");
+        }
+
+        shippingAddress = guestAddressText;
+      }
+
+      if (!shippingAddress) {
         throw new Error("Please add a shipping address before checkout");
       }
 
-      const shippingAddress = [
-        shippingAddressRecord.name,
-        shippingAddressRecord.street,
-        shippingAddressRecord.city,
-        shippingAddressRecord.state,
-        shippingAddressRecord.zip,
-        shippingAddressRecord.country,
-      ]
-        .filter(Boolean)
-        .join(', ');
+      if (cartItems.length === 0) throw new Error("Cart is empty");
 
-      // 2. Step A: Compute Combo Offer variations
       const comboDiscounts = await calculateComboDiscounts(tx, cartItems);
-
       let workingSubtotal = new Prisma.Decimal(0);
       let totalDiscountAccumulator = new Prisma.Decimal(0);
 
-      // Create pre-calculated structure mapping item records
       const preparedOrderItems = cartItems.map((item) => {
         const originalPrice = new Prisma.Decimal(item.product.price);
         const comboMeta = comboDiscounts[item.id];
@@ -487,19 +550,16 @@ export async function createOrder(userId, couponCode = null, options = {}) {
           lineItemCost = lineItemCost.sub(totalLineComboSavings);
           finalUnitPrice = item.quantity > 0 ? lineItemCost.div(item.quantity) : originalPrice;
           appliedComboId = comboMeta.comboOfferId;
-
-          // Accumulate line item variance only for discounted combo units.
           totalDiscountAccumulator = totalDiscountAccumulator.add(totalLineComboSavings);
         }
 
         workingSubtotal = workingSubtotal.add(lineItemCost);
-
         const snapshot = createOrderItemSnapshot(item.product);
 
         return {
           productId: item.productId,
           quantity: item.quantity,
-          price: finalUnitPrice, // Record final price after combo mapping
+          price: finalUnitPrice,
           selectedSize: item.selectedSize,
           productName: snapshot.productName,
           productImage: snapshot.productImage,
@@ -517,10 +577,9 @@ export async function createOrder(userId, couponCode = null, options = {}) {
         }
       }
 
-      // 3. Step B: Validate and execute Coupon Deductions
       let appliedCouponId = null;
       if (couponCode) {
-        const coupon = await validateCouponCode(tx, couponCode, workingSubtotal, userId);
+        const coupon = await validateCouponCode(tx, couponCode, workingSubtotal, normalizedUserId || null);
         if (coupon) {
           appliedCouponId = coupon.id;
           let couponSavings = new Prisma.Decimal(0);
@@ -531,47 +590,43 @@ export async function createOrder(userId, couponCode = null, options = {}) {
             couponSavings = new Prisma.Decimal(coupon.value);
           }
 
-          // Bound deduction limits to prevent negative subtotals
           if (couponSavings.gt(workingSubtotal)) couponSavings = workingSubtotal;
-
           workingSubtotal = workingSubtotal.sub(couponSavings);
           totalDiscountAccumulator = totalDiscountAccumulator.add(couponSavings);
         }
       }
 
-      // 4. Step C: Enforce explicit 15% Welcome Rules automatically
-      // Scan database history for verified transactions belonging to this customer profile
-      const priorOrderCount = await tx.order.count({
-        where: {
-          userId: userId,
-          status: { in: ["PAID", "SHIPPED", "DELIVERED"] }
-        }
-      });
+      let priorOrderCount = 0;
+      if (normalizedUserId) {
+        priorOrderCount = await tx.order.count({
+          where: {
+            userId: normalizedUserId,
+            status: { in: ["PAID", "SHIPPED", "DELIVERED"] }
+          }
+        });
+      }
 
       let isFirstTimeOfferApplied = false;
-      if (priorOrderCount === 0) {
+      if (priorOrderCount === 0 && normalizedUserId) {
         isFirstTimeOfferApplied = true;
-        
-        // Calculate a 15% discount on the remaining subtotal
         const firstTimeSavings = workingSubtotal.mul(0.15);
-        
         workingSubtotal = workingSubtotal.sub(firstTimeSavings);
         totalDiscountAccumulator = totalDiscountAccumulator.add(firstTimeSavings);
       }
 
-      // 4D. Apply COD handling charge at final amount level.
       if (String(paymentMethod).toUpperCase() === "COD") {
         workingSubtotal = workingSubtotal.add(new Prisma.Decimal(100));
       }
 
-      // 5. Finalize the Database Records
       const orderId = await createUniqueOrderId(tx);
-
       const order = await tx.order.create({
         data: {
           id: orderId,
-          userId,
-          addressId: shippingAddressRecord.id,
+          userId: normalizedUserId,
+          guestName: guestCustomer?.name || null,
+          guestEmail: guestCustomer?.email || null,
+          guestPhone: guestCustomer?.phone || null,
+          addressId: shippingAddressRecord?.id || null,
           shippingAddress,
           totalAmount: workingSubtotal,
           status: orderStatus,
@@ -612,20 +667,12 @@ export async function createOrder(userId, couponCode = null, options = {}) {
         },
       });
 
-      // 6. Purge active items inside cart table
-      if (clearCart) {
+      if (clearCart && normalizedUserId) {
         await tx.cartItem.deleteMany({
-          where: { userId },
+          where: { userId: normalizedUserId },
         });
       }
-      console.log("--- PROMOTION ENGINE DEBUG ---");
-console.log("Initial Cart Items Total:", cartItems.reduce((acc, i) => acc + (i.product.price * i.quantity), 0));
-console.log("Combo Savings Applied:", comboDiscounts);
-console.log("Subtotal After Combos:", workingSubtotal.toString());
-console.log("Coupon ID Applied:", appliedCouponId);
-console.log("First Order Flag Active?:", isFirstTimeOfferApplied);
-console.log("Final Amount Charged to User:", workingSubtotal.toString());
-console.log("Total Saved Saved in Audit Log:", totalDiscountAccumulator.toString());
+
       return order;
     }, TX_OPTIONS);
 
@@ -633,22 +680,14 @@ console.log("Total Saved Saved in Audit Log:", totalDiscountAccumulator.toString
     revalidatePath("/cart");
 
     const normalizedPaymentMethod = String(paymentMethod || 'ONLINE').trim().toUpperCase();
-    if (normalizedPaymentMethod === 'COD') {
-      await markCheckoutConverted(String(userId), result?.id || null).catch((error) => {
+    if (normalizedUserId && normalizedPaymentMethod === 'COD') {
+      await markCheckoutConverted(String(normalizedUserId), result?.id || null).catch((error) => {
         console.error('[checkout-session] COD conversion tracking failed', error);
       });
-    } else {
-      await markPaymentPending(String(userId), result?.id || null).catch((error) => {
+    } else if (normalizedUserId) {
+      await markPaymentPending(String(normalizedUserId), result?.id || null).catch((error) => {
         console.error('[checkout-session] payment pending tracking failed', error);
       });
-    }
-
-    try {
-      await sendOrderPlacedNotification(result.id).catch((error) => {
-        console.error('[order-notifications] Order placed notification failed', error);
-      });
-    } catch (error) {
-      console.error('[order-notifications] Order placed notification error', error);
     }
 
     return { success: true, order: result };

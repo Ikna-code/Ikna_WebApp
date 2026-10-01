@@ -27,7 +27,9 @@ export async function sendOrderConfirmationForOrder(orderId: string) {
     },
   });
 
-  const email = String(order?.user?.email || '').trim();
+  const guestEmail = (order as any)?.guestEmail;
+  const guestName = (order as any)?.guestName;
+  const email = String(guestEmail || order?.user?.email || '').trim();
   if (!order || !email) {
     return { success: false, skipped: true, reason: 'MISSING_ORDER_OR_EMAIL' };
   }
@@ -43,7 +45,7 @@ export async function sendOrderConfirmationForOrder(orderId: string) {
     paymentMethod: order.payment?.provider || 'UNKNOWN',
     paymentStatus: order.payment?.status || 'PENDING',
     itemCount,
-    customerName: getCustomerName(order.user, email),
+    customerName: getCustomerName(order.user || { firstName: guestName || undefined, lastName: null }, email),
   });
 }
 
@@ -67,7 +69,9 @@ export async function sendOrderPlacedNotification(orderId: string) {
     },
   });
 
-  const email = String(order?.user?.email || '').trim();
+  const guestEmail = (order as any)?.guestEmail;
+  const guestName = (order as any)?.guestName;
+  const email = String(guestEmail || order?.user?.email || '').trim();
   if (!order || !email) {
     return { success: false, skipped: true, reason: 'MISSING_ORDER_OR_EMAIL' };
   }
@@ -77,7 +81,7 @@ export async function sendOrderPlacedNotification(orderId: string) {
     0,
   );
 
-  const customerName = getCustomerName(order.user, email);
+  const customerName = getCustomerName(order.user || { firstName: guestName || undefined, lastName: null }, email);
 
   await Promise.all([
     emailService.sendOrderPlaced(email, {
@@ -115,12 +119,14 @@ export async function sendOrderStatusUpdateForOrder(orderId: string) {
     },
   });
 
-  const email = String(order?.user?.email || '').trim();
+  const guestEmail = (order as any)?.guestEmail;
+  const guestName = (order as any)?.guestName;
+  const email = String(guestEmail || order?.user?.email || '').trim();
   if (!order || !email) {
     return { success: false, skipped: true, reason: 'MISSING_ORDER_OR_EMAIL' };
   }
 
-  const customerName = getCustomerName(order.user, email);
+  const customerName = getCustomerName(order.user || { firstName: guestName || undefined, lastName: null }, email);
 
   return emailService.sendOrderStatusUpdate(email, {
     id: order.id,

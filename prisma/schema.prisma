@@ -265,7 +265,10 @@ model WishlistItem {
 
 model Order {
   id                String      @id @default(cuid())
-  userId            String
+  userId            String?     @map("userId")
+  guestName         String?     @map("guest_name")
+  guestEmail        String?     @map("guest_email")
+  guestPhone        String?     @map("guest_phone")
   totalAmount       Decimal     @db.Decimal(10, 2)
   status            OrderStatus @default(PENDING)
   createdAt         DateTime    @default(now())
@@ -289,7 +292,7 @@ model Order {
   orderItems        OrderItem[]
   address           Address?    @relation(fields: [addressId], references: [id])
   coupon            Coupon?     @relation(fields: [couponAppliedId], references: [id])
-  user              User        @relation(fields: [userId], references: [id])
+  user              User?       @relation(fields: [userId], references: [id])
   payment           Payment?
 
   @@index([shiprocketOrderId])

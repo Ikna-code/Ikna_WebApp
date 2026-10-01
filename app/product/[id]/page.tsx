@@ -30,6 +30,7 @@ import {
   getProductSwatchColor,
 } from '@/lib/productVariants';
 import { animateFlyToCartFromElement } from '@/lib/microInteractions';
+import { addGuestCartItem } from '@/lib/guestCart';
 
 function DescriptionAccordion({ description }: { description: string }) {
   const [expanded, setExpanded] = useState(true);
@@ -584,50 +585,33 @@ const SingleProductPage = () => {
 
   const addCurrentVariantToCart = async (successMessage: string) => {
     const userId = user?.id;
-    if (!userId) {
-      console.log('[DEBUG] No userId found, user object:', user);
-      setToast({ message: "Please login first", type: 'error' });
-      return false;
-    }
-    
-    // Log user and userId after successful check
-    console.log('[DEBUG] userId validation passed:', { userId, user: user?.email || user?.id });
-    
+
     if (!selectedSize) {
-      console.log('[DEBUG] No size selected, validation failed');
       setToast({ message: "Please select a size", type: 'info' });
       return false;
     }
     if (!activeVariant || activeVariant.isDeleted || !activeVariant.isActive) {
-      console.log('[DEBUG] Product unavailable, validation failed:', {
-        hasActiveVariant: !!activeVariant,
-        isDeleted: activeVariant?.isDeleted,
-        isActive: activeVariant?.isActive,
-        variantId: activeVariant?.id
-      });
       setToast({ message: 'Product is no longer available.', type: 'error' });
       return false;
     }
 
-    console.log('[DEBUG] About to call addItemToCart with:', {
-      userId,
-      variantId: activeVariant?.id,
-      size: selectedSize,
-      quantity: 1,
-      category: activeVariant?.category,
-      isCombo: 0,
-      comboBundleId: ''
-    });
+    if (!userId) {
+      addGuestCartItem({
+        id: `${activeVariant.id}-${selectedSize}-${Date.now()}`,
+        productId: activeVariant.id,
+        name: activeVariant.name,
+        price: Number(activeVariant.price || 0),
+        image: activeVariant.image,
+        selectedSize,
+        quantity: 1,
+        category: activeVariant.category,
+      });
+      setToast({ message: successMessage || 'Added to bag!', type: 'success' });
+      return true;
+    }
 
     await addItemToCart(userId, activeVariant?.id, selectedSize, 1, activeVariant?.category, 0, '');
-    
-    const storeStateAfterAdd = useStore.getState();
-    console.log('[DEBUG] After addItemToCart call, store state:', {
-      error: storeStateAfterAdd.error,
-      cartItems: storeStateAfterAdd.cartItems?.length || 0,
-      cartItemsPreview: storeStateAfterAdd.cartItems?.slice(-1) || []
-    });
-    
+
     if (!useStore.getState().error) {
       const variantKey = String(activeVariant?.id || '').trim();
       if (variantKey && selectedSize && sizeStockMap.has(selectedSize)) {
@@ -650,11 +634,6 @@ const SingleProductPage = () => {
     }
 
     const storeError = useStore.getState().error;
-    console.log('[DEBUG] About to show error toast with storeError:', {
-      storeError,
-      type: typeof storeError,
-      isEmpty: !storeError
-    });
     setToast({ 
       message: storeError || "Could not add product to bag. Please try again.", 
       type: 'error' 
@@ -732,12 +711,35 @@ const SingleProductPage = () => {
 
   const commitComboItemsToCart = async (applyComboPricing: boolean) => {
     const userId = user?.id;
+    const comboBundleId = applyComboPricing ? createComboBundleId() : '';
+
     if (!userId) {
-      setToast({ message: "Please login first", type: 'error' });
+      for (const item of comboItems) {
+        addGuestCartItem({
+          id: `${item.product.id}-${item.size}-${Date.now()}-${Math.random()}`,
+          productId: item.product.id,
+          name: item.product.name,
+          price: Number(item.product.price || 0),
+          image: item.product.image,
+          selectedSize: item.size,
+          quantity: 1,
+          category: item.product.category,
+          comboEligibleQuantity: applyComboPricing ? 1 : 0,
+          comboBundleId,
+        });
+      }
+
+      setToast({
+        message: applyComboPricing
+          ? `Success! 3 items added with Combo Price Applied: Rs.${dynamicComboPrice} (Original Price: Rs.${originalComboTotal})`
+          : 'Items added to bag with standard pricing calculations.',
+        type: applyComboPricing ? 'success' : 'info',
+      });
+      setComboItems([]);
+      setIsComboModalOpen(false);
+      setIsComboChecked(false);
       return;
     }
-
-    const comboBundleId = applyComboPricing ? createComboBundleId() : '';
 
     for (const item of comboItems) {
       await addItemToCart(
