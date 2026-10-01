@@ -186,7 +186,7 @@ export async function syncOrderState(input: SyncOrderInput) {
       });
     }
 
-    if (input.clearCartOnPaid && shouldMarkPaid) {
+    if (input.clearCartOnPaid && shouldMarkPaid && order.userId) {
       await tx.cartItem.deleteMany({
         where: { userId: order.userId },
       });
@@ -199,16 +199,18 @@ export async function syncOrderState(input: SyncOrderInput) {
   });
 
   const nextPaymentStatus = input.payment?.status;
-  if (nextPaymentStatus === PaymentStatus.COMPLETED) {
-    await markCheckoutConverted(String(order.userId), order.id).catch((error) => {
+  const guestUserId = order.userId ? String(order.userId) : null;
+
+  if (nextPaymentStatus === PaymentStatus.COMPLETED && guestUserId) {
+    await markCheckoutConverted(guestUserId, order.id).catch((error) => {
       console.error('[checkout-session] conversion sync failed', error);
     });
-  } else if (nextPaymentStatus === PaymentStatus.FAILED) {
-    await markPaymentFailed(String(order.userId), order.id).catch((error) => {
+  } else if (nextPaymentStatus === PaymentStatus.FAILED && guestUserId) {
+    await markPaymentFailed(guestUserId, order.id).catch((error) => {
       console.error('[checkout-session] payment-failed sync failed', error);
     });
-  } else if (nextPaymentStatus === PaymentStatus.PENDING) {
-    await markPaymentPending(String(order.userId), order.id).catch((error) => {
+  } else if (nextPaymentStatus === PaymentStatus.PENDING && guestUserId) {
+    await markPaymentPending(guestUserId, order.id).catch((error) => {
       console.error('[checkout-session] payment-pending sync failed', error);
     });
   }

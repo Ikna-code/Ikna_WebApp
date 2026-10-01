@@ -225,6 +225,9 @@ function buildShiprocketPayload(order: {
   createdAt: Date;
   totalAmount: Prisma.Decimal;
   shippingAddress: string | null;
+  guestName?: string | null;
+  guestEmail?: string | null;
+  guestPhone?: string | null;
   orderItems: Array<{
     productId: string;
     productName: string;
@@ -245,14 +248,19 @@ function buildShiprocketPayload(order: {
     firstName: string | null;
     lastName: string | null;
     phone: string | null;
-  };
+  } | null;
   payment: {
     provider: string;
     status: PaymentStatus;
   } | null;
 }) {
   const snapshot = parseShippingAddressSnapshot(order.shippingAddress);
-  const customerName = pickString(order.address?.name, snapshot.customerName, `${order.user.firstName ?? ''} ${order.user.lastName ?? ''}`);
+  const customerName = pickString(
+    order.address?.name,
+    snapshot.customerName,
+    order.guestName,
+    `${order.user?.firstName ?? ''} ${order.user?.lastName ?? ''}`,
+  );
   const { firstName, lastName } = getFirstAndLastName(customerName);
 
   const structuredAddressLine = [
@@ -272,8 +280,8 @@ function buildShiprocketPayload(order: {
   const billingPincode = pickString(order.address?.zip, snapshot.pincode) || '000000';
   const billingState = pickString(order.address?.state, snapshot.state) || 'Unknown';
   const billingCountry = pickString(order.address?.country, snapshot.country) || 'India';
-  const billingPhone = normalizePhone(order.user.phone);
-  const billingEmail = pickString(order.user.email) || '';
+  const billingPhone = normalizePhone(pickString(order.guestPhone, order.user?.phone));
+  const billingEmail = pickString(order.guestEmail, order.user?.email) || '';
 
   const isRazorpaySuccess =
     order.payment?.provider === 'RAZORPAY' && order.payment?.status === PaymentStatus.COMPLETED;
