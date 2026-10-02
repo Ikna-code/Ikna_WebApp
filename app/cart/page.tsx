@@ -1581,6 +1581,7 @@ const CartPageContent = () => {
               <div className="sm:col-span-2">
                 <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">Full Name</label>
                 <input
+                  id="guest-name"
                   value={addressForm.name}
                   onChange={(e) => handleAddressInputChange('name', e.target.value)}
                   className="w-full rounded-lg border border-[#e7c9d9] px-3 py-2 text-sm text-[#321327] outline-none focus:border-[#c02a82]"
@@ -1588,9 +1589,35 @@ const CartPageContent = () => {
                 />
               </div>
 
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">Email</label>
+                <input
+                  type="email"
+                  autoComplete="email"
+                  value={addressForm.email}
+                  onChange={(e) => handleAddressInputChange('email', e.target.value)}
+                  className="w-full rounded-lg border border-[#e7c9d9] px-3 py-2 text-sm text-[#321327] outline-none focus:border-[#c02a82]"
+                  placeholder="Email address"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">Phone</label>
+                <input
+                  id="guest-phone"
+                  type="tel"
+                  autoComplete="tel"
+                  value={addressForm.phone}
+                  onChange={(e) => handleAddressInputChange('phone', e.target.value)}
+                  className="w-full rounded-lg border border-[#e7c9d9] px-3 py-2 text-sm text-[#321327] outline-none focus:border-[#c02a82]"
+                  placeholder="Phone number"
+                />
+              </div>
+
               <div className="sm:col-span-2">
                 <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">Street Address</label>
                 <textarea
+                  id="guest-street"
                   value={addressForm.street}
                   onChange={(e) => handleAddressInputChange('street', e.target.value)}
                   className="w-full rounded-lg border border-[#e7c9d9] px-3 py-2 text-sm text-[#321327] outline-none focus:border-[#c02a82]"
@@ -1602,6 +1629,7 @@ const CartPageContent = () => {
               <div>
                 <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">City</label>
                 <input
+                  id="guest-city"
                   value={addressForm.city}
                   onChange={(e) => handleAddressInputChange('city', e.target.value)}
                   className="w-full rounded-lg border border-[#e7c9d9] px-3 py-2 text-sm text-[#321327] outline-none focus:border-[#c02a82]"
@@ -1612,6 +1640,7 @@ const CartPageContent = () => {
               <div>
                 <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">State</label>
                 <input
+                  id="guest-state"
                   value={addressForm.state}
                   onChange={(e) => handleAddressInputChange('state', e.target.value)}
                   className="w-full rounded-lg border border-[#e7c9d9] px-3 py-2 text-sm text-[#321327] outline-none focus:border-[#c02a82]"
@@ -1622,6 +1651,7 @@ const CartPageContent = () => {
               <div>
                 <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">ZIP Code</label>
                 <input
+                  id="guest-zip"
                   value={addressForm.zip}
                   onChange={(e) => handleAddressInputChange('zip', e.target.value)}
                   className="w-full rounded-lg border border-[#e7c9d9] px-3 py-2 text-sm text-[#321327] outline-none focus:border-[#c02a82]"
