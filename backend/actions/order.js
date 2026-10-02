@@ -690,6 +690,15 @@ export async function createOrder(userId, couponCode = null, options = {}) {
       });
     }
 
+    if (normalizedPaymentMethod === 'COD' && result?.id) {
+      await sendOrderPlacedNotification(result.id).catch((error) => {
+        console.error('[order-notification] COD order placed email failed', {
+          orderId: result.id,
+          error,
+        });
+      });
+    }
+
     return { success: true, order: result };
   } catch (error) {
     console.error("Secure Checkout Failure Mode:", error);

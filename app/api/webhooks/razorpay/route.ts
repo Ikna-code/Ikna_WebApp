@@ -84,12 +84,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true, ignored: true, reason: 'No order identifier in payload.' });
   }
 
-  if (event === 'payment.captured' || event === 'payment.authorized' || event === 'order.paid') {
+  if (event === 'payment.captured' || event === 'order.paid') {
     const order = await syncOrderState({
       orderId: dbOrderId,
       razorpayOrderId,
       clearCartOnPaid: true,
-      promoteOrderStatusOnPayment: false,
       payment: {
         provider: 'RAZORPAY',
         status: PaymentStatus.COMPLETED,

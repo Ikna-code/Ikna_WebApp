@@ -32,7 +32,6 @@ export async function verifyPayment(
       orderId: dbOrderId,
       razorpayOrderId: orderId,
       clearCartOnPaid: true,
-      promoteOrderStatusOnPayment: false,
       payment: {
         provider: 'RAZORPAY',
         status: PaymentStatus.COMPLETED,

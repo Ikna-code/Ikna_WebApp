@@ -58,7 +58,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
   }
 
   try {
-    let paymentWasAlreadyCompleted = false;
+    let confirmationClaimed = false;
 
     let shouldSendStatusUpdate = false;
 
@@ -72,10 +72,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
         throw new Error('ORDER_NOT_FOUND');
       }
 
-      paymentWasAlreadyCompleted = Boolean(
-        existingOrder.paidAt || existingOrder.payment?.status === PaymentStatus.COMPLETED
-      );
-
       shouldSendStatusUpdate = Boolean(
         nextStatus && nextStatus !== existingOrder.status &&
         nextStatus !== OrderStatus.PAID &&
@@ -86,15 +82,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
         await restoreOrderInventory(orderId, tx);
       }
 
-      const shouldSetPaidAt =
-        (nextStatus === OrderStatus.PAID || nextPaymentStatus === PaymentStatus.COMPLETED) &&
-        !existingOrder.paidAt;
-
       const nextOrder = await tx.order.update({
         where: { id: orderId },
         data: {
           ...(nextStatus ? { status: nextStatus } : {}),
-          ...(shouldSetPaidAt ? { paidAt: new Date() } : {}),
         },
         include: {
           address: true,
@@ -110,6 +101,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
           orderItems: true,
         },
       });
+
+      if (nextStatus === OrderStatus.PAID || nextPaymentStatus === PaymentStatus.COMPLETED) {
+        const claim = await tx.order.updateMany({
+          where: { id: orderId, paidAt: null },
+          data: { paidAt: new Date() },
+        });
+        confirmationClaimed = claim.count === 1;
+      }
 
       if (nextPaymentStatus === PaymentStatus.COMPLETED) {
         await tx.payment.upsert({
@@ -147,7 +146,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ order
         },
       });
 
-      if (!paymentWasAlreadyCompleted) {
+      if (confirmationClaimed) {
         await sendOrderConfirmationForOrder(updatedOrder.id);
       }
 

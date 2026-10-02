@@ -94,25 +94,33 @@ export async function syncOrderState(input: SyncOrderInput) {
   }
 
   const now = new Date();
-  const nextOrderStatus = pickHigherStatus(order.status, input.orderStatus ?? undefined);
   const shouldPromoteOrderStatusOnPayment = input.promoteOrderStatusOnPayment ?? true;
-  const shouldMarkPaidFromInput = input.payment?.status === PaymentStatus.COMPLETED;
-  const shouldMarkCodPaidOnDelivered =
-    Boolean(input.markCodPaidOnDelivered) &&
-    nextOrderStatus === OrderStatus.DELIVERED &&
-    order.payment?.provider === 'COD' &&
-    order.payment?.status !== PaymentStatus.COMPLETED;
-  const shouldMarkPaid = shouldMarkPaidFromInput || shouldMarkCodPaidOnDelivered;
-  const shouldRestoreInventory = nextOrderStatus === OrderStatus.CANCELLED && order.status !== OrderStatus.CANCELLED;
-  const paymentWasJustCompleted = shouldMarkPaid && !order.paidAt;
+  let confirmationClaimed = false;
 
   const updatedOrder = await db.$transaction(async (tx) => {
-    const orderUpdateData: Record<string, unknown> = {
-      status:
-        shouldMarkPaid && shouldPromoteOrderStatusOnPayment
-          ? pickHigherStatus(nextOrderStatus, OrderStatus.PAID)
-          : nextOrderStatus,
-    };
+    const currentOrder = await tx.order.findUnique({
+      where: { id: order.id },
+      include: { payment: true },
+    });
+    if (!currentOrder) return null;
+
+    const nextOrderStatus = pickHigherStatus(currentOrder.status, input.orderStatus ?? undefined);
+    const shouldMarkPaidFromInput = input.payment?.status === PaymentStatus.COMPLETED;
+    const shouldMarkCodPaidOnDelivered =
+      Boolean(input.markCodPaidOnDelivered) &&
+      nextOrderStatus === OrderStatus.DELIVERED &&
+      currentOrder.payment?.provider === 'COD' &&
+      currentOrder.payment?.status !== PaymentStatus.COMPLETED;
+    const shouldMarkPaid = shouldMarkPaidFromInput || shouldMarkCodPaidOnDelivered;
+    const shouldRestoreInventory = nextOrderStatus === OrderStatus.CANCELLED && currentOrder.status !== OrderStatus.CANCELLED;
+    const shouldPromoteStatus = shouldMarkPaid && shouldPromoteOrderStatusOnPayment;
+    const orderUpdateData: Record<string, unknown> = {};
+
+    if (input.orderStatus || shouldPromoteStatus) {
+      orderUpdateData.status = shouldPromoteStatus
+        ? pickHigherStatus(nextOrderStatus, OrderStatus.PAID)
+        : nextOrderStatus;
+    }
 
     const razorpayOrderId = coerceString(input.razorpayOrderId);
     const shiprocketOrderId = coerceString(input.shipment?.shiprocketOrderId ?? input.shiprocketOrderId);
@@ -130,10 +138,6 @@ export async function syncOrderState(input: SyncOrderInput) {
     if (trackingUrl) orderUpdateData.trackingUrl = trackingUrl;
     if (shiprocketStatus) orderUpdateData.shiprocketStatus = shiprocketStatus;
 
-    if (shouldMarkPaid && !order.paidAt) {
-      orderUpdateData.paidAt = now;
-    }
-
     if (input.shipment?.packedAt && !order.packedAt) {
       orderUpdateData.packedAt = input.shipment.packedAt;
     }
@@ -150,56 +154,95 @@ export async function syncOrderState(input: SyncOrderInput) {
       await restoreOrderInventory(order.id, tx);
     }
 
-    const next = await tx.order.update({
-      where: { id: order.id },
-      data: orderUpdateData,
-      include: { payment: true },
-    });
+    if (shouldMarkPaid) {
+      const claim = await tx.order.updateMany({
+        where: { id: order.id, paidAt: null },
+        data: { ...orderUpdateData, paidAt: now },
+      });
+      confirmationClaimed = claim.count === 1;
+    }
+
+    if (!confirmationClaimed && Object.keys(orderUpdateData).length > 0) {
+      await tx.order.update({
+        where: { id: order.id },
+        data: orderUpdateData,
+      });
+    }
 
     if (input.payment || shouldMarkCodPaidOnDelivered) {
       const nextProvider = shouldMarkCodPaidOnDelivered
-        ? order.payment?.provider || 'COD'
-        : input.payment?.provider || order.payment?.provider || 'ONLINE';
+        ? currentOrder.payment?.provider || 'COD'
+        : input.payment?.provider || currentOrder.payment?.provider || 'ONLINE';
       const nextStatus = shouldMarkCodPaidOnDelivered
         ? PaymentStatus.COMPLETED
-        : input.payment?.status || order.payment?.status || PaymentStatus.PENDING;
-      const amount = input.payment?.amount ?? Number(order.totalAmount);
+        : input.payment?.status || currentOrder.payment?.status || PaymentStatus.PENDING;
+      const amount = input.payment?.amount ?? Number(currentOrder.totalAmount);
       const transactionId =
         coerceString(input.payment?.transactionId) ??
-        coerceString(order.payment?.transactionId);
+        coerceString(currentOrder.payment?.transactionId);
 
-      await tx.payment.upsert({
-        where: { orderId: order.id },
-        update: {
-          provider: nextProvider,
-          status: nextStatus,
-          amount,
-          transactionId: transactionId ?? undefined,
-        },
-        create: {
-          orderId: order.id,
-          provider: nextProvider,
-          status: nextStatus,
-          amount,
-          transactionId,
-        },
-      });
+      if (nextStatus === PaymentStatus.FAILED || nextStatus === PaymentStatus.PENDING) {
+        const paymentUpdate = await tx.payment.updateMany({
+          where: { orderId: order.id, status: { not: PaymentStatus.COMPLETED } },
+          data: {
+            provider: nextProvider,
+            status: nextStatus,
+            amount,
+            transactionId: transactionId ?? undefined,
+          },
+        });
+
+        if (paymentUpdate.count === 0 && !currentOrder.payment) {
+          await tx.payment.create({
+            data: {
+              orderId: order.id,
+              provider: nextProvider,
+              status: nextStatus,
+              amount,
+              transactionId,
+            },
+          });
+        }
+      } else {
+        await tx.payment.upsert({
+          where: { orderId: order.id },
+          update: {
+            provider: nextProvider,
+            status: nextStatus,
+            amount,
+            transactionId: transactionId ?? undefined,
+          },
+          create: {
+            orderId: order.id,
+            provider: nextProvider,
+            status: nextStatus,
+            amount,
+            transactionId,
+          },
+        });
+      }
     }
 
-    if (input.clearCartOnPaid && shouldMarkPaid && order.userId) {
+    if (input.clearCartOnPaid && shouldMarkPaid && currentOrder.userId) {
       await tx.cartItem.deleteMany({
-        where: { userId: order.userId },
+        where: { userId: currentOrder.userId },
       });
     }
+
+    const next = await tx.order.findUnique({
+      where: { id: order.id },
+      include: { payment: true },
+    });
+    if (!next) return null;
 
     return {
       ...next,
-      _paymentJustCompleted: paymentWasJustCompleted,
+      _paymentJustCompleted: confirmationClaimed,
     };
   });
 
   const nextPaymentStatus = input.payment?.status;
-  const guestUserId = order.userId ? String(order.userId) : null;
+  const guestUserId = updatedOrder?.userId ? String(updatedOrder.userId) : null;
 
   if (nextPaymentStatus === PaymentStatus.COMPLETED && guestUserId) {
     await markCheckoutConverted(guestUserId, order.id).catch((error) => {
