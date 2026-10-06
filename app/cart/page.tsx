@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Script from "next/script";
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Trash2, Plus, Minus, ChevronLeft, ShoppingBag, ArrowRight, Loader2, Sparkles, CreditCard, Truck, Gift, CheckCircle2, MapPin, X } from 'lucide-react';
+import { Trash2, Plus, Minus, ChevronLeft, ShoppingBag, ArrowRight, Loader2, Sparkles, CreditCard, Truck, Gift, CheckCircle2, MapPin, X, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import Header from '@/components/layout/Header';
 import { getCouponTicketsForCart, validateCouponForCart, type CartCouponTicket } from "@/backend/actions/coupon";
@@ -123,6 +123,50 @@ type RazorpayConstructor = new (options: RazorpayCheckoutOptions) => RazorpayIns
 
 const roundCurrency = (value: number) => Math.round(value * 100) / 100;
 
+function CheckoutIllustration({ variant }: { variant: 'contact' | 'delivery' }) {
+  if (variant === 'contact') {
+    return (
+      <svg viewBox="0 0 180 130" className="h-28 w-32 drop-shadow-[0_8px_18px_rgba(132,13,92,0.12)]" aria-hidden="true">
+        <defs>
+          <linearGradient id="ikna-contact-bg" x1="0%" x2="100%" y1="0%" y2="100%">
+            <stop offset="0%" stopColor="#fff7fa" />
+            <stop offset="100%" stopColor="#ffe7f1" />
+          </linearGradient>
+        </defs>
+        <rect x="18" y="28" width="118" height="76" rx="18" fill="url(#ikna-contact-bg)" />
+        <path d="M25 38L86 78L144 38" fill="none" stroke="#f2d6df" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+        <rect x="30" y="33" width="104" height="72" rx="16" fill="#fff" stroke="#f2d6df" strokeWidth="2" />
+        <path d="M40 48C62 58 83 63 104 48C117 42 126 46 130 52V87H40V48Z" fill="#fce6ef" />
+        <path d="M83 47C83 50 79 55 71 58C63 61 56 66 56 75C56 84 62 90 71 90C86 90 92 80 92 71C92 62 87 56 83 47Z" fill="#840D5C" opacity="0.12" />
+        <path d="M92 62C92 56 88 50 82 47C76 44 69 46 64 50C58 55 56 64 59 71C62 78 70 82 77 82C84 82 90 76 92 62Z" fill="#D4AF37" opacity="0.45" />
+        <path d="M74 42C74 34 78 26 86 23C95 20 103 24 108 32C112 39 110 48 105 53C101 59 94 62 88 60C79 58 74 51 74 42Z" fill="#ec9ac2" />
+        <path d="M80 42C80 39 82 35 86 33C90 31 95 33 97 37C100 42 99 48 94 51C89 54 83 52 80 48V42Z" fill="#840D5C" opacity="0.9" />
+        <path d="M96 54C101 60 109 62 116 59C117 65 115 71 110 75C103 80 94 80 87 76" fill="none" stroke="#D4AF37" strokeWidth="3" strokeLinecap="round" />
+        <circle cx="145" cy="28" r="5" fill="#D4AF37" opacity="0.8" />
+        <circle cx="154" cy="34" r="3" fill="#840D5C" opacity="0.55" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 180 130" className="h-28 w-32 drop-shadow-[0_8px_18px_rgba(132,13,92,0.12)]" aria-hidden="true">
+      <rect x="18" y="25" width="120" height="72" rx="18" fill="#fef6f9" stroke="#f3dfe9" strokeWidth="2" />
+      <path d="M35 38L83 72L131 38" fill="none" stroke="#f3dfe9" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="30" y="36" width="100" height="60" rx="14" fill="#fff" stroke="#f0d8e4" strokeWidth="2" />
+      <path d="M58 56H110" stroke="#D4AF37" strokeWidth="5" strokeLinecap="round" />
+      <path d="M60 69H102" stroke="#f0a6d1" strokeWidth="5" strokeLinecap="round" opacity="0.8" />
+      <rect x="112" y="62" width="28" height="40" rx="5" fill="#840D5C" opacity="0.13" />
+      <path d="M120 74H135" stroke="#840D5C" strokeWidth="4" strokeLinecap="round" />
+      <path d="M120 82H135" stroke="#840D5C" strokeWidth="4" strokeLinecap="round" opacity="0.7" />
+      <path d="M52 34L66 22L79 34" fill="none" stroke="#D4AF37" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+      <circle cx="145" cy="24" r="5" fill="#f5d567" opacity="0.9" />
+      <circle cx="149" cy="39" r="3" fill="#ec9ac2" opacity="0.8" />
+      <path d="M145 83L138 96H152L145 83Z" fill="#840D5C" opacity="0.14" />
+      <path d="M137 104H153" stroke="#840D5C" strokeWidth="4" strokeLinecap="round" opacity="0.8" />
+    </svg>
+  );
+}
+
 async function trackCheckoutSessionStep(step: 'CHECKOUT_STARTED' | 'ADDRESS_ADDED' | 'SHIPPING_SELECTED' | 'PAYMENT_STARTED', note?: string) {
   try {
     await fetch('/api/checkout/session', {
@@ -205,10 +249,12 @@ const CartPageContent = () => {
   const [isAddressNoticeDismissed, setIsAddressNoticeDismissed] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [checkoutStep, setCheckoutStep] = useState<1 | 2>(1);
   const [isPinLoading, setIsPinLoading] = useState(false);
   const [isPinAutoFilled, setIsPinAutoFilled] = useState(false);
   const [pinLookupError, setPinLookupError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [addressSearch, setAddressSearch] = useState('');
   const [guestCheckout, setGuestCheckout] = useState(() => readGuestCheckout());
   const [addressForm, setAddressForm] = useState({
     name: '',
@@ -252,6 +298,7 @@ const CartPageContent = () => {
   const selectedShippingAddress =
     addresses.find((address) => address.isDefault) || addresses[0] || null;
   const guestShippingAddress = guestCheckout || null;
+  const isGooglePlacesEnabled = Boolean(process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY);
 
   const splitStreetParts = (streetValue: string) => {
     const cleanedParts = String(streetValue || '')
@@ -283,6 +330,57 @@ const CartPageContent = () => {
     return parts.join(', ');
   };
 
+  const validateContactStep = useCallback(() => {
+    const errors: Record<string, string> = {};
+    const cleanName = addressForm.name.trim();
+    const cleanPhone = addressForm.phone.trim();
+    const cleanEmail = addressForm.email.trim();
+
+    if (!cleanName) {
+      errors.name = 'Full name is required.';
+    }
+
+    if (!cleanPhone) {
+      errors.phone = 'Mobile number is required.';
+    } else if (!/^(\+91|91)?[6-9]\d{9}$/.test(cleanPhone.replace(/\s+/g, ''))) {
+      errors.phone = 'Please enter a valid Indian mobile number.';
+    }
+
+    if (!cleanEmail) {
+      errors.email = 'Email address is required.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      errors.email = 'Please enter a valid email address.';
+    }
+
+    return errors;
+  }, [addressForm.email, addressForm.name, addressForm.phone]);
+
+  const focusFirstInvalidField = useCallback((errors: Record<string, string>) => {
+    const fieldOrder = ['name', 'phone', 'email', 'pin', 'city', 'state', 'house', 'area'];
+    const firstInvalidKey = fieldOrder.find((key) => !!errors[key]);
+
+    if (!firstInvalidKey) {
+      return;
+    }
+
+    const targetIdMap: Record<string, string> = {
+      name: 'guest-name',
+      phone: 'guest-phone',
+      email: 'guest-email',
+      pin: 'guest-pin',
+      city: 'guest-city',
+      state: 'guest-state',
+      house: 'guest-house',
+      area: 'guest-area',
+    };
+
+    const target = document.getElementById(targetIdMap[firstInvalidKey]);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.focus();
+    }
+  }, []);
+
   const openGuestCheckoutForm = useCallback(() => {
     const currentGuest = readGuestCheckout();
     const nextForm = currentGuest || {
@@ -312,8 +410,10 @@ const CartPageContent = () => {
       zip: nextForm.zip || '',
       country: nextForm.country || 'India',
       isDefault: true,
-      saveDetails: true,
+      saveDetails: false,
     });
+    setCheckoutStep(1);
+    setAddressSearch('');
     setFieldErrors({});
     setPinLookupError('');
     setIsPinAutoFilled(Boolean(nextForm.zip && nextForm.city && nextForm.state));
@@ -625,7 +725,12 @@ const CartPageContent = () => {
     setAddressForm((prev) => ({
       ...prev,
       isDefault: addresses.length === 0,
+      saveDetails: false,
     }));
+    setCheckoutStep(1);
+    setAddressSearch('');
+    setFieldErrors({});
+    setPinLookupError('');
     setIsAddressModalOpen(true);
   };
 
@@ -654,24 +759,6 @@ const CartPageContent = () => {
       ...prev,
       [field]: '',
     }));
-  };
-
-  const focusFirstInvalidField = (errors: Record<string, string>) => {
-    const fieldOrder = ['name', 'phone', 'email', 'pin', 'city', 'state', 'house', 'area'];
-    const firstInvalidKey = fieldOrder.find((key) => !!errors[key]);
-
-    if (!firstInvalidKey) {
-      return;
-    }
-
-    const target = document.getElementById(
-      firstInvalidKey === 'house' ? 'guest-house' : firstInvalidKey === 'area' ? 'guest-area' : firstInvalidKey === 'email' ? 'guest-email' : firstInvalidKey === 'phone' ? 'guest-phone' : firstInvalidKey === 'pin' ? 'guest-pin' : firstInvalidKey === 'name' ? 'guest-name' : firstInvalidKey === 'city' ? 'guest-city' : firstInvalidKey === 'state' ? 'guest-state' : 'guest-name'
-    );
-
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      target.focus();
-    }
   };
 
   const validateGuestAddressForm = (form: typeof addressForm) => {
@@ -769,14 +856,32 @@ const CartPageContent = () => {
   const handleSaveAddressFromModal = async () => {
     const userId = user?.id;
 
-    if (!userId) {
-      const errors = validateGuestAddressForm(addressForm);
-      if (Object.keys(errors).length > 0) {
-        setFieldErrors(errors);
-        focusFirstInvalidField(errors);
+    const contactErrors = validateContactStep();
+    const addressErrors = validateGuestAddressForm(addressForm);
+
+    if (checkoutStep === 1) {
+      if (Object.keys(contactErrors).length > 0) {
+        setFieldErrors(contactErrors);
+        focusFirstInvalidField(contactErrors);
         return;
       }
 
+      setFieldErrors({});
+      setCheckoutStep(2);
+      return;
+    }
+
+    const finalErrors = { ...contactErrors, ...addressErrors };
+    if (Object.keys(finalErrors).length > 0) {
+      setFieldErrors(finalErrors);
+      if (Object.keys(contactErrors).length > 0) {
+        setCheckoutStep(1);
+      }
+      focusFirstInvalidField(finalErrors);
+      return;
+    }
+
+    if (!userId) {
       const trimmedName = addressForm.name.trim();
       const trimmedEmail = addressForm.email.trim();
       const trimmedPhone = addressForm.phone.trim();
@@ -803,13 +908,9 @@ const CartPageContent = () => {
       }
       setFieldErrors({});
       setPinLookupError('');
+      setCheckoutStep(1);
       setIsAddressModalOpen(false);
       toast.success('Shipping details saved. You can continue to payment.');
-      return;
-    }
-
-    if (!addressForm.name.trim() || !addressForm.street.trim() || !addressForm.city.trim() || !addressForm.state.trim() || !addressForm.zip.trim()) {
-      toast.error('Please fill all required address fields.');
       return;
     }
 
@@ -826,6 +927,7 @@ const CartPageContent = () => {
       });
       await fetchAddresses(userId);
       setIsAddressModalOpen(false);
+      setCheckoutStep(1);
       setAddressForm({
         name: '',
         street: '',
@@ -838,7 +940,7 @@ const CartPageContent = () => {
         zip: '',
         country: 'India',
         isDefault: true,
-        saveDetails: true,
+        saveDetails: false,
         email: '',
         phone: '',
       });
@@ -1743,72 +1845,93 @@ const CartPageContent = () => {
             type="button"
             aria-label="Close address modal backdrop"
             className="absolute inset-0 bg-[#321327]/35 backdrop-blur-[2px]"
-            onClick={() => setIsAddressModalOpen(false)}
+            onClick={() => {
+              setFieldErrors({});
+              setCheckoutStep(1);
+              setIsAddressModalOpen(false);
+            }}
           />
 
-          <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-[1.4rem] border border-[#f0dde7] bg-white p-4 shadow-2xl sm:p-6">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#840d5c]/65">Delivery details</p>
-                <h3 className="mt-2 text-2xl font-serif text-[#321327]">Delivery details</h3>
-                <p className="mt-1 text-sm text-[#6b4f61]">Please provide your contact and delivery details to continue.</p>
+          <div className="relative w-full max-w-[620px] overflow-hidden rounded-[30px] border border-[#f2dfe8] bg-[#fffdfd] shadow-[0_30px_80px_rgba(50,19,39,0.16)]">
+            <div className="flex items-center justify-between border-b border-[#f5e2eb] bg-[#fffafc] px-4 py-3 sm:px-6">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#840d5c]/75">Step {checkoutStep} of 2</span>
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6b4f61]">
+                  <span className={`inline-flex items-center gap-2 ${checkoutStep === 1 ? 'text-[#840d5c]' : 'text-[#321327]/60'}`}>
+                    <span className={`h-2.5 w-2.5 rounded-full ${checkoutStep === 1 ? 'bg-[#840d5c]' : 'border border-[#d8bfd0] bg-white'}`} />
+                    Contact Details
+                  </span>
+                  <span className="h-px w-6 bg-[#e8d7e1]" />
+                  <span className={`inline-flex items-center gap-2 ${checkoutStep === 2 ? 'text-[#840d5c]' : 'text-[#321327]/60'}`}>
+                    <span className={`h-2.5 w-2.5 rounded-full ${checkoutStep === 2 ? 'bg-[#840d5c]' : 'border border-[#d8bfd0] bg-white'}`} />
+                    Delivery Address
+                  </span>
+                </div>
               </div>
+
               <button
                 type="button"
-                onClick={() => setIsAddressModalOpen(false)}
-                className="rounded-full p-1.5 text-[#321327]/60 hover:bg-[#f8edf3] hover:text-[#321327]"
+                onClick={() => {
+                  setFieldErrors({});
+                  setCheckoutStep(1);
+                  setIsAddressModalOpen(false);
+                }}
+                className="rounded-full p-2 text-[#321327]/60 transition-colors hover:bg-[#f8edf3] hover:text-[#321327]"
                 aria-label="Close address modal"
               >
                 <X size={16} />
               </button>
             </div>
 
-            <div className="space-y-5">
-              <section>
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#840d5c]">1. Contact Information</p>
+            <div className="relative overflow-hidden px-4 pb-4 pt-5 sm:px-6 sm:pb-6">
+              <div className={`transition-all duration-300 ease-out ${checkoutStep === 1 ? 'translate-x-0 opacity-100 relative' : '-translate-x-6 opacity-0 absolute inset-0 pointer-events-none'}`}>
+                <div className="mb-5 flex items-start justify-between gap-4">
+                  <div className="max-w-[58%]">
+                    <h3 className="font-serif text-[2rem] leading-tight text-[#321327]">Let&apos;s get started! ♥</h3>
+                    <p className="mt-2 text-sm text-[#6b4f61]">We&apos;ll use these details to keep you updated about your order.</p>
+                  </div>
+                  <div className="rounded-[26px] bg-[#fff5f8] p-2 ring-1 ring-[#f3dfe9]">
+                    <CheckoutIllustration variant="contact" />
+                  </div>
+                </div>
 
-                <div className="mt-3 space-y-4">
+                <div className="space-y-4">
                   <div>
-                    <label htmlFor="guest-name" className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">
-                      Full Name <span className="text-[#b11e72]">*</span>
-                    </label>
+                    <label htmlFor="guest-name" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b4f61]">Full Name <span className="text-[#b11e72]">*</span></label>
                     <input
                       id="guest-name"
                       value={addressForm.name}
                       onChange={(e) => handleAddressInputChange('name', e.target.value)}
                       autoComplete="name"
                       aria-invalid={Boolean(fieldErrors.name)}
-                      aria-describedby={fieldErrors.name ? 'guest-name-error' : undefined}
-                      className={`w-full rounded-xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.name ? 'border-red-300 bg-red-50' : 'border-[#e7c9d9]'}`}
-                      placeholder="Enter full name"
+                      className={`w-full rounded-2xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.name ? 'border-red-300 bg-red-50' : 'border-[#e8d5df]'}`}
+                      placeholder="Enter your full name"
                     />
-                    {fieldErrors.name && <p id="guest-name-error" className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
+                    {fieldErrors.name && <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                      <label htmlFor="guest-phone" className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">
-                        Mobile Number <span className="text-[#b11e72]">*</span>
-                      </label>
-                      <input
-                        id="guest-phone"
-                        type="tel"
-                        inputMode="tel"
-                        autoComplete="tel"
-                        value={addressForm.phone}
-                        onChange={(e) => handleAddressInputChange('phone', e.target.value.replace(/[^\d+\s-]/g, '').slice(0, 15))}
-                        aria-invalid={Boolean(fieldErrors.phone)}
-                        aria-describedby={fieldErrors.phone ? 'guest-phone-error' : undefined}
-                        className={`w-full rounded-xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.phone ? 'border-red-300 bg-red-50' : 'border-[#e7c9d9]'}`}
-                        placeholder="+91 98765 43210"
-                      />
-                      {fieldErrors.phone && <p id="guest-phone-error" className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>}
+                      <label htmlFor="guest-phone" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b4f61]">Mobile Number <span className="text-[#b11e72]">*</span></label>
+                      <div className={`flex items-center overflow-hidden rounded-2xl border bg-white ${fieldErrors.phone ? 'border-red-300 bg-red-50' : 'border-[#e8d5df]'}`}>
+                        <span className="flex items-center gap-1 border-r border-[#f1d9e1] bg-[#fffafc] px-3 py-3 text-sm font-medium text-[#321327]">🇮🇳 +91</span>
+                        <input
+                          id="guest-phone"
+                          type="tel"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          value={addressForm.phone}
+                          onChange={(e) => handleAddressInputChange('phone', e.target.value.replace(/[^\d+\s-]/g, '').slice(0, 15))}
+                          aria-invalid={Boolean(fieldErrors.phone)}
+                          className="w-full border-0 bg-transparent px-3.5 py-3 text-sm text-[#321327] outline-none placeholder:text-[#321327]/40"
+                          placeholder="Enter mobile number"
+                        />
+                      </div>
+                      {fieldErrors.phone && <p className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>}
                     </div>
 
                     <div>
-                      <label htmlFor="guest-email" className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">
-                        Email Address <span className="text-[#b11e72]">*</span>
-                      </label>
+                      <label htmlFor="guest-email" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b4f61]">Email Address <span className="text-[#b11e72]">*</span></label>
                       <input
                         id="guest-email"
                         type="email"
@@ -1817,164 +1940,212 @@ const CartPageContent = () => {
                         value={addressForm.email}
                         onChange={(e) => handleAddressInputChange('email', e.target.value)}
                         aria-invalid={Boolean(fieldErrors.email)}
-                        aria-describedby={fieldErrors.email ? 'guest-email-error' : undefined}
-                        className={`w-full rounded-xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.email ? 'border-red-300 bg-red-50' : 'border-[#e7c9d9]'}`}
-                        placeholder="Email address"
+                        className={`w-full rounded-2xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.email ? 'border-red-300 bg-red-50' : 'border-[#e8d5df]'}`}
+                        placeholder="Enter email address"
                       />
-                      {fieldErrors.email && <p id="guest-email-error" className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
+                      {fieldErrors.email && <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
                     </div>
                   </div>
                 </div>
 
-                <p className="mt-3 text-sm text-[#6b4f61]">We&apos;ll use these details for order confirmation and delivery updates.</p>
-              </section>
+                <div className="mt-5 flex items-start gap-3 rounded-[20px] border border-[#f1d9e0] bg-[#fff9fb] p-3 text-left">
+                  <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-white text-[#840d5c] shadow-sm ring-1 ring-[#f5dfe9]">🛡</div>
+                  <p className="text-sm leading-relaxed text-[#5e394d]">We&apos;ll send your order confirmation, tracking updates and important notifications here.</p>
+                </div>
 
-              <section>
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#840d5c]">2. Delivery Address</p>
+                <div className="mt-6 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleSaveAddressFromModal}
+                    className="inline-flex items-center justify-center rounded-full bg-[#840d5c] px-5 py-3 text-sm font-bold text-white shadow-[0_12px_26px_rgba(132,13,92,0.2)] transition-all hover:bg-[#6d0849]"
+                  >
+                    Continue to Delivery Address <ArrowRight className="ml-2 h-4 w-4" />
+                  </button>
+                </div>
+              </div>
 
-                <div className="mt-3 space-y-4">
+              <div className={`transition-all duration-300 ease-out ${checkoutStep === 2 ? 'translate-x-0 opacity-100 relative' : 'translate-x-6 opacity-0 absolute inset-0 pointer-events-none'}`}>
+                <div className="mb-5 flex items-start justify-between gap-4">
+                  <div className="max-w-[60%]">
+                    <h3 className="font-serif text-[2rem] leading-tight text-[#321327]">Where should we deliver your order? 📍</h3>
+                    <p className="mt-2 text-sm text-[#6b4f61]">Enter your address or search to save time.</p>
+                  </div>
+                  <div className="rounded-[26px] bg-[#fff7ec] p-2 ring-1 ring-[#f1debc]">
+                    <CheckoutIllustration variant="delivery" />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
                   <div>
-                    <label htmlFor="guest-pin" className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">
-                      PIN Code <span className="text-[#b11e72]">*</span>
-                    </label>
-                    <input
-                      id="guest-pin"
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="postal-code"
-                      maxLength={6}
-                      value={addressForm.pin}
-                      onChange={(e) => {
-                        const numericPin = e.target.value.replace(/\D/g, '').slice(0, 6);
-                        handleAddressInputChange('pin', numericPin);
-                        setIsPinAutoFilled(false);
-                        setPinLookupError('');
-                        if (numericPin.length === 6) {
-                          void handlePinLookup(numericPin);
-                        }
-                      }}
-                      aria-invalid={Boolean(fieldErrors.pin)}
-                      aria-describedby={fieldErrors.pin ? 'guest-pin-error' : pinLookupError ? 'guest-pin-warning' : undefined}
-                      className={`w-full rounded-xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.pin || pinLookupError ? 'border-red-300 bg-red-50' : 'border-[#e7c9d9]'}`}
-                      placeholder="Enter 6-digit PIN"
-                    />
-                    {isPinLoading && (
-                      <div className="mt-2 inline-flex items-center gap-2 text-xs text-[#840d5c]">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        Looking up your location...
+                    <label htmlFor="guest-address-search" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b4f61]">Search your address</label>
+                    <div className={`flex items-center rounded-2xl border bg-white px-3.5 ${isGooglePlacesEnabled ? 'border-[#e8d5df]' : 'border-[#e8d5df]'}`}>
+                      <Search className="mr-2 h-4 w-4 text-[#840d5c]/60" />
+                      <input
+                        id="guest-address-search"
+                        type="text"
+                        value={addressSearch}
+                        onChange={(e) => setAddressSearch(e.target.value)}
+                        className="w-full border-0 bg-transparent py-3 text-sm text-[#321327] outline-none placeholder:text-[#321327]/40"
+                        placeholder="Start typing your area, street or landmark..."
+                      />
+                    </div>
+                    <p className="mt-2 text-xs text-[#6b4f61]">📍 Select an address from suggestions to auto-fill city, state and PIN.</p>
+                  </div>
+
+                  <div className="my-3 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[#8d6c7d]">
+                    <span className="h-px flex-1 bg-[#ebd9e5]" />
+                    OR
+                    <span className="h-px flex-1 bg-[#ebd9e5]" />
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label htmlFor="guest-pin" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b4f61]">Enter PIN code <span className="text-[#b11e72]">*</span></label>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <input
+                          id="guest-pin"
+                          type="text"
+                          inputMode="numeric"
+                          autoComplete="postal-code"
+                          maxLength={6}
+                          value={addressForm.pin}
+                          onChange={(e) => {
+                            const numericPin = e.target.value.replace(/\D/g, '').slice(0, 6);
+                            handleAddressInputChange('pin', numericPin);
+                            setIsPinAutoFilled(false);
+                            setPinLookupError('');
+                            if (numericPin.length === 6) {
+                              void handlePinLookup(numericPin);
+                            }
+                          }}
+                          aria-invalid={Boolean(fieldErrors.pin)}
+                          className={`w-full rounded-2xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.pin || pinLookupError ? 'border-red-300 bg-red-50' : 'border-[#e8d5df]'}`}
+                          placeholder="Enter 6-digit PIN"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handlePinLookup(addressForm.pin)}
+                          disabled={isPinLoading || addressForm.pin.length !== 6}
+                          className="rounded-2xl border border-[#e7c9d9] bg-[#fffafc] px-4 py-3 text-[11px] font-bold uppercase tracking-[0.16em] text-[#840d5c] transition-colors hover:bg-[#fff1f7] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {isPinLoading ? 'Fetching...' : 'Fetch Address'}
+                        </button>
                       </div>
-                    )}
-                    {fieldErrors.pin && <p id="guest-pin-error" className="mt-1 text-xs text-red-600">{fieldErrors.pin}</p>}
-                    {!fieldErrors.pin && pinLookupError && <p id="guest-pin-warning" className="mt-1 text-xs text-red-600">{pinLookupError}</p>}
-                  </div>
+                      {isPinLoading && (
+                        <div className="mt-2 inline-flex items-center gap-2 text-xs text-[#840d5c]">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Fetching your location...
+                        </div>
+                      )}
+                      {fieldErrors.pin && <p className="mt-1 text-xs text-red-600">{fieldErrors.pin}</p>}
+                      {!fieldErrors.pin && pinLookupError && <p className="mt-1 text-xs text-red-600">{pinLookupError}</p>}
+                    </div>
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                      <label htmlFor="guest-city" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">City</label>
-                      <input
-                        id="guest-city"
-                        value={addressForm.city}
-                        onChange={(e) => handleAddressInputChange('city', e.target.value)}
-                        autoComplete="address-level2"
-                        readOnly={isPinAutoFilled}
-                        disabled={isPinAutoFilled}
-                        aria-invalid={Boolean(fieldErrors.city)}
-                        className={`w-full rounded-xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.city ? 'border-red-300 bg-red-50' : 'border-[#e7c9d9]'} ${isPinAutoFilled ? 'bg-[#faf6f8] text-[#321327]/80' : ''}`}
-                        placeholder="City"
-                      />
-                      {fieldErrors.city && <p className="mt-1 text-xs text-red-600">{fieldErrors.city}</p>}
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="guest-city" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b4f61]">City</label>
+                        <input
+                          id="guest-city"
+                          value={addressForm.city}
+                          onChange={(e) => handleAddressInputChange('city', e.target.value)}
+                          autoComplete="address-level2"
+                          readOnly={isPinAutoFilled}
+                          disabled={isPinAutoFilled}
+                          className={`w-full rounded-2xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.city ? 'border-red-300 bg-red-50' : 'border-[#e8d5df]'} ${isPinAutoFilled ? 'bg-[#faf6f8] text-[#321327]/80' : ''}`}
+                          placeholder="Auto-filled"
+                        />
+                        {fieldErrors.city && <p className="mt-1 text-xs text-red-600">{fieldErrors.city}</p>}
+                      </div>
+
+                      <div>
+                        <label htmlFor="guest-state" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b4f61]">State</label>
+                        <input
+                          id="guest-state"
+                          value={addressForm.state}
+                          onChange={(e) => handleAddressInputChange('state', e.target.value)}
+                          autoComplete="address-level1"
+                          readOnly={isPinAutoFilled}
+                          disabled={isPinAutoFilled}
+                          className={`w-full rounded-2xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.state ? 'border-red-300 bg-red-50' : 'border-[#e8d5df]'} ${isPinAutoFilled ? 'bg-[#faf6f8] text-[#321327]/80' : ''}`}
+                          placeholder="Auto-filled"
+                        />
+                        {fieldErrors.state && <p className="mt-1 text-xs text-red-600">{fieldErrors.state}</p>}
+                      </div>
                     </div>
 
                     <div>
-                      <label htmlFor="guest-state" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">State</label>
+                      <label htmlFor="guest-house" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b4f61]">House / Flat / Building <span className="text-[#b11e72]">*</span></label>
                       <input
-                        id="guest-state"
-                        value={addressForm.state}
-                        onChange={(e) => handleAddressInputChange('state', e.target.value)}
-                        autoComplete="address-level1"
-                        readOnly={isPinAutoFilled}
-                        disabled={isPinAutoFilled}
-                        aria-invalid={Boolean(fieldErrors.state)}
-                        className={`w-full rounded-xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.state ? 'border-red-300 bg-red-50' : 'border-[#e7c9d9]'} ${isPinAutoFilled ? 'bg-[#faf6f8] text-[#321327]/80' : ''}`}
-                        placeholder="State"
+                        id="guest-house"
+                        value={addressForm.house}
+                        onChange={(e) => handleAddressInputChange('house', e.target.value)}
+                        autoComplete="address-line1"
+                        className={`w-full rounded-2xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.house ? 'border-red-300 bg-red-50' : 'border-[#e8d5df]'}`}
+                        placeholder="House no., building name, apartment"
                       />
-                      {fieldErrors.state && <p className="mt-1 text-xs text-red-600">{fieldErrors.state}</p>}
+                      {fieldErrors.house && <p className="mt-1 text-xs text-red-600">{fieldErrors.house}</p>}
                     </div>
-                  </div>
 
-                  <div>
-                    <label htmlFor="guest-house" className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">
-                      House / Flat / Building <span className="text-[#b11e72]">*</span>
-                    </label>
-                    <input
-                      id="guest-house"
-                      value={addressForm.house}
-                      onChange={(e) => handleAddressInputChange('house', e.target.value)}
-                      autoComplete="address-line1"
-                      aria-invalid={Boolean(fieldErrors.house)}
-                      className={`w-full rounded-xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.house ? 'border-red-300 bg-red-50' : 'border-[#e7c9d9]'}`}
-                      placeholder="House no., building, apartment"
-                    />
-                    {fieldErrors.house && <p className="mt-1 text-xs text-red-600">{fieldErrors.house}</p>}
-                  </div>
+                    <div>
+                      <label htmlFor="guest-area" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b4f61]">Area / Street <span className="text-[#b11e72]">*</span></label>
+                      <input
+                        id="guest-area"
+                        value={addressForm.area}
+                        onChange={(e) => handleAddressInputChange('area', e.target.value)}
+                        autoComplete="address-line2"
+                        className={`w-full rounded-2xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.area ? 'border-red-300 bg-red-50' : 'border-[#e8d5df]'}`}
+                        placeholder="Area, street, locality"
+                      />
+                      {fieldErrors.area && <p className="mt-1 text-xs text-red-600">{fieldErrors.area}</p>}
+                    </div>
 
-                  <div>
-                    <label htmlFor="guest-area" className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">
-                      Area / Street <span className="text-[#b11e72]">*</span>
-                    </label>
-                    <input
-                      id="guest-area"
-                      value={addressForm.area}
-                      onChange={(e) => handleAddressInputChange('area', e.target.value)}
-                      autoComplete="address-line2"
-                      aria-invalid={Boolean(fieldErrors.area)}
-                      className={`w-full rounded-xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.area ? 'border-red-300 bg-red-50' : 'border-[#e7c9d9]'}`}
-                      placeholder="Area, street, locality"
-                    />
-                    {fieldErrors.area && <p className="mt-1 text-xs text-red-600">{fieldErrors.area}</p>}
-                  </div>
-
-                  <div>
-                    <label htmlFor="guest-landmark" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">Landmark (optional)</label>
-                    <input
-                      id="guest-landmark"
-                      value={addressForm.landmark}
-                      onChange={(e) => handleAddressInputChange('landmark', e.target.value)}
-                      autoComplete="address-line3"
-                      className="w-full rounded-xl border border-[#e7c9d9] bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9]"
-                      placeholder="Near school, hospital, etc."
-                    />
+                    <div>
+                      <label htmlFor="guest-landmark" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b4f61]">Landmark (optional)</label>
+                      <input
+                        id="guest-landmark"
+                        value={addressForm.landmark}
+                        onChange={(e) => handleAddressInputChange('landmark', e.target.value)}
+                        autoComplete="address-line3"
+                        className="w-full rounded-2xl border border-[#e8d5df] bg-white px-3.5 py-3 text-sm text-[#321327] outline-none focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9]"
+                        placeholder="Near school, hospital, landmark etc."
+                      />
+                    </div>
                   </div>
                 </div>
-              </section>
 
-              <label className="inline-flex items-center gap-2 text-sm text-[#5f4556]">
-                <input
-                  type="checkbox"
-                  checked={addressForm.saveDetails}
-                  onChange={(e) => handleAddressInputChange('saveDetails', e.target.checked)}
-                  className="h-4 w-4 rounded border-[#d8b5c8] text-[#9f1466] focus:ring-[#c02a82]"
-                />
-                Save my details for faster checkout next time
-              </label>
-            </div>
+                <div className="mt-5 rounded-[20px] border border-[#f1dce7] bg-[#fffafc] p-3">
+                  <label className="inline-flex items-start gap-3 text-sm text-[#5f4556]">
+                    <input
+                      type="checkbox"
+                      checked={addressForm.saveDetails}
+                      onChange={(e) => handleAddressInputChange('saveDetails', e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-[#d8b5c8] text-[#9f1466] focus:ring-[#c02a82]"
+                    />
+                    <span>
+                      <span className="font-medium text-[#321327]">Save my details for faster checkout next time</span>
+                      <span className="mt-1 block text-xs text-[#6b4f61]">We&apos;ll remember this on this device (no account needed).</span>
+                    </span>
+                  </label>
+                </div>
 
-            <div className="mt-6 flex items-center justify-end gap-2 border-t border-[#f1dfe9] pt-4">
-              <button
-                type="button"
-                onClick={() => setIsAddressModalOpen(false)}
-                className="rounded-full border border-[#e0c6d4] px-4 py-2.5 text-sm font-semibold text-[#6b4f61] hover:bg-[#fff6fa]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveAddressFromModal}
-                disabled={isSavingAddress || isPinLoading}
-                className="rounded-full bg-[#9f1466] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#840d5c] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSavingAddress ? 'Continuing...' : 'Continue to Payment →'}
-              </button>
+                <div className="mt-6 flex items-center justify-between gap-3 border-t border-[#f3e1ea] pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutStep(1)}
+                    className="rounded-full border border-[#e7d4df] bg-white px-4 py-2.5 text-sm font-semibold text-[#6b4f61] hover:bg-[#fff8fa]"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveAddressFromModal}
+                    disabled={isSavingAddress || isPinLoading}
+                    className="inline-flex items-center justify-center rounded-full bg-[#840d5c] px-5 py-3 text-sm font-bold text-white shadow-[0_12px_26px_rgba(132,13,92,0.2)] transition-all hover:bg-[#6d0849] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isSavingAddress ? 'Continuing...' : 'Continue to Payment →'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
