@@ -1840,7 +1840,7 @@ const CartPageContent = () => {
       </main>
 
       {isAddressModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4">
           <button
             type="button"
             aria-label="Close address modal backdrop"
@@ -1852,39 +1852,40 @@ const CartPageContent = () => {
             }}
           />
 
-          <div className="relative w-full max-w-[620px] overflow-hidden rounded-[30px] border border-[#f2dfe8] bg-[#fffdfd] shadow-[0_30px_80px_rgba(50,19,39,0.16)]">
-            <div className="flex items-center justify-between border-b border-[#f5e2eb] bg-[#fffafc] px-4 py-3 sm:px-6">
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#840d5c]/75">Step {checkoutStep} of 2</span>
-                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6b4f61]">
-                  <span className={`inline-flex items-center gap-2 ${checkoutStep === 1 ? 'text-[#840d5c]' : 'text-[#321327]/60'}`}>
-                    <span className={`h-2.5 w-2.5 rounded-full ${checkoutStep === 1 ? 'bg-[#840d5c]' : 'border border-[#d8bfd0] bg-white'}`} />
-                    Contact Details
-                  </span>
-                  <span className="h-px w-6 bg-[#e8d7e1]" />
-                  <span className={`inline-flex items-center gap-2 ${checkoutStep === 2 ? 'text-[#840d5c]' : 'text-[#321327]/60'}`}>
-                    <span className={`h-2.5 w-2.5 rounded-full ${checkoutStep === 2 ? 'bg-[#840d5c]' : 'border border-[#d8bfd0] bg-white'}`} />
-                    Delivery Address
-                  </span>
+          <div className="relative z-[61] w-full max-w-[620px] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] overflow-hidden rounded-[30px] border border-[#f2dfe8] bg-[#fffdfd] shadow-[0_30px_80px_rgba(50,19,39,0.16)]">
+            <div className="flex max-h-[calc(100dvh-1rem)] flex-col sm:max-h-[calc(100dvh-2rem)]">
+              <div className="flex items-center justify-between border-b border-[#f5e2eb] bg-[#fffafc] px-4 py-3 sm:px-6">
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#840d5c]/75">Step {checkoutStep} of 2</span>
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6b4f61]">
+                    <span className={`inline-flex items-center gap-2 ${checkoutStep === 1 ? 'text-[#840d5c]' : 'text-[#321327]/60'}`}>
+                      <span className={`h-2.5 w-2.5 rounded-full ${checkoutStep === 1 ? 'bg-[#840d5c]' : 'border border-[#d8bfd0] bg-white'}`} />
+                      Contact Details
+                    </span>
+                    <span className="h-px w-6 bg-[#e8d7e1]" />
+                    <span className={`inline-flex items-center gap-2 ${checkoutStep === 2 ? 'text-[#840d5c]' : 'text-[#321327]/60'}`}>
+                      <span className={`h-2.5 w-2.5 rounded-full ${checkoutStep === 2 ? 'bg-[#840d5c]' : 'border border-[#d8bfd0] bg-white'}`} />
+                      Delivery Address
+                    </span>
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFieldErrors({});
+                    setCheckoutStep(1);
+                    setIsAddressModalOpen(false);
+                  }}
+                  className="rounded-full p-2 text-[#321327]/60 transition-colors hover:bg-[#f8edf3] hover:text-[#321327]"
+                  aria-label="Close address modal"
+                >
+                  <X size={16} />
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setFieldErrors({});
-                  setCheckoutStep(1);
-                  setIsAddressModalOpen(false);
-                }}
-                className="rounded-full p-2 text-[#321327]/60 transition-colors hover:bg-[#f8edf3] hover:text-[#321327]"
-                aria-label="Close address modal"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="relative overflow-hidden px-4 pb-4 pt-5 sm:px-6 sm:pb-6">
-              <div className={`transition-all duration-300 ease-out ${checkoutStep === 1 ? 'translate-x-0 opacity-100 relative' : '-translate-x-6 opacity-0 absolute inset-0 pointer-events-none'}`}>
+              <div className="relative min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-5 sm:px-6 sm:pb-6">
+                <div className={`transition-all duration-300 ease-out ${checkoutStep === 1 ? 'translate-x-0 opacity-100 relative' : '-translate-x-6 opacity-0 absolute inset-0 pointer-events-none'}`}>
                 <div className="mb-5 flex items-start justify-between gap-4">
                   <div className="max-w-[58%]">
                     <h3 className="font-serif text-[2rem] leading-tight text-[#321327]">Let&apos;s get started! ♥</h3>
@@ -2146,6 +2147,7 @@ const CartPageContent = () => {
                   </button>
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </div>
