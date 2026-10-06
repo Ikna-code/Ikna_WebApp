@@ -15,7 +15,6 @@ import { verifyPayment } from "@/backend/actions/verify";
 import { useStore } from '@/store/useStore'; 
 import { getOptimizedSupabaseImageUrl } from '@/lib/supabaseImage';
 import {
-  addGuestCartItem,
   clearGuestCart,
   clearGuestCheckout,
   readGuestCart,
@@ -206,15 +205,24 @@ const CartPageContent = () => {
   const [isAddressNoticeDismissed, setIsAddressNoticeDismissed] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [isPinLoading, setIsPinLoading] = useState(false);
+  const [isPinAutoFilled, setIsPinAutoFilled] = useState(false);
+  const [pinLookupError, setPinLookupError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [guestCheckout, setGuestCheckout] = useState(() => readGuestCheckout());
   const [addressForm, setAddressForm] = useState({
     name: '',
     street: '',
+    house: '',
+    area: '',
+    landmark: '',
     city: '',
     state: '',
+    pin: '',
     zip: '',
     country: 'India',
     isDefault: true,
+    saveDetails: true,
     email: '',
     phone: '',
   });
@@ -239,13 +247,43 @@ const CartPageContent = () => {
   const isAddressesInitialized = useStore((state) => state.isAddressesInitialized);
   const saveAddress = useStore((state) => state.saveAddress);
 
-  const guestCartItems = useMemo(() => readGuestCart() as CartDisplayItem[], [user?.id]);
+  const guestCartItems = useMemo(() => readGuestCart() as CartDisplayItem[], []);
   const activeCartItems = (user ? cartItems : guestCartItems) as CartDisplayItem[];
   const selectedShippingAddress =
     addresses.find((address) => address.isDefault) || addresses[0] || null;
   const guestShippingAddress = guestCheckout || null;
 
-  const openGuestCheckoutForm = () => {
+  const splitStreetParts = (streetValue: string) => {
+    const cleanedParts = String(streetValue || '')
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    if (cleanedParts.length === 0) {
+      return { house: '', area: '', landmark: '' };
+    }
+
+    if (cleanedParts.length === 1) {
+      return { house: cleanedParts[0], area: '', landmark: '' };
+    }
+
+    if (cleanedParts.length === 2) {
+      return { house: cleanedParts[0], area: cleanedParts[1], landmark: '' };
+    }
+
+    return {
+      house: cleanedParts[0],
+      area: cleanedParts[1],
+      landmark: cleanedParts.slice(2).join(', '),
+    };
+  };
+
+  const combineAddressLine = (house: string, area: string, landmark: string) => {
+    const parts = [house.trim(), area.trim(), landmark.trim()].filter(Boolean);
+    return parts.join(', ');
+  };
+
+  const openGuestCheckoutForm = useCallback(() => {
     const currentGuest = readGuestCheckout();
     const nextForm = currentGuest || {
       name: '',
@@ -258,20 +296,29 @@ const CartPageContent = () => {
       country: 'India',
       shippingAddress: '',
     };
+    const parsedStreet = splitStreetParts(nextForm.street || '');
 
     setAddressForm({
       name: nextForm.name || '',
       email: nextForm.email || '',
       phone: nextForm.phone || '',
       street: nextForm.street || '',
+      house: parsedStreet.house,
+      area: parsedStreet.area,
+      landmark: parsedStreet.landmark,
       city: nextForm.city || '',
       state: nextForm.state || '',
+      pin: nextForm.zip || '',
       zip: nextForm.zip || '',
       country: nextForm.country || 'India',
       isDefault: true,
+      saveDetails: true,
     });
+    setFieldErrors({});
+    setPinLookupError('');
+    setIsPinAutoFilled(Boolean(nextForm.zip && nextForm.city && nextForm.state));
     setIsAddressModalOpen(true);
-  };
+  }, []);
 
   const handlePayment = useCallback(async () => {
     const userId = user?.id;
@@ -326,12 +373,15 @@ const CartPageContent = () => {
       if (paymentMethod === 'COD') {
         setIsProcessing(true);
         try {
-          const codOrderRes = await createOrder(null as any, appliedCouponCode || null, {
+          const guestOrderOptions = {
             clearCart: true,
             orderStatus: 'PENDING',
             paymentMethod: 'COD',
-            ...( { guestCustomer: normalizedGuestData, guestCartItems: guestCartItems } as any),
-          });
+            guestCustomer: normalizedGuestData,
+            guestCartItems,
+          } as Parameters<typeof createOrder>[2];
+
+          const codOrderRes = await createOrder(null as unknown as string, appliedCouponCode || null, guestOrderOptions);
 
           if (!codOrderRes?.success || !codOrderRes.order?.id) {
             throw new Error(codOrderRes?.error || 'Could not place COD order.');
@@ -497,7 +547,7 @@ const CartPageContent = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, [addressForm, appliedCouponCode, cartItems, fetchCart, guestCartItems, guestCheckout, paymentMethod, router, selectedShippingAddress, user, user?.email, user?.id]);
+  }, [addressForm, appliedCouponCode, cartItems, fetchCart, guestCartItems, guestCheckout, openGuestCheckoutForm, paymentMethod, router, selectedShippingAddress, user]);
 
   // 6. UI ACTIONS: Linked directly to mutations + global state updates
   const updateQuantity = async (cartItemId: string, newQty: number) => {
@@ -580,52 +630,179 @@ const CartPageContent = () => {
   };
 
   const handleAddressInputChange = (field: keyof typeof addressForm, value: string | boolean) => {
-    setAddressForm((prev) => ({
+    setAddressForm((prev) => {
+      const next = { ...prev, [field]: value };
+
+      if (field === 'house' || field === 'area' || field === 'landmark') {
+        next.street = combineAddressLine(
+          field === 'house' ? String(value) : prev.house,
+          field === 'area' ? String(value) : prev.area,
+          field === 'landmark' ? String(value) : prev.landmark
+        );
+      }
+
+      if (field === 'pin' || field === 'zip') {
+        const normalizedPin = String(value || '').replace(/\D/g, '').slice(0, 6);
+        next.pin = normalizedPin;
+        next.zip = normalizedPin;
+      }
+
+      return next;
+    });
+
+    setFieldErrors((prev) => ({
       ...prev,
-      [field]: value,
+      [field]: '',
     }));
   };
+
+  const focusFirstInvalidField = (errors: Record<string, string>) => {
+    const fieldOrder = ['name', 'phone', 'email', 'pin', 'city', 'state', 'house', 'area'];
+    const firstInvalidKey = fieldOrder.find((key) => !!errors[key]);
+
+    if (!firstInvalidKey) {
+      return;
+    }
+
+    const target = document.getElementById(
+      firstInvalidKey === 'house' ? 'guest-house' : firstInvalidKey === 'area' ? 'guest-area' : firstInvalidKey === 'email' ? 'guest-email' : firstInvalidKey === 'phone' ? 'guest-phone' : firstInvalidKey === 'pin' ? 'guest-pin' : firstInvalidKey === 'name' ? 'guest-name' : firstInvalidKey === 'city' ? 'guest-city' : firstInvalidKey === 'state' ? 'guest-state' : 'guest-name'
+    );
+
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.focus();
+    }
+  };
+
+  const validateGuestAddressForm = (form: typeof addressForm) => {
+    const errors: Record<string, string> = {};
+    const cleanName = form.name.trim();
+    const cleanEmail = form.email.trim();
+    const cleanPhone = form.phone.trim();
+    const cleanPin = String(form.pin || form.zip || '').trim();
+    const cleanCity = form.city.trim();
+    const cleanState = form.state.trim();
+    const cleanHouse = form.house.trim();
+    const cleanArea = form.area.trim();
+
+    if (!cleanName) {
+      errors.name = 'Full name is required.';
+    }
+
+    if (!cleanEmail) {
+      errors.email = 'Email address is required.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      errors.email = 'Please enter a valid email address.';
+    }
+
+    if (!cleanPhone) {
+      errors.phone = 'Mobile number is required.';
+    } else if (!/^(\+91|91)?[6-9]\d{9}$/.test(cleanPhone.replace(/\s+/g, ''))) {
+      errors.phone = 'Please enter a valid Indian mobile number.';
+    }
+
+    if (!cleanPin) {
+      errors.pin = 'PIN code is required.';
+    } else if (!/^\d{6}$/.test(cleanPin)) {
+      errors.pin = 'PIN code must contain exactly 6 digits.';
+    }
+
+    if (!cleanCity) {
+      errors.city = 'City is required.';
+    }
+
+    if (!cleanState) {
+      errors.state = 'State is required.';
+    }
+
+    if (!cleanHouse) {
+      errors.house = 'House / Flat / Building is required.';
+    }
+
+    if (!cleanArea) {
+      errors.area = 'Area / Street is required.';
+    }
+
+    return errors;
+  };
+
+  const handlePinLookup = useCallback(async (pinValue: string) => {
+    const normalizedPin = String(pinValue || '').replace(/\D/g, '').slice(0, 6);
+    if (!normalizedPin || normalizedPin.length !== 6) {
+      setPinLookupError('');
+      setIsPinAutoFilled(false);
+      return;
+    }
+
+    setIsPinLoading(true);
+    setPinLookupError('');
+
+    try {
+      const response = await fetch(`https://api.postalpincode.in/pincode/${normalizedPin}`, { cache: 'no-store' });
+      const payload = await response.json();
+      const lookupResult = Array.isArray(payload) ? payload[0] : null;
+      const postOffices = Array.isArray(lookupResult?.PostOffice) ? lookupResult.PostOffice : [];
+
+      if (!response.ok || !lookupResult || lookupResult.Status !== 'Success' || postOffices.length === 0) {
+        throw new Error('Pin lookup failed');
+      }
+
+      const firstPostOffice = postOffices[0] || {};
+      setAddressForm((prev) => ({
+        ...prev,
+        pin: normalizedPin,
+        zip: normalizedPin,
+        city: firstPostOffice.District || prev.city || '',
+        state: firstPostOffice.State || prev.state || '',
+      }));
+      setIsPinAutoFilled(true);
+      setFieldErrors((prev) => ({ ...prev, pin: '', city: '', state: '' }));
+    } catch (error) {
+      console.error('[checkout-pin] lookup failed', error);
+      setIsPinAutoFilled(false);
+      setPinLookupError('PIN lookup failed. You can enter city and state manually.');
+    } finally {
+      setIsPinLoading(false);
+    }
+  }, []);
 
   const handleSaveAddressFromModal = async () => {
     const userId = user?.id;
 
     if (!userId) {
+      const errors = validateGuestAddressForm(addressForm);
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        focusFirstInvalidField(errors);
+        return;
+      }
+
       const trimmedName = addressForm.name.trim();
       const trimmedEmail = addressForm.email.trim();
       const trimmedPhone = addressForm.phone.trim();
-      const trimmedStreet = addressForm.street.trim();
+      const formattedStreet = combineAddressLine(addressForm.house, addressForm.area, addressForm.landmark);
       const trimmedCity = addressForm.city.trim();
       const trimmedState = addressForm.state.trim();
-      const trimmedZip = addressForm.zip.trim();
-
-      if (!trimmedName || !trimmedPhone || !trimmedStreet || !trimmedCity || !trimmedState || !trimmedZip) {
-        toast.error('Please enter your shipping address to continue.');
-        const missingField = !trimmedStreet ? 'street' : !trimmedCity ? 'city' : !trimmedState ? 'state' : !trimmedZip ? 'zip' : !trimmedName ? 'name' : !trimmedPhone ? 'phone' : null;
-        if (missingField) {
-          const element = document.getElementById(`guest-${missingField}`);
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            element.focus();
-          }
-        }
-        return;
-      }
+      const trimmedZip = (addressForm.pin || addressForm.zip || '').trim();
+      const guestCountry = 'India';
 
       const normalized = saveGuestCheckout({
         name: trimmedName,
         email: trimmedEmail,
         phone: trimmedPhone,
-        street: trimmedStreet,
+        street: formattedStreet,
         city: trimmedCity,
         state: trimmedState,
         zip: trimmedZip,
-        country: addressForm.country || 'India',
-        shippingAddress: [trimmedName, trimmedStreet, trimmedCity, trimmedState, trimmedZip, addressForm.country || 'India'].filter(Boolean).join(', '),
+        country: guestCountry,
+        shippingAddress: [trimmedName, formattedStreet, trimmedCity, trimmedState, trimmedZip, guestCountry].filter(Boolean).join(', '),
       });
 
       if (normalized) {
         setGuestCheckout(normalized);
       }
+      setFieldErrors({});
+      setPinLookupError('');
       setIsAddressModalOpen(false);
       toast.success('Shipping details saved. You can continue to payment.');
       return;
@@ -652,11 +829,16 @@ const CartPageContent = () => {
       setAddressForm({
         name: '',
         street: '',
+        house: '',
+        area: '',
+        landmark: '',
         city: '',
         state: '',
+        pin: '',
         zip: '',
         country: 'India',
         isDefault: true,
+        saveDetails: true,
         email: '',
         phone: '',
       });
@@ -1556,7 +1738,7 @@ const CartPageContent = () => {
       </main>
 
       {isAddressModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
           <button
             type="button"
             aria-label="Close address modal backdrop"
@@ -1564,9 +1746,13 @@ const CartPageContent = () => {
             onClick={() => setIsAddressModalOpen(false)}
           />
 
-          <div className="relative w-full max-w-lg rounded-[1.2rem] border border-[#f0dde7] bg-white p-5 sm:p-6 shadow-2xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-[#321327]">Add Delivery Address</h3>
+          <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-[1.4rem] border border-[#f0dde7] bg-white p-4 shadow-2xl sm:p-6">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#840d5c]/65">Delivery details</p>
+                <h3 className="mt-2 text-2xl font-serif text-[#321327]">Delivery details</h3>
+                <p className="mt-1 text-sm text-[#6b4f61]">Please provide your contact and delivery details to continue.</p>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsAddressModalOpen(false)}
@@ -1577,125 +1763,217 @@ const CartPageContent = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">Full Name</label>
-                <input
-                  id="guest-name"
-                  value={addressForm.name}
-                  onChange={(e) => handleAddressInputChange('name', e.target.value)}
-                  className="w-full rounded-lg border border-[#e7c9d9] px-3 py-2 text-sm text-[#321327] outline-none focus:border-[#c02a82]"
-                  placeholder="Enter full name"
-                />
-              </div>
+            <div className="space-y-5">
+              <section>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#840d5c]">1. Contact Information</p>
 
-              <div>
-                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">Email</label>
-                <input
-                  type="email"
-                  autoComplete="email"
-                  value={addressForm.email}
-                  onChange={(e) => handleAddressInputChange('email', e.target.value)}
-                  className="w-full rounded-lg border border-[#e7c9d9] px-3 py-2 text-sm text-[#321327] outline-none focus:border-[#c02a82]"
-                  placeholder="Email address"
-                />
-              </div>
+                <div className="mt-3 space-y-4">
+                  <div>
+                    <label htmlFor="guest-name" className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">
+                      Full Name <span className="text-[#b11e72]">*</span>
+                    </label>
+                    <input
+                      id="guest-name"
+                      value={addressForm.name}
+                      onChange={(e) => handleAddressInputChange('name', e.target.value)}
+                      autoComplete="name"
+                      aria-invalid={Boolean(fieldErrors.name)}
+                      aria-describedby={fieldErrors.name ? 'guest-name-error' : undefined}
+                      className={`w-full rounded-xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.name ? 'border-red-300 bg-red-50' : 'border-[#e7c9d9]'}`}
+                      placeholder="Enter full name"
+                    />
+                    {fieldErrors.name && <p id="guest-name-error" className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
+                  </div>
 
-              <div>
-                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">Phone</label>
-                <input
-                  id="guest-phone"
-                  type="tel"
-                  autoComplete="tel"
-                  value={addressForm.phone}
-                  onChange={(e) => handleAddressInputChange('phone', e.target.value)}
-                  className="w-full rounded-lg border border-[#e7c9d9] px-3 py-2 text-sm text-[#321327] outline-none focus:border-[#c02a82]"
-                  placeholder="Phone number"
-                />
-              </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="guest-phone" className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">
+                        Mobile Number <span className="text-[#b11e72]">*</span>
+                      </label>
+                      <input
+                        id="guest-phone"
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        value={addressForm.phone}
+                        onChange={(e) => handleAddressInputChange('phone', e.target.value.replace(/[^\d+\s-]/g, '').slice(0, 15))}
+                        aria-invalid={Boolean(fieldErrors.phone)}
+                        aria-describedby={fieldErrors.phone ? 'guest-phone-error' : undefined}
+                        className={`w-full rounded-xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.phone ? 'border-red-300 bg-red-50' : 'border-[#e7c9d9]'}`}
+                        placeholder="+91 98765 43210"
+                      />
+                      {fieldErrors.phone && <p id="guest-phone-error" className="mt-1 text-xs text-red-600">{fieldErrors.phone}</p>}
+                    </div>
 
-              <div className="sm:col-span-2">
-                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">Street Address</label>
-                <textarea
-                  id="guest-street"
-                  value={addressForm.street}
-                  onChange={(e) => handleAddressInputChange('street', e.target.value)}
-                  className="w-full rounded-lg border border-[#e7c9d9] px-3 py-2 text-sm text-[#321327] outline-none focus:border-[#c02a82]"
-                  placeholder="House no, building, area"
-                  rows={2}
-                />
-              </div>
+                    <div>
+                      <label htmlFor="guest-email" className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">
+                        Email Address <span className="text-[#b11e72]">*</span>
+                      </label>
+                      <input
+                        id="guest-email"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        value={addressForm.email}
+                        onChange={(e) => handleAddressInputChange('email', e.target.value)}
+                        aria-invalid={Boolean(fieldErrors.email)}
+                        aria-describedby={fieldErrors.email ? 'guest-email-error' : undefined}
+                        className={`w-full rounded-xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.email ? 'border-red-300 bg-red-50' : 'border-[#e7c9d9]'}`}
+                        placeholder="Email address"
+                      />
+                      {fieldErrors.email && <p id="guest-email-error" className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
+                    </div>
+                  </div>
+                </div>
 
-              <div>
-                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">City</label>
-                <input
-                  id="guest-city"
-                  value={addressForm.city}
-                  onChange={(e) => handleAddressInputChange('city', e.target.value)}
-                  className="w-full rounded-lg border border-[#e7c9d9] px-3 py-2 text-sm text-[#321327] outline-none focus:border-[#c02a82]"
-                  placeholder="City"
-                />
-              </div>
+                <p className="mt-3 text-sm text-[#6b4f61]">We&apos;ll use these details for order confirmation and delivery updates.</p>
+              </section>
 
-              <div>
-                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">State</label>
-                <input
-                  id="guest-state"
-                  value={addressForm.state}
-                  onChange={(e) => handleAddressInputChange('state', e.target.value)}
-                  className="w-full rounded-lg border border-[#e7c9d9] px-3 py-2 text-sm text-[#321327] outline-none focus:border-[#c02a82]"
-                  placeholder="State"
-                />
-              </div>
+              <section>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#840d5c]">2. Delivery Address</p>
 
-              <div>
-                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">ZIP Code</label>
-                <input
-                  id="guest-zip"
-                  value={addressForm.zip}
-                  onChange={(e) => handleAddressInputChange('zip', e.target.value)}
-                  className="w-full rounded-lg border border-[#e7c9d9] px-3 py-2 text-sm text-[#321327] outline-none focus:border-[#c02a82]"
-                  placeholder="PIN / ZIP"
-                />
-              </div>
+                <div className="mt-3 space-y-4">
+                  <div>
+                    <label htmlFor="guest-pin" className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">
+                      PIN Code <span className="text-[#b11e72]">*</span>
+                    </label>
+                    <input
+                      id="guest-pin"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="postal-code"
+                      maxLength={6}
+                      value={addressForm.pin}
+                      onChange={(e) => {
+                        const numericPin = e.target.value.replace(/\D/g, '').slice(0, 6);
+                        handleAddressInputChange('pin', numericPin);
+                        setIsPinAutoFilled(false);
+                        setPinLookupError('');
+                        if (numericPin.length === 6) {
+                          void handlePinLookup(numericPin);
+                        }
+                      }}
+                      aria-invalid={Boolean(fieldErrors.pin)}
+                      aria-describedby={fieldErrors.pin ? 'guest-pin-error' : pinLookupError ? 'guest-pin-warning' : undefined}
+                      className={`w-full rounded-xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.pin || pinLookupError ? 'border-red-300 bg-red-50' : 'border-[#e7c9d9]'}`}
+                      placeholder="Enter 6-digit PIN"
+                    />
+                    {isPinLoading && (
+                      <div className="mt-2 inline-flex items-center gap-2 text-xs text-[#840d5c]">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Looking up your location...
+                      </div>
+                    )}
+                    {fieldErrors.pin && <p id="guest-pin-error" className="mt-1 text-xs text-red-600">{fieldErrors.pin}</p>}
+                    {!fieldErrors.pin && pinLookupError && <p id="guest-pin-warning" className="mt-1 text-xs text-red-600">{pinLookupError}</p>}
+                  </div>
 
-              <div>
-                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">Country</label>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="guest-city" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">City</label>
+                      <input
+                        id="guest-city"
+                        value={addressForm.city}
+                        onChange={(e) => handleAddressInputChange('city', e.target.value)}
+                        autoComplete="address-level2"
+                        readOnly={isPinAutoFilled}
+                        disabled={isPinAutoFilled}
+                        aria-invalid={Boolean(fieldErrors.city)}
+                        className={`w-full rounded-xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.city ? 'border-red-300 bg-red-50' : 'border-[#e7c9d9]'} ${isPinAutoFilled ? 'bg-[#faf6f8] text-[#321327]/80' : ''}`}
+                        placeholder="City"
+                      />
+                      {fieldErrors.city && <p className="mt-1 text-xs text-red-600">{fieldErrors.city}</p>}
+                    </div>
+
+                    <div>
+                      <label htmlFor="guest-state" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">State</label>
+                      <input
+                        id="guest-state"
+                        value={addressForm.state}
+                        onChange={(e) => handleAddressInputChange('state', e.target.value)}
+                        autoComplete="address-level1"
+                        readOnly={isPinAutoFilled}
+                        disabled={isPinAutoFilled}
+                        aria-invalid={Boolean(fieldErrors.state)}
+                        className={`w-full rounded-xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.state ? 'border-red-300 bg-red-50' : 'border-[#e7c9d9]'} ${isPinAutoFilled ? 'bg-[#faf6f8] text-[#321327]/80' : ''}`}
+                        placeholder="State"
+                      />
+                      {fieldErrors.state && <p className="mt-1 text-xs text-red-600">{fieldErrors.state}</p>}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="guest-house" className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">
+                      House / Flat / Building <span className="text-[#b11e72]">*</span>
+                    </label>
+                    <input
+                      id="guest-house"
+                      value={addressForm.house}
+                      onChange={(e) => handleAddressInputChange('house', e.target.value)}
+                      autoComplete="address-line1"
+                      aria-invalid={Boolean(fieldErrors.house)}
+                      className={`w-full rounded-xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.house ? 'border-red-300 bg-red-50' : 'border-[#e7c9d9]'}`}
+                      placeholder="House no., building, apartment"
+                    />
+                    {fieldErrors.house && <p className="mt-1 text-xs text-red-600">{fieldErrors.house}</p>}
+                  </div>
+
+                  <div>
+                    <label htmlFor="guest-area" className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">
+                      Area / Street <span className="text-[#b11e72]">*</span>
+                    </label>
+                    <input
+                      id="guest-area"
+                      value={addressForm.area}
+                      onChange={(e) => handleAddressInputChange('area', e.target.value)}
+                      autoComplete="address-line2"
+                      aria-invalid={Boolean(fieldErrors.area)}
+                      className={`w-full rounded-xl border bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9] ${fieldErrors.area ? 'border-red-300 bg-red-50' : 'border-[#e7c9d9]'}`}
+                      placeholder="Area, street, locality"
+                    />
+                    {fieldErrors.area && <p className="mt-1 text-xs text-red-600">{fieldErrors.area}</p>}
+                  </div>
+
+                  <div>
+                    <label htmlFor="guest-landmark" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6b4f61]">Landmark (optional)</label>
+                    <input
+                      id="guest-landmark"
+                      value={addressForm.landmark}
+                      onChange={(e) => handleAddressInputChange('landmark', e.target.value)}
+                      autoComplete="address-line3"
+                      className="w-full rounded-xl border border-[#e7c9d9] bg-white px-3.5 py-3 text-sm text-[#321327] outline-none transition-all focus:border-[#c02a82] focus:ring-2 focus:ring-[#f9dfe9]"
+                      placeholder="Near school, hospital, etc."
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <label className="inline-flex items-center gap-2 text-sm text-[#5f4556]">
                 <input
-                  value={addressForm.country}
-                  onChange={(e) => handleAddressInputChange('country', e.target.value)}
-                  className="w-full rounded-lg border border-[#e7c9d9] px-3 py-2 text-sm text-[#321327] outline-none focus:border-[#c02a82]"
-                  placeholder="Country"
-                  disabled
+                  type="checkbox"
+                  checked={addressForm.saveDetails}
+                  onChange={(e) => handleAddressInputChange('saveDetails', e.target.checked)}
+                  className="h-4 w-4 rounded border-[#d8b5c8] text-[#9f1466] focus:ring-[#c02a82]"
                 />
-              </div>
+                Save my details for faster checkout next time
+              </label>
             </div>
 
-            <label className="mt-4 inline-flex items-center gap-2 text-sm text-[#5f4556]">
-              <input
-                type="checkbox"
-                checked={addressForm.isDefault}
-                onChange={(e) => handleAddressInputChange('isDefault', e.target.checked)}
-                className="h-4 w-4 rounded border-[#d8b5c8] text-[#9f1466] focus:ring-[#c02a82]"
-              />
-              Set as default address
-            </label>
-
-            <div className="mt-5 flex items-center justify-end gap-2">
+            <div className="mt-6 flex items-center justify-end gap-2 border-t border-[#f1dfe9] pt-4">
               <button
                 type="button"
                 onClick={() => setIsAddressModalOpen(false)}
-                className="rounded-lg border border-[#e0c6d4] px-4 py-2 text-sm font-semibold text-[#6b4f61] hover:bg-[#fff6fa]"
+                className="rounded-full border border-[#e0c6d4] px-4 py-2.5 text-sm font-semibold text-[#6b4f61] hover:bg-[#fff6fa]"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSaveAddressFromModal}
-                disabled={isSavingAddress}
-                className="rounded-lg bg-[#9f1466] px-4 py-2 text-sm font-bold text-white hover:bg-[#840d5c] disabled:opacity-60"
+                disabled={isSavingAddress || isPinLoading}
+                className="rounded-full bg-[#9f1466] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#840d5c] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isSavingAddress ? 'Saving...' : 'Save Address'}
+                {isSavingAddress ? 'Continuing...' : 'Continue to Payment →'}
               </button>
             </div>
           </div>
