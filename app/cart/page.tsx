@@ -1852,9 +1852,9 @@ const CartPageContent = () => {
                 </button>
               </div>
 
-              <div className="relative min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-5 sm:px-6 sm:pb-6">
+              <div className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 pb-4 pt-4 sm:px-6 sm:pb-5">
                 <div className={`transition-all duration-300 ease-out ${checkoutStep === 1 ? 'translate-x-0 opacity-100 relative' : '-translate-x-6 opacity-0 absolute inset-0 pointer-events-none'}`}>
-                <div className="mb-5 flex items-start gap-3 sm:gap-4">
+                <div className="mb-4 flex items-start gap-3 sm:gap-4">
                   <div className="min-w-0 flex-1">
                     <h3 className="font-serif text-[2rem] leading-tight text-[#321327]">Let&apos;s get started! ♥</h3>
                     <p className="mt-2 text-sm text-[#6b4f61]">We&apos;ll use these details to keep you updated about your order.</p>
@@ -1862,7 +1862,7 @@ const CartPageContent = () => {
                   <CheckoutIllustration variant="contact" />
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div>
                     <label htmlFor="guest-name" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b4f61]">Full Name <span className="text-[#b11e72]">*</span></label>
                     <input
@@ -1877,7 +1877,7 @@ const CartPageContent = () => {
                     {fieldErrors.name && <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <label htmlFor="guest-phone" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b4f61]">Mobile Number <span className="text-[#b11e72]">*</span></label>
                       <div className={`flex items-center overflow-hidden rounded-2xl border bg-white ${fieldErrors.phone ? 'border-red-300 bg-red-50' : 'border-[#e8d5df]'}`}>
@@ -1915,12 +1915,12 @@ const CartPageContent = () => {
                   </div>
                 </div>
 
-                <div className="mt-5 flex items-start gap-3 rounded-[20px] border border-[#f1d9e0] bg-[#fff9fb] p-3 text-left">
+                <div className="mt-4 flex items-start gap-3 rounded-[20px] border border-[#f1d9e0] bg-[#fff9fb] p-3 text-left">
                   <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-white text-[#840d5c] shadow-sm ring-1 ring-[#f5dfe9]">🛡</div>
                   <p className="text-sm leading-relaxed text-[#5e394d]">We&apos;ll send your order confirmation, tracking updates and important notifications here.</p>
                 </div>
 
-                <div className="mt-6 flex justify-end">
+                <div className="mt-4 flex justify-end">
                   <button
                     type="button"
                     onClick={handleSaveAddressFromModal}
