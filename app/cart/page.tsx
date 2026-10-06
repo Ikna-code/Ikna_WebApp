@@ -124,46 +124,14 @@ type RazorpayConstructor = new (options: RazorpayCheckoutOptions) => RazorpayIns
 const roundCurrency = (value: number) => Math.round(value * 100) / 100;
 
 function CheckoutIllustration({ variant }: { variant: 'contact' | 'delivery' }) {
-  if (variant === 'contact') {
-    return (
-      <svg viewBox="0 0 180 130" className="h-28 w-32 drop-shadow-[0_8px_18px_rgba(132,13,92,0.12)]" aria-hidden="true">
-        <defs>
-          <linearGradient id="ikna-contact-bg" x1="0%" x2="100%" y1="0%" y2="100%">
-            <stop offset="0%" stopColor="#fff7fa" />
-            <stop offset="100%" stopColor="#ffe7f1" />
-          </linearGradient>
-        </defs>
-        <rect x="18" y="28" width="118" height="76" rx="18" fill="url(#ikna-contact-bg)" />
-        <path d="M25 38L86 78L144 38" fill="none" stroke="#f2d6df" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-        <rect x="30" y="33" width="104" height="72" rx="16" fill="#fff" stroke="#f2d6df" strokeWidth="2" />
-        <path d="M40 48C62 58 83 63 104 48C117 42 126 46 130 52V87H40V48Z" fill="#fce6ef" />
-        <path d="M83 47C83 50 79 55 71 58C63 61 56 66 56 75C56 84 62 90 71 90C86 90 92 80 92 71C92 62 87 56 83 47Z" fill="#840D5C" opacity="0.12" />
-        <path d="M92 62C92 56 88 50 82 47C76 44 69 46 64 50C58 55 56 64 59 71C62 78 70 82 77 82C84 82 90 76 92 62Z" fill="#D4AF37" opacity="0.45" />
-        <path d="M74 42C74 34 78 26 86 23C95 20 103 24 108 32C112 39 110 48 105 53C101 59 94 62 88 60C79 58 74 51 74 42Z" fill="#ec9ac2" />
-        <path d="M80 42C80 39 82 35 86 33C90 31 95 33 97 37C100 42 99 48 94 51C89 54 83 52 80 48V42Z" fill="#840D5C" opacity="0.9" />
-        <path d="M96 54C101 60 109 62 116 59C117 65 115 71 110 75C103 80 94 80 87 76" fill="none" stroke="#D4AF37" strokeWidth="3" strokeLinecap="round" />
-        <circle cx="145" cy="28" r="5" fill="#D4AF37" opacity="0.8" />
-        <circle cx="154" cy="34" r="3" fill="#840D5C" opacity="0.55" />
-      </svg>
-    );
-  }
-
   return (
-    <svg viewBox="0 0 180 130" className="h-28 w-32 drop-shadow-[0_8px_18px_rgba(132,13,92,0.12)]" aria-hidden="true">
-      <rect x="18" y="25" width="120" height="72" rx="18" fill="#fef6f9" stroke="#f3dfe9" strokeWidth="2" />
-      <path d="M35 38L83 72L131 38" fill="none" stroke="#f3dfe9" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-      <rect x="30" y="36" width="100" height="60" rx="14" fill="#fff" stroke="#f0d8e4" strokeWidth="2" />
-      <path d="M58 56H110" stroke="#D4AF37" strokeWidth="5" strokeLinecap="round" />
-      <path d="M60 69H102" stroke="#f0a6d1" strokeWidth="5" strokeLinecap="round" opacity="0.8" />
-      <rect x="112" y="62" width="28" height="40" rx="5" fill="#840D5C" opacity="0.13" />
-      <path d="M120 74H135" stroke="#840D5C" strokeWidth="4" strokeLinecap="round" />
-      <path d="M120 82H135" stroke="#840D5C" strokeWidth="4" strokeLinecap="round" opacity="0.7" />
-      <path d="M52 34L66 22L79 34" fill="none" stroke="#D4AF37" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
-      <circle cx="145" cy="24" r="5" fill="#f5d567" opacity="0.9" />
-      <circle cx="149" cy="39" r="3" fill="#ec9ac2" opacity="0.8" />
-      <path d="M145 83L138 96H152L145 83Z" fill="#840D5C" opacity="0.14" />
-      <path d="M137 104H153" stroke="#840D5C" strokeWidth="4" strokeLinecap="round" opacity="0.8" />
-    </svg>
+    <Image
+      src={variant === 'contact' ? '/images/checkout/contact-details.png' : '/images/checkout/delivery-address.png'}
+      width={200}
+      height={180}
+      alt=""
+      className="aspect-[10/9] w-[min(190px,38%)] shrink-0 object-contain sm:w-[200px] sm:max-w-[42%]"
+    />
   );
 }
 
@@ -1886,14 +1854,12 @@ const CartPageContent = () => {
 
               <div className="relative min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-5 sm:px-6 sm:pb-6">
                 <div className={`transition-all duration-300 ease-out ${checkoutStep === 1 ? 'translate-x-0 opacity-100 relative' : '-translate-x-6 opacity-0 absolute inset-0 pointer-events-none'}`}>
-                <div className="mb-5 flex items-start justify-between gap-4">
-                  <div className="max-w-[58%]">
+                <div className="mb-5 flex items-start gap-3 sm:gap-4">
+                  <div className="min-w-0 flex-1">
                     <h3 className="font-serif text-[2rem] leading-tight text-[#321327]">Let&apos;s get started! ♥</h3>
                     <p className="mt-2 text-sm text-[#6b4f61]">We&apos;ll use these details to keep you updated about your order.</p>
                   </div>
-                  <div className="rounded-[26px] bg-[#fff5f8] p-2 ring-1 ring-[#f3dfe9]">
-                    <CheckoutIllustration variant="contact" />
-                  </div>
+                  <CheckoutIllustration variant="contact" />
                 </div>
 
                 <div className="space-y-4">
@@ -1966,14 +1932,12 @@ const CartPageContent = () => {
               </div>
 
               <div className={`transition-all duration-300 ease-out ${checkoutStep === 2 ? 'translate-x-0 opacity-100 relative' : 'translate-x-6 opacity-0 absolute inset-0 pointer-events-none'}`}>
-                <div className="mb-5 flex items-start justify-between gap-4">
-                  <div className="max-w-[60%]">
+                <div className="mb-5 flex items-start gap-3 sm:gap-4">
+                  <div className="min-w-0 flex-1">
                     <h3 className="font-serif text-[2rem] leading-tight text-[#321327]">Where should we deliver your order? 📍</h3>
                     <p className="mt-2 text-sm text-[#6b4f61]">Enter your address or search to save time.</p>
                   </div>
-                  <div className="rounded-[26px] bg-[#fff7ec] p-2 ring-1 ring-[#f1debc]">
-                    <CheckoutIllustration variant="delivery" />
-                  </div>
+                  <CheckoutIllustration variant="delivery" />
                 </div>
 
                 <div className="space-y-4">
